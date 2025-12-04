@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>心流工作區 </title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --dark-color: #343a40;
+            --light-bg: #f8f9fa;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid var(--danger-color); }
+        h1, h2, h3 { margin-top: 0; color: var(--dark-color); }
+        
+        /* Layout */
+        .main-layout { display: flex; gap: 20px; flex-wrap: wrap; }
+        .left-panel { flex: 1; min-width: 300px; border: 2px solid var(--primary-color); border-radius: 8px; padding: 15px; }
+        .right-panel { flex: 2; min-width: 300px; }
+        
+        /* Timer Styles */
+        .timer-display { font-size: 3.5rem; font-weight: bold; text-align: center; margin: 10px 0; color: var(--dark-color); border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fff; }
+        .gif-container { width: 120px; height: 120px; margin: 0 auto; display: flex; align-items: center; justify-content: center; border: 2px dashed #ccc; border-radius: 8px; overflow: hidden; }
+        .gif-container img { width: 100%; height: 100%; object-fit: cover; }
+        .controls { display: flex; justify-content: space-between; gap: 5px; margin-top: 10px; }
+        button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 5px; font-weight: bold; color: white; transition: 0.2s; }
+        button:hover { opacity: 0.9; }
+        .btn-success { background: var(--success-color); }
+        .btn-warning { background: var(--warning-color); color: #333; }
+        .btn-danger { background: var(--danger-color); }
+        .btn-primary { background: var(--primary-color); }
+        .btn-info { background: #17a2b8; }
+        .btn-secondary { background: #6c757d; }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 5px; margin-bottom: 10px; justify-content: center; }
+        .tab-btn { background: #e9ecef; color: #495057; flex: 1; }
+        .tab-btn.active { background: #17a2b8; color: white; }
+
+        /* Inputs */
+        input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
+        textarea { height: 400px; font-family: monospace; resize: vertical; }
+
+        /* Todo List */
+        .todo-item { display: flex; align-items: center; background: #fff; border-bottom: 1px solid #eee; padding: 8px; }
+        .todo-item.priority-P1 { border-left: 4px solid var(--danger-color); background: #fff3cd; }
+        .todo-item.priority-P2 { border-left: 4px solid var(--warning-color); background: #f8d7da; }
+        .todo-item.completed { opacity: 0.6; text-decoration: line-through; background: #e9ecef; }
+        .todo-details { flex-grow: 1; margin-left: 10px; }
+        .badge { padding: 3px 6px; border-radius: 4px; font-size: 0.8em; color: white; }
+        
+        /* Countdown */
+        .countdown-box { margin-top: 15px; padding: 10px; background: var(--danger-color); color: white; text-align: center; border-radius: 5px; font-weight: bold; }
+
+        /* Footer */
+        .app-footer { margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #666; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-layout { flex-direction: column; }
+            .timer-display { font-size: 2.5rem; }
+            textarea { height: 250px; }
+            .app-footer { flex-direction: column; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>🌟 心流工作區</h1>
+    </div>
+
+    <div style="margin-bottom: 15px;">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="setTimerMode('FLEXIBLE')" id="btn-mode-flex">彈性計時</button>
+            <button class="tab-btn" onclick="setTimerMode('POMODORO')" id="btn-mode-pomo">番茄時鐘</button>
+        </div>
+        <input type="text" id="taskInput" placeholder="請輸入當前任務名稱..." oninput="saveData()">
+    </div>
+
+    <div class="main-layout">
+        <div class="left-panel">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchLeftPanel('TIMER')" id="tab-timer">⏱️ 計時器</button>
+                <button class="tab-btn" onclick="switchLeftPanel('TODO')" id="tab-todo">📋 待辦清單</button>
+            </div>
+
+            <div id="view-timer">
+                <div class="timer-display" id="timeDisplay">00:00:00</div>
+                
+                <div class="gif-container" id="gifContainer">
+                    <span style="color:#ccc">GIF (停止)</span>
+                </div>
+                
+                <div style="text-align:center; margin: 10px 0; font-weight:bold; color:#666;" id="statusText">狀態: 閒置</div>
+                
+                <div class="controls">
+                    <button class="btn-success" onclick="startTimer()">▶ 啟動</button>
+                    <button class="btn-warning" onclick="pauseTimer()">⏸ 暫停</button>
+                    <button class="btn-primary" onclick="stopTimer()">⏹ 停止</button>
+                </div>
+
+                <hr>
+                <h4 style="margin:5px 0">🎯 重要倒數</h4>
+                <input type="text" id="deadlineTask" placeholder="專案名稱" oninput="updateCountdown()">
+                <input type="date" id="deadlineDate" onchange="updateCountdown()">
+                <div id="countdownDisplay" class="countdown-box" style="display:none;"></div>
+            </div>
+
+            <div id="view-todo" style="display:none;">
+                <div id="todoListContainer" style="max-height: 400px; overflow-y: auto;">
+                    </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div style="border: 2px dashed var(--danger-color); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                <h3 style="color: var(--danger-color); margin-bottom: 10px;">🔥 快速新增待辦</h3>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <input type="text" id="newTodoTask" placeholder="任務名稱" style="flex:2">
+                    <select id="newTodoPriority" style="flex:1; min-width:80px;">
+                        <option value="P1">P1: 優先</option>
+                        <option value="P2">P2: 重要</option>
+                        <option value="P3" selected>P3: 待辦</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <input type="date" id="newTodoDate" style="flex:1">
+                    <input type="text" id="newTodoLink" placeholder="連結 (Trello/Keep)" style="flex:2">
+                    <button class="btn-success" onclick="addTodo()">➕ 新增</button>
+                </div>
+            </div>
+
+            <h3 style="color: var(--success-color);">📜 永久筆記板</h3>
+            <textarea id="notepad" placeholder="在此輸入筆記，會自動儲存..." oninput="saveData()"></textarea>
+            <div style="text-align:right; font-size:0.8rem; color:gray;" id="saveStatus">已自動儲存</div>
+        </div>
+    </div>
+
+    <div class="app-footer">
+        <div>
+            <span>📱 支援手機/平板自動適應</span>
+            <span style="margin: 0 10px;">|</span>
+            <span>💾 資料自動儲存於本機</span>
+        </div>
+        <button class="btn-secondary" style="font-size: 0.8rem; padding: 5px 10px; background-color: #6c757d;" onclick="clearAllData()">⚠️ 重置所有資料</button>
+    </div>
+</div>
+
+<script>
+    // --- Configuration ---
+    const GIF_URL = "https://images.vocus.cc/6527954d-241e-44f4-9809-d5461df3ce7c.gif";
+    const STORAGE_KEY = 'flowWorkspaceData';
+    
+    // --- State ---
+    let state = {
+        mode: 'FLEXIBLE', // FLEXIBLE or POMODORO
+        timerStatus: 'IDLE', // IDLE, RUNNING, PAUSED
+        seconds: 0,
+        pomoPhase: 'FOCUS', // FOCUS, SHORT, LONG
+        pomoCount: 0,
+        timerInterval: null,
+        todos: [],
+        lastSave: Date.now()
+    };
+
+    // --- Init ---
+    window.onload = function() {
+        loadData();
+        renderTodo();
+        updateCountdown();
+        updateDisplay();
+        
+        const today = new Date().toISOString().split('T')[0];
+        if(!document.getElementById('newTodoDate').value) document.getElementById('newTodoDate').value = today;
+    };
+
+    // --- Data Management (New Feature) ---
+    function clearAllData() {
+        if(confirm("⚠️ 警告：這將會刪除此頁面上的所有筆記、任務與計時紀錄！\n\n您確定要重置嗎？")) {
+            localStorage.removeItem(STORAGE_KEY);
+            alert("✅ 資料已清除，頁面將重新載入。");
+            location.reload();
+        }
+    }
+
+    // --- Timer Logic ---
+    function setTimerMode(mode) {
+        stopTimer();
+        state.mode = mode;
+        document.getElementById('btn-mode-flex').className = mode === 'FLEXIBLE' ? 'tab-btn active' : 'tab-btn';
+        document.getElementById('btn-mode-pomo').className = mode === 'POMODORO' ? 'tab-btn active' : 'tab-btn';
+        
+        if(mode === 'POMODORO') {
+            state.seconds = 25 * 60;
+            state.pomoPhase = 'FOCUS';
+        } else {
+            state.seconds = 0;
+        }
+        updateDisplay();
+        saveData();
+    }
+
+    function startTimer() {
+        if (state.timerStatus === 'RUNNING') return;
+        state.timerStatus = 'RUNNING';
+        
+        state.timerInterval = setInterval(() => {
+            if (state.mode === 'FLEXIBLE') {
+                state.seconds++;
+            } else {
+                state.seconds--;
+                if (state.seconds <= 0) handlePomoFinish();
+            }
+            updateDisplay();
+            if(state.seconds % 30 === 0) saveData(); // Save more frequently
+        }, 1000);
+        
+        updateDisplay();
+    }
+
+    function pauseTimer() {
+        if (state.timerStatus !== 'RUNNING') return;
+        clearInterval(state.timerInterval);
+        state.timerStatus = 'PAUSED';
+        updateDisplay();
+        saveData();
+    }
+
+    function stopTimer() {
+        clearInterval(state.timerInterval);
+        state.timerStatus = 'IDLE';
+        if (state.mode === 'POMODORO') {
+            state.seconds = 25 * 60;
+            state.pomoPhase = 'FOCUS';
+        } else {
+            state.seconds = 0;
+        }
+        updateDisplay();
+        saveData();
+    }
+
+    function handlePomoFinish() {
+        pauseTimer(); 
+        if (state.pomoPhase === 'FOCUS') {
+            state.pomoCount++;
+            let isLong = state.pomoCount % 4 === 0;
+            state.pomoPhase = isLong ? 'LONG' : 'SHORT';
+            state.seconds = isLong ? 15 * 60 : 5 * 60;
+            alert(`🔔 專注結束！休息一下 (${isLong ? '15' : '5'}分鐘)`);
+        } else {
+            state.pomoPhase = 'FOCUS';
+            state.seconds = 25 * 60;
+            alert("🔔 休息結束！準備開始新一輪專注。");
+        }
+        state.timerStatus = 'IDLE'; 
+        updateDisplay();
+        saveData();
+    }
+
+    function formatTime(sec) {
+        let h = Math.floor(sec / 3600);
+        let m = Math.floor((sec % 3600) / 60);
+        let s = sec % 60;
+        if (h > 0) return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+
+    function updateDisplay() {
+        const display = document.getElementById('timeDisplay');
+        const gifBox = document.getElementById('gifContainer');
+        const statusTxt = document.getElementById('statusText');
+        
+        display.innerText = formatTime(state.seconds);
+        
+        if (state.timerStatus === 'RUNNING') {
+            display.style.color = state.mode === 'POMODORO' && state.pomoPhase !== 'FOCUS' ? '#17a2b8' : '#28a745';
+            display.style.borderColor = display.style.color;
+            gifBox.innerHTML = `<img src="${GIF_URL}">`;
+            statusTxt.innerText = state.mode === 'FLEXIBLE' ? "工作中 (累計)" : `番茄 (${state.pomoPhase})`;
+        } else if (state.timerStatus === 'PAUSED') {
+            display.style.color = '#ffc107';
+             display.style.borderColor = '#ffc107';
+            gifBox.innerHTML = `<span style="color:#aaa">GIF (暫停)</span>`;
+            statusTxt.innerText = "暫停中";
+        } else {
+            display.style.color = '#343a40';
+             display.style.borderColor = '#ddd';
+            gifBox.innerHTML = `<span style="color:#ccc">GIF (停止)</span>`;
+            statusTxt.innerText = "閒置";
+        }
+    }
+
+    // --- Todo Logic ---
+    function addTodo() {
+        const task = document.getElementById('newTodoTask').value;
+        if (!task) return alert("請輸入任務名稱");
+        
+        const item = {
+            id: Date.now(),
+            task: task,
+            priority: document.getElementById('newTodoPriority').value,
+            date: document.getElementById('newTodoDate').value,
+            link: document.getElementById('newTodoLink').value,
+            completed: false
+        };
+        
+        state.todos.push(item);
+        document.getElementById('newTodoTask').value = '';
+        renderTodo();
+        saveData();
+    }
+
+    function toggleTodo(id) {
+        const item = state.todos.find(t => t.id === id);
+        if (item) item.completed = !item.completed;
+        renderTodo();
+        saveData();
+    }
+
+    function deleteTodo(id) {
+        if(confirm("確定刪除此任務?")) {
+            state.todos = state.todos.filter(t => t.id !== id);
+            renderTodo();
+            saveData();
+        }
+    }
+
+    function renderTodo() {
+        const container = document.getElementById('todoListContainer');
+        container.innerHTML = "";
+        
+        const sorted = [...state.todos].sort((a,b) => {
+            if(a.completed !== b.completed) return a.completed ? 1 : -1;
+            if(a.priority !== b.priority) return a.priority.localeCompare(b.priority);
+            return a.date.localeCompare(b.date);
+        });
+
+        if (sorted.length === 0) {
+            container.innerHTML = "<div style='text-align:center; color:#aaa; padding:10px;'>目前沒有待辦事項</div>";
+            return;
+        }
+
+        sorted.forEach(item => {
+            const div = document.createElement('div');
+            div.className = `todo-item priority-${item.priority} ${item.completed ? 'completed' : ''}`;
+            
+            let linkHtml = item.link ? `<a href="${item.link.startsWith('http')?item.link:'http://'+item.link}" target="_blank">🔗</a>` : '';
+            let priorityLabel = item.priority === 'P1' ? '優先' : (item.priority === 'P2' ? '重要' : '待辦');
+            let color = item.priority === 'P1' ? '#dc3545' : (item.priority === 'P2' ? '#ffc107' : '#007bff');
+            
+            div.innerHTML = `
+                <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleTodo(${item.id})">
+                <div class="todo-details">
+                    <div>
+                        <span class="badge" style="background:${color}">${priorityLabel}</span>
+                        <strong>${item.task}</strong> ${linkHtml}
+                    </div>
+                    <div style="font-size:0.8em; color:gray;">📅 ${item.date}</div>
+                </div>
+                <button class="btn-danger" style="padding:2px 8px; font-size:12px;" onclick="deleteTodo(${item.id})">🗑</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // --- Panel Switching ---
+    function switchLeftPanel(panel) {
+        document.getElementById('view-timer').style.display = panel === 'TIMER' ? 'block' : 'none';
+        document.getElementById('view-todo').style.display = panel === 'TODO' ? 'block' : 'none';
+        document.getElementById('tab-timer').className = panel === 'TIMER' ? 'tab-btn active' : 'tab-btn';
+        document.getElementById('tab-todo').className = panel === 'TODO' ? 'tab-btn active' : 'tab-btn';
+    }
+
+    // --- Countdown & Storage ---
+    function updateCountdown() {
+        const task = document.getElementById('deadlineTask').value;
+        const dateStr = document.getElementById('deadlineDate').value;
+        const box = document.getElementById('countdownDisplay');
+        
+        saveData(); 
+        
+        if (!dateStr) { box.style.display = 'none'; return; }
+        
+        const target = new Date(dateStr);
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        target.setHours(0,0,0,0);
+        
+        const diffTime = target - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        box.style.display = 'block';
+        if (diffDays > 0) {
+            box.style.background = '#dc3545';
+            box.innerHTML = `🔥 ${task || '專案'} 倒數：${diffDays} 天`;
+        } else if (diffDays === 0) {
+            box.style.background = '#ffc107';
+            box.style.color = '#333';
+            box.innerHTML = `🔥 ${task || '專案'} 今天截止！`;
+        } else {
+            box.style.background = '#6c757d';
+            box.innerHTML = `🚨 ${task || '專案'} 已過期 ${Math.abs(diffDays)} 天`;
+        }
+    }
+
+    function saveData() {
+        const data = {
+            notepad: document.getElementById('notepad').value,
+            todos: state.todos,
+            timerMode: state.mode,
+            timerSeconds: state.seconds,
+            taskName: document.getElementById('taskInput').value,
+            deadlineTask: document.getElementById('deadlineTask').value,
+            deadlineDate: document.getElementById('deadlineDate').value
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        document.getElementById('saveStatus').innerText = "已儲存: " + new Date().toLocaleTimeString();
+    }
+
+    function loadData() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            try {
+                const data = JSON.parse(raw);
+                document.getElementById('notepad').value = data.notepad || "";
+                state.todos = data.todos || [];
+                if(data.timerMode) state.mode = data.timerMode;
+                if(data.timerSeconds) state.seconds = data.timerSeconds;
+                if(data.taskName) document.getElementById('taskInput').value = data.taskName;
+                if(data.deadlineTask) document.getElementById('deadlineTask').value = data.deadlineTask;
+                if(data.deadlineDate) document.getElementById('deadlineDate').value = data.deadlineDate;
+                
+                // Sync UI state
+                setTimerMode(state.mode);
+            } catch(e) {
+                console.error("資料讀取失敗，可能是舊格式", e);
+            }
+        }
+    }
+</script>
+</body>
+</html>
