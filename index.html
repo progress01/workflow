@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>心流工作區 </title>
+    <title>心流工作區</title>
+    
+    <!-- Firebase CDN -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
     <style>
         :root {
             --primary-color: #007bff;
@@ -14,17 +20,23 @@
             --light-bg: #f8f9fa;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid var(--danger-color); }
+        
+        /* 登入畫面 */
+        #login-screen { position: fixed; inset: 0; background: radial-gradient(circle at center, #343a40 0%, #1a1e21 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; color: white; }
+        .login-btn { background: var(--primary-color); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
+        .login-btn:hover { background: #0056b3; }
+
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid var(--danger-color); display: none; flex-direction: column; }
         h1, h2, h3 { margin-top: 0; color: var(--dark-color); }
         
         /* Layout */
         .main-layout { display: flex; gap: 20px; flex-wrap: wrap; }
-        .left-panel { flex: 1; min-width: 300px; border: 2px solid var(--primary-color); border-radius: 8px; padding: 15px; }
+        .left-panel { flex: 1; min-width: 300px; border: 2px solid var(--primary-color); border-radius: 8px; padding: 15px; background: #fff; }
         .right-panel { flex: 2; min-width: 300px; }
         
         /* Timer Styles */
-        .timer-display { font-size: 3.5rem; font-weight: bold; text-align: center; margin: 10px 0; color: var(--dark-color); border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #fff; }
-        .gif-container { width: 120px; height: 120px; margin: 0 auto; display: flex; align-items: center; justify-content: center; border: 2px dashed #ccc; border-radius: 8px; overflow: hidden; }
+        .timer-display { font-size: 3.5rem; font-weight: bold; text-align: center; margin: 10px 0; color: var(--dark-color); border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f8f9fa; }
+        .gif-container { width: 120px; height: 120px; margin: 0 auto; display: flex; align-items: center; justify-content: center; border: 2px dashed #ccc; border-radius: 8px; overflow: hidden; background: white; }
         .gif-container img { width: 100%; height: 100%; object-fit: cover; }
         .controls { display: flex; justify-content: space-between; gap: 5px; margin-top: 10px; }
         button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 5px; font-weight: bold; color: white; transition: 0.2s; }
@@ -43,15 +55,17 @@
 
         /* Inputs */
         input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
-        textarea { height: 400px; font-family: monospace; resize: vertical; }
+        textarea { height: 350px; font-family: monospace; resize: vertical; background: #fdfdfd; }
 
         /* Todo List */
-        .todo-item { display: flex; align-items: center; background: #fff; border-bottom: 1px solid #eee; padding: 8px; }
+        .todo-item { display: flex; align-items: center; background: #fff; border-bottom: 1px solid #eee; padding: 8px; transition: 0.2s; }
+        .todo-item:hover { background: #f8f9fa; }
         .todo-item.priority-P1 { border-left: 4px solid var(--danger-color); background: #fff3cd; }
         .todo-item.priority-P2 { border-left: 4px solid var(--warning-color); background: #f8d7da; }
-        .todo-item.completed { opacity: 0.6; text-decoration: line-through; background: #e9ecef; }
+        .todo-item.completed { opacity: 0.5; text-decoration: line-through; background: #e9ecef; border-left: 4px solid #adb5bd; }
         .todo-details { flex-grow: 1; margin-left: 10px; }
-        .badge { padding: 3px 6px; border-radius: 4px; font-size: 0.8em; color: white; }
+        .badge { padding: 3px 6px; border-radius: 4px; font-size: 0.75em; color: white; }
+        .badge-source { background: #6f42c1; font-size: 0.7em; margin-left: 5px; }
         
         /* Countdown */
         .countdown-box { margin-top: 15px; padding: 10px; background: var(--danger-color); color: white; text-align: center; border-radius: 5px; font-weight: bold; }
@@ -59,7 +73,6 @@
         /* Footer */
         .app-footer { margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #666; }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .main-layout { flex-direction: column; }
             .timer-display { font-size: 2.5rem; }
@@ -70,9 +83,21 @@
 </head>
 <body>
 
-<div class="container">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>🌟 心流工作區</h1>
+<!-- 登入畫面 -->
+<div id="login-screen">
+    <h1 style="font-size: 2.5rem; margin-bottom: 10px;">🌟 心流工作區</h1>
+    <p style="color: #adb5bd; margin-bottom: 30px;">戰術執行沙盒</p>
+    <button class="login-btn" onclick="loginFirebase()">與白板帳號同步登入</button>
+</div>
+
+<!-- 應用程式本體 -->
+<div class="container" id="app-container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px;">
+        <h1 style="margin: 0;">🌟 心流沙盒</h1>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-info" onclick="importFromWhiteboard()" style="background: #6f42c1;">📥 載入白板資料</button>
+            <button class="btn-secondary" onclick="window.location.href='index.html'">🔙 回到白板</button>
+        </div>
     </div>
 
     <div style="margin-bottom: 15px;">
@@ -80,7 +105,7 @@
             <button class="tab-btn active" onclick="setTimerMode('FLEXIBLE')" id="btn-mode-flex">彈性計時</button>
             <button class="tab-btn" onclick="setTimerMode('POMODORO')" id="btn-mode-pomo">番茄時鐘</button>
         </div>
-        <input type="text" id="taskInput" placeholder="請輸入當前任務名稱..." oninput="saveData()">
+        <input type="text" id="taskInput" placeholder="請輸入當前正在執行的任務名稱..." oninput="saveData()" style="font-size: 1.1rem; padding: 12px;">
     </div>
 
     <div class="main-layout">
@@ -97,7 +122,7 @@
                     <span style="color:#ccc">GIF (停止)</span>
                 </div>
                 
-                <div style="text-align:center; margin: 10px 0; font-weight:bold; color:#666;" id="statusText">狀態: 閒置</div>
+                <div style="text-align:center; margin: 10px 0; font-weight:bold; color:#6c757d;" id="statusText">狀態: 閒置</div>
                 
                 <div class="controls">
                     <button class="btn-success" onclick="startTimer()">▶ 啟動</button>
@@ -105,24 +130,29 @@
                     <button class="btn-primary" onclick="stopTimer()">⏹ 停止</button>
                 </div>
 
-                <hr>
-                <h4 style="margin:5px 0">🎯 重要倒數</h4>
+                <hr style="border:0; border-top:1px dashed #ced4da; margin: 20px 0;">
+                <h4 style="margin:5px 0; color:var(--danger-color);">🎯 死線倒數</h4>
                 <input type="text" id="deadlineTask" placeholder="專案名稱" oninput="updateCountdown()">
                 <input type="date" id="deadlineDate" onchange="updateCountdown()">
                 <div id="countdownDisplay" class="countdown-box" style="display:none;"></div>
             </div>
 
             <div id="view-todo" style="display:none;">
-                <div id="todoListContainer" style="max-height: 400px; overflow-y: auto;">
-                    </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 0.85rem; color: #6c757d;">(不會影響白板原始資料)</span>
+                    <button class="btn-secondary" style="padding: 2px 8px; font-size: 0.8rem;" onclick="clearCompletedTodos()">清除已完成</button>
+                </div>
+                <div id="todoListContainer" style="max-height: 400px; overflow-y: auto; border-top: 1px solid #dee2e6;">
+                    <!-- Todos 會生成在這裡 -->
+                </div>
             </div>
         </div>
 
         <div class="right-panel">
-            <div style="border: 2px dashed var(--danger-color); padding: 10px; border-radius: 8px; margin-bottom: 15px;">
-                <h3 style="color: var(--danger-color); margin-bottom: 10px;">🔥 快速新增待辦</h3>
+            <div style="border: 2px dashed var(--info-color, #17a2b8); padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #f8f9fa;">
+                <h3 style="color: #17a2b8; margin-bottom: 10px;">⚡ 快速新增臨時任務</h3>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                    <input type="text" id="newTodoTask" placeholder="任務名稱" style="flex:2">
+                    <input type="text" id="newTodoTask" placeholder="任務名稱 (Enter 快速新增)" style="flex:2" onkeypress="if(event.key === 'Enter') addTodo()">
                     <select id="newTodoPriority" style="flex:1; min-width:80px;">
                         <option value="P1">P1: 優先</option>
                         <option value="P2">P2: 重要</option>
@@ -131,31 +161,45 @@
                 </div>
                 <div style="display:flex; gap:5px; margin-top:5px;">
                     <input type="date" id="newTodoDate" style="flex:1">
-                    <input type="text" id="newTodoLink" placeholder="連結 (Trello/Keep)" style="flex:2">
-                    <button class="btn-success" onclick="addTodo()">➕ 新增</button>
+                    <input type="text" id="newTodoLink" placeholder="相關連結" style="flex:2">
+                    <button class="btn-success" onclick="addTodo()">➕ 加入</button>
                 </div>
             </div>
 
-            <h3 style="color: var(--success-color);">📜 永久筆記板</h3>
-            <textarea id="notepad" placeholder="在此輸入筆記，會自動儲存..." oninput="saveData()"></textarea>
-            <div style="text-align:right; font-size:0.8rem; color:gray;" id="saveStatus">已自動儲存</div>
+            <h3 style="color: var(--success-color); display: flex; justify-content: space-between;">
+                <span>📜 草稿與筆記</span>
+                <span style="font-size:0.8rem; color:#adb5bd; font-weight:normal;" id="saveStatus">已自動儲存</span>
+            </h3>
+            <textarea id="notepad" placeholder="在此處傾倒大腦，完成後再整理回白板..." oninput="saveData()"></textarea>
         </div>
     </div>
 
     <div class="app-footer">
         <div>
-            <span>📱 支援手機/平板自動適應</span>
-            <span style="margin: 0 10px;">|</span>
-            <span>💾 資料自動儲存於本機</span>
+            <span>🔐 任務變更僅限此沙盒，不污染白板資料。</span>
         </div>
-        <button class="btn-secondary" style="font-size: 0.8rem; padding: 5px 10px; background-color: #6c757d;" onclick="clearAllData()">⚠️ 重置所有資料</button>
+        <button class="btn-danger" style="font-size: 0.85rem; padding: 8px 15px;" onclick="clearFlowSandbox()">🧹 徹底清空心流沙盒</button>
     </div>
 </div>
 
 <script>
+    // --- Firebase 配置 (與白板共用) ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
+        authDomain: "maplestoryboss.firebaseapp.com",
+        projectId: "maplestoryboss",
+        storageBucket: "maplestoryboss.firebasestorage.app",
+        messagingSenderId: "198034430854",
+        appId: "1:198034430854:web:527ffcee039e223b972a07"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
+
     // --- Configuration ---
     const GIF_URL = "https://images.vocus.cc/6527954d-241e-44f4-9809-d5461df3ce7c.gif";
-    const STORAGE_KEY = 'flowWorkspaceData';
+    let currentUser = null;
+    let LOCAL_STORAGE_KEY = 'flow_workspace_data';
     
     // --- State ---
     let state = {
@@ -169,8 +213,27 @@
         lastSave: Date.now()
     };
 
-    // --- Init ---
-    window.onload = function() {
+    // --- Auth & Init ---
+    auth.onAuthStateChanged((user) => {
+        if (user) {
+            currentUser = user;
+            LOCAL_STORAGE_KEY = `flow_workspace_data_${user.uid}`; // 專屬沙盒 Key
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-container').style.display = 'flex';
+            
+            initApp();
+        } else {
+            currentUser = null;
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('app-container').style.display = 'none';
+        }
+    });
+
+    function loginFirebase() {
+        auth.signInWithPopup(provider).catch(err => alert("登入失敗: " + err.message));
+    }
+
+    function initApp() {
         loadData();
         renderTodo();
         updateCountdown();
@@ -178,14 +241,92 @@
         
         const today = new Date().toISOString().split('T')[0];
         if(!document.getElementById('newTodoDate').value) document.getElementById('newTodoDate').value = today;
-    };
+    }
 
-    // --- Data Management (New Feature) ---
-    function clearAllData() {
-        if(confirm("⚠️ 警告：這將會刪除此頁面上的所有筆記、任務與計時紀錄！\n\n您確定要重置嗎？")) {
-            localStorage.removeItem(STORAGE_KEY);
-            alert("✅ 資料已清除，頁面將重新載入。");
+    // --- 核心功能：白板資料匯入 (唯讀) ---
+    function importFromWhiteboard() {
+        if (!currentUser) return alert("無法獲取使用者資訊！");
+        
+        // 讀取白板專屬的 localStorage Key
+        const wbDataRaw = localStorage.getItem(`whiteboard_state_${currentUser.uid}`);
+        if (!wbDataRaw) return alert("⚠️ 找不到白板資料！請先在白板系統中進行操作並確保有存檔。");
+
+        const wbData = JSON.parse(wbDataRaw);
+        let importedCount = 0;
+
+        // 1. 解析白板的正式卡片 (Workspaces)
+        if (wbData.workspaces) {
+            Object.values(wbData.workspaces).forEach(tabCards => {
+                tabCards.forEach(card => {
+                    // 避免重複匯入
+                    if (state.todos.some(t => t.wbId === card.id)) return; 
+                    
+                    state.todos.push({
+                        id: Date.now() + Math.random(), // 新的內部 ID
+                        wbId: card.id,                  // 標記來源，供防重比對
+                        task: card.title || '未命名白板卡片',
+                        priority: (card.status === 3 || card.color === 'red') ? 'P1' : 'P2', 
+                        date: card.dateSingle || card.dateStart || '',
+                        link: '',
+                        completed: false,
+                        source: '卡片'
+                    });
+                    importedCount++;
+                });
+            });
+        }
+
+        // 2. 解析發想矩陣的棋子 (Nodes)
+        if (wbData.nodes) {
+            Object.values(wbData.nodes).forEach(tabNodes => {
+                tabNodes.forEach(node => {
+                    if (state.todos.some(t => t.wbId === node.id)) return;
+                    
+                    let prio = 'P3';
+                    if(node.tag === 'q1') prio = 'P1';
+                    else if(node.tag === 'q2' || node.tag === 'q3') prio = 'P2';
+
+                    state.todos.push({
+                        id: Date.now() + Math.random(),
+                        wbId: node.id,
+                        task: node.text,
+                        priority: prio,
+                        date: '',
+                        link: '',
+                        completed: false,
+                        source: '棋子'
+                    });
+                    importedCount++;
+                });
+            });
+        }
+
+        if (importedCount > 0) {
+            alert(`✅ 成功匯入 ${importedCount} 筆白板任務！`);
+            saveData();
+            renderTodo();
+            // 自動切換到待辦分頁
+            switchLeftPanel('TODO');
+        } else {
+            alert(`👌 沒有發現新的白板任務需要匯入。`);
+        }
+    }
+
+    // --- 核心功能：清空沙盒 ---
+    function clearFlowSandbox() {
+        if(confirm("⚠️ 警告：這將會徹底刪除沙盒內的所有臨時任務、草稿筆記與計時紀錄。\n\n(放心，白板母體資料不會受到影響！)\n\n您確定要清空嗎？")) {
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            alert("🧹 沙盒已清空！頁面即將重新載入。");
             location.reload();
+        }
+    }
+
+    function clearCompletedTodos() {
+        const initialLen = state.todos.length;
+        state.todos = state.todos.filter(t => !t.completed);
+        if (state.todos.length < initialLen) {
+            saveData();
+            renderTodo();
         }
     }
 
@@ -218,7 +359,7 @@
                 if (state.seconds <= 0) handlePomoFinish();
             }
             updateDisplay();
-            if(state.seconds % 30 === 0) saveData(); // Save more frequently
+            if(state.seconds % 30 === 0) saveData(); 
         }, 1000);
         
         updateDisplay();
@@ -302,16 +443,18 @@
         if (!task) return alert("請輸入任務名稱");
         
         const item = {
-            id: Date.now(),
+            id: Date.now() + Math.random(),
             task: task,
             priority: document.getElementById('newTodoPriority').value,
             date: document.getElementById('newTodoDate').value,
             link: document.getElementById('newTodoLink').value,
-            completed: false
+            completed: false,
+            source: '臨時' // 區分自己手打的
         };
         
         state.todos.push(item);
         document.getElementById('newTodoTask').value = '';
+        document.getElementById('newTodoLink').value = '';
         renderTodo();
         saveData();
     }
@@ -338,11 +481,11 @@
         const sorted = [...state.todos].sort((a,b) => {
             if(a.completed !== b.completed) return a.completed ? 1 : -1;
             if(a.priority !== b.priority) return a.priority.localeCompare(b.priority);
-            return a.date.localeCompare(b.date);
+            return (a.date || '9999-99-99').localeCompare(b.date || '9999-99-99');
         });
 
         if (sorted.length === 0) {
-            container.innerHTML = "<div style='text-align:center; color:#aaa; padding:10px;'>目前沒有待辦事項</div>";
+            container.innerHTML = "<div style='text-align:center; color:#aaa; padding:20px;'>目前沒有待辦事項。<br>點擊上方「📥 載入白板資料」匯入任務！</div>";
             return;
         }
 
@@ -350,20 +493,28 @@
             const div = document.createElement('div');
             div.className = `todo-item priority-${item.priority} ${item.completed ? 'completed' : ''}`;
             
-            let linkHtml = item.link ? `<a href="${item.link.startsWith('http')?item.link:'http://'+item.link}" target="_blank">🔗</a>` : '';
+            let linkHtml = item.link ? `<a href="${item.link.startsWith('http')?item.link:'http://'+item.link}" target="_blank" style="margin-left:5px; text-decoration:none;">🔗</a>` : '';
             let priorityLabel = item.priority === 'P1' ? '優先' : (item.priority === 'P2' ? '重要' : '待辦');
             let color = item.priority === 'P1' ? '#dc3545' : (item.priority === 'P2' ? '#ffc107' : '#007bff');
             
+            // 標示來源
+            let sourceBadge = '';
+            if(item.source === '卡片') sourceBadge = `<span class="badge badge-source">📄 白板</span>`;
+            else if(item.source === '棋子') sourceBadge = `<span class="badge badge-source" style="background:#e83e8c;">💡 發想</span>`;
+
             div.innerHTML = `
-                <input type="checkbox" ${item.completed ? 'checked' : ''} onchange="toggleTodo(${item.id})">
+                <input type="checkbox" style="transform: scale(1.2); margin-right: 10px; cursor: pointer;" ${item.completed ? 'checked' : ''} onchange="toggleTodo(${item.id})">
                 <div class="todo-details">
-                    <div>
+                    <div style="margin-bottom: 2px;">
                         <span class="badge" style="background:${color}">${priorityLabel}</span>
+                        ${sourceBadge}
+                    </div>
+                    <div style="font-size: 1.05rem;">
                         <strong>${item.task}</strong> ${linkHtml}
                     </div>
-                    <div style="font-size:0.8em; color:gray;">📅 ${item.date}</div>
+                    <div style="font-size:0.8em; color:#adb5bd; margin-top:2px;">${item.date ? '📅 ' + item.date : ''}</div>
                 </div>
-                <button class="btn-danger" style="padding:2px 8px; font-size:12px;" onclick="deleteTodo(${item.id})">🗑</button>
+                <button class="btn-danger" style="padding:4px 8px; background:transparent; color:#dc3545; font-size:1.2rem; border:none;" onclick="deleteTodo(${item.id})">×</button>
             `;
             container.appendChild(div);
         });
@@ -410,6 +561,7 @@
     }
 
     function saveData() {
+        if(!currentUser) return;
         const data = {
             notepad: document.getElementById('notepad').value,
             todos: state.todos,
@@ -419,12 +571,13 @@
             deadlineTask: document.getElementById('deadlineTask').value,
             deadlineDate: document.getElementById('deadlineDate').value
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        document.getElementById('saveStatus').innerText = "已儲存: " + new Date().toLocaleTimeString();
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+        document.getElementById('saveStatus').innerText = "已儲存: " + new Date().toLocaleTimeString('zh-TW', {hour12:false});
     }
 
     function loadData() {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!currentUser) return;
+        const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (raw) {
             try {
                 const data = JSON.parse(raw);
@@ -436,7 +589,6 @@
                 if(data.deadlineTask) document.getElementById('deadlineTask').value = data.deadlineTask;
                 if(data.deadlineDate) document.getElementById('deadlineDate').value = data.deadlineDate;
                 
-                // Sync UI state
                 setTimerMode(state.mode);
             } catch(e) {
                 console.error("資料讀取失敗，可能是舊格式", e);
