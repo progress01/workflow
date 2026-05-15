@@ -79,6 +79,7 @@
             .timer-display { font-size: 2.5rem; }
             textarea { height: 250px; }
             .app-footer { flex-direction: column; gap: 10px; }
+            .header-buttons { flex-direction: column; width: 100%; }
         }
     </style>
 </head>
@@ -93,10 +94,12 @@
 
 <!-- 應用程式本體 -->
 <div class="container" id="app-container">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px;">
-        <h1 style="margin: 0;">🌟 心流沙盒</h1>
-        <div style="display: flex; gap: 10px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+        <h1 style="margin: 0; white-space: nowrap;">🌟 心流沙盒</h1>
+        <div class="header-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="btn-info" onclick="importFromWhiteboard()" style="background: #6f42c1;">📥 載入白板資料</button>
+            <button class="btn-secondary" onclick="window.open('sandwich.html', '_blank')" style="background: #f59e0b;">🥪 開啟學習</button>
+            <button class="btn-secondary" onclick="window.open('pocket.html', '_blank')" style="background: #10b981;">📚 開啟閱讀</button>
             <button class="btn-secondary" onclick="window.location.href='index.html'">🔙 回到白板</button>
         </div>
     </div>
@@ -174,7 +177,7 @@
                     <button class="btn-success" style="padding: 6px 12px; font-size: 0.9rem;" onclick="packageForWhiteboard()">📦 打包回白板</button>
                 </div>
             </div>
-            <textarea id="notepad" placeholder="在此處傾倒大腦。&#10;&#10;當心流結束時，點擊右上方「📦 打包回白板」，系統會將您「今日完成的任務」與「此處的筆記」整理好複製起來，讓您輕鬆貼回白板的全域筆記本中！" oninput="saveData()"></textarea>
+            <textarea id="notepad" placeholder="在此處傾倒大腦。&#10;&#10;當心流結束時，點擊右上方「📦 打包回白板」，系統會將您「今日完成的任務」、「尚未完成的任務」與「此處的筆記」整理好複製起來，讓您輕鬆貼回白板歸檔！" oninput="saveData()"></textarea>
         </div>
     </div>
 
@@ -187,7 +190,7 @@
 </div>
 
 <script>
-    // --- Firebase 配置 (與白板共用) ---
+    // --- Firebase 配置 (與白板、Pocket、Sandwich 共用) ---
     const firebaseConfig = {
         apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
         authDomain: "maplestoryboss.firebaseapp.com",
@@ -267,7 +270,7 @@
                         id: Date.now() + Math.random(), 
                         wbId: card.id,                  
                         task: card.title || '未命名白板卡片',
-                        content: card.content || '', // 🔥 新增提取卡片說明內容
+                        content: card.content || '', 
                         priority: (card.status === 3 || card.color === 'red') ? 'P1' : 'P2', 
                         date: card.dateSingle || card.dateStart || '',
                         link: '',
@@ -293,7 +296,7 @@
                         id: Date.now() + Math.random(),
                         wbId: node.id,
                         task: node.text,
-                        content: '', // 棋子沒有詳細說明
+                        content: '', 
                         priority: prio,
                         date: '',
                         link: '',
@@ -315,29 +318,44 @@
         }
     }
 
-    // --- 核心功能：打包回白板 (Checkout) ---
+    // --- 核心功能：打包回白板 (Checkout) 升級版 ---
     function packageForWhiteboard() {
-        const completedTodos = state.todos.filter(t => t.completed).map(t => `✅ ${t.task}`).join('\n');
+        const completedTodos = state.todos.filter(t => t.completed);
+        const pendingTodos = state.todos.filter(t => !t.completed);
         const notepadContent = document.getElementById('notepad').value.trim();
         
         let exportText = `【心流結算報告】\n`;
         let hasContent = false;
 
-        if(completedTodos) {
-            exportText += `\n🎯 今日完成任務：\n${completedTodos}\n`;
+        if(completedTodos.length > 0) {
+            exportText += `\n🎯 今日完成任務：\n`;
+            completedTodos.forEach(t => {
+                let badge = t.source === '臨時' ? '(臨時新增) ' : '';
+                exportText += `✅ ${badge}${t.task}\n`;
+            });
             hasContent = true;
         }
+
+        if(pendingTodos.length > 0) {
+            exportText += `\n⏳ 待續 / 未完成任務：\n`;
+            pendingTodos.forEach(t => {
+                let badge = t.source === '臨時' ? '(臨時新增) ' : '';
+                exportText += `⬜ ${badge}${t.task}\n`;
+            });
+            hasContent = true;
+        }
+
         if(notepadContent) {
             exportText += `\n📝 產出與整理：\n${notepadContent}\n`;
             hasContent = true;
         }
         
         if(!hasContent) {
-            return alert("目前沒有勾選完成的任務，也沒有寫下筆記，沒有內容可以打包喔！");
+            return alert("目前沙盒內沒有任何任務或筆記，沒有內容可以打包喔！");
         }
 
         navigator.clipboard.writeText(exportText).then(() => {
-            alert("📦 結算報告已成功複製到剪貼簿！\n\n您可以點擊「🔙 回到白板」，將其貼上至「全局筆記本」或是新增一張正式的排程卡片來歸檔。");
+            alert("📦 結算報告已成功複製到剪貼簿！\n\n報告包含了「已完成」、「待續/新增任務」與「筆記」。\n您可以隨時貼回白板重新規劃，不用擔心臨時新增的任務遺失！");
         }).catch(err => {
             alert("複製失敗，請直接手動全選並複製筆記區內容。");
         });
@@ -475,7 +493,7 @@
         const item = {
             id: Date.now() + Math.random(),
             task: task,
-            content: '', // 臨時新增的任務沒有附加內容
+            content: '', 
             priority: document.getElementById('newTodoPriority').value,
             date: document.getElementById('newTodoDate').value,
             link: document.getElementById('newTodoLink').value,
@@ -528,12 +546,10 @@
             let priorityLabel = item.priority === 'P1' ? '優先' : (item.priority === 'P2' ? '重要' : '待辦');
             let color = item.priority === 'P1' ? '#dc3545' : (item.priority === 'P2' ? '#ffc107' : '#007bff');
             
-            // 標示來源
             let sourceBadge = '';
             if(item.source === '卡片') sourceBadge = `<span class="badge badge-source">📄 白板</span>`;
             else if(item.source === '棋子') sourceBadge = `<span class="badge badge-source" style="background:#e83e8c;">💡 發想</span>`;
 
-            // 🔥 渲染筆記內容 (從白板匯入的 content)
             let contentHtml = item.content && item.content.trim() !== '' 
                 ? `<div class="todo-content-box">${item.content}</div>` 
                 : '';
