@@ -32,7 +32,7 @@
         /* Layout */
         .main-layout { display: flex; gap: 20px; flex-wrap: wrap; }
         .left-panel { flex: 1; min-width: 300px; border: 2px solid var(--primary-color); border-radius: 8px; padding: 15px; background: #fff; }
-        .right-panel { flex: 2; min-width: 300px; }
+        .right-panel { flex: 2; min-width: 300px; display: flex; flex-direction: column;}
         
         /* Timer Styles */
         .timer-display { font-size: 3.5rem; font-weight: bold; text-align: center; margin: 10px 0; color: var(--dark-color); border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f8f9fa; }
@@ -55,17 +55,18 @@
 
         /* Inputs */
         input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; }
-        textarea { height: 350px; font-family: monospace; resize: vertical; background: #fdfdfd; }
+        textarea { flex: 1; min-height: 300px; font-family: monospace; resize: vertical; background: #fdfdfd; line-height: 1.6;}
 
         /* Todo List */
-        .todo-item { display: flex; align-items: center; background: #fff; border-bottom: 1px solid #eee; padding: 8px; transition: 0.2s; }
+        .todo-item { display: flex; align-items: flex-start; background: #fff; border-bottom: 1px solid #eee; padding: 12px 8px; transition: 0.2s; }
         .todo-item:hover { background: #f8f9fa; }
         .todo-item.priority-P1 { border-left: 4px solid var(--danger-color); background: #fff3cd; }
         .todo-item.priority-P2 { border-left: 4px solid var(--warning-color); background: #f8d7da; }
         .todo-item.completed { opacity: 0.5; text-decoration: line-through; background: #e9ecef; border-left: 4px solid #adb5bd; }
-        .todo-details { flex-grow: 1; margin-left: 10px; }
+        .todo-details { flex-grow: 1; margin-left: 10px; overflow: hidden;}
         .badge { padding: 3px 6px; border-radius: 4px; font-size: 0.75em; color: white; }
         .badge-source { background: #6f42c1; font-size: 0.7em; margin-left: 5px; }
+        .todo-content-box { font-size: 0.85rem; color: #6c757d; margin-top: 6px; padding: 8px; background: #f8f9fa; border-radius: 6px; border-left: 3px solid #dee2e6; white-space: pre-wrap; max-height: 100px; overflow-y: auto; }
         
         /* Countdown */
         .countdown-box { margin-top: 15px; padding: 10px; background: var(--danger-color); color: white; text-align: center; border-radius: 5px; font-weight: bold; }
@@ -166,11 +167,14 @@
                 </div>
             </div>
 
-            <h3 style="color: var(--success-color); display: flex; justify-content: space-between;">
-                <span>📜 草稿與筆記</span>
-                <span style="font-size:0.8rem; color:#adb5bd; font-weight:normal;" id="saveStatus">已自動儲存</span>
-            </h3>
-            <textarea id="notepad" placeholder="在此處傾倒大腦，完成後再整理回白板..." oninput="saveData()"></textarea>
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 5px;">
+                <h3 style="color: var(--success-color); margin: 0;">📜 思考與白板整理區</h3>
+                <div style="display:flex; align-items:center; gap: 10px;">
+                    <span style="font-size:0.8rem; color:#adb5bd;" id="saveStatus">已自動儲存</span>
+                    <button class="btn-success" style="padding: 6px 12px; font-size: 0.9rem;" onclick="packageForWhiteboard()">📦 打包回白板</button>
+                </div>
+            </div>
+            <textarea id="notepad" placeholder="在此處傾倒大腦。&#10;&#10;當心流結束時，點擊右上方「📦 打包回白板」，系統會將您「今日完成的任務」與「此處的筆記」整理好複製起來，讓您輕鬆貼回白板的全域筆記本中！" oninput="saveData()"></textarea>
         </div>
     </div>
 
@@ -243,11 +247,10 @@
         if(!document.getElementById('newTodoDate').value) document.getElementById('newTodoDate').value = today;
     }
 
-    // --- 核心功能：白板資料匯入 (唯讀) ---
+    // --- 核心功能：白板資料匯入 (唯讀) 包含內容 ---
     function importFromWhiteboard() {
         if (!currentUser) return alert("無法獲取使用者資訊！");
         
-        // 讀取白板專屬的 localStorage Key
         const wbDataRaw = localStorage.getItem(`whiteboard_state_${currentUser.uid}`);
         if (!wbDataRaw) return alert("⚠️ 找不到白板資料！請先在白板系統中進行操作並確保有存檔。");
 
@@ -258,13 +261,13 @@
         if (wbData.workspaces) {
             Object.values(wbData.workspaces).forEach(tabCards => {
                 tabCards.forEach(card => {
-                    // 避免重複匯入
                     if (state.todos.some(t => t.wbId === card.id)) return; 
                     
                     state.todos.push({
-                        id: Date.now() + Math.random(), // 新的內部 ID
-                        wbId: card.id,                  // 標記來源，供防重比對
+                        id: Date.now() + Math.random(), 
+                        wbId: card.id,                  
                         task: card.title || '未命名白板卡片',
+                        content: card.content || '', // 🔥 新增提取卡片說明內容
                         priority: (card.status === 3 || card.color === 'red') ? 'P1' : 'P2', 
                         date: card.dateSingle || card.dateStart || '',
                         link: '',
@@ -290,6 +293,7 @@
                         id: Date.now() + Math.random(),
                         wbId: node.id,
                         task: node.text,
+                        content: '', // 棋子沒有詳細說明
                         priority: prio,
                         date: '',
                         link: '',
@@ -305,14 +309,40 @@
             alert(`✅ 成功匯入 ${importedCount} 筆白板任務！`);
             saveData();
             renderTodo();
-            // 自動切換到待辦分頁
             switchLeftPanel('TODO');
         } else {
             alert(`👌 沒有發現新的白板任務需要匯入。`);
         }
     }
 
-    // --- 核心功能：清空沙盒 ---
+    // --- 核心功能：打包回白板 (Checkout) ---
+    function packageForWhiteboard() {
+        const completedTodos = state.todos.filter(t => t.completed).map(t => `✅ ${t.task}`).join('\n');
+        const notepadContent = document.getElementById('notepad').value.trim();
+        
+        let exportText = `【心流結算報告】\n`;
+        let hasContent = false;
+
+        if(completedTodos) {
+            exportText += `\n🎯 今日完成任務：\n${completedTodos}\n`;
+            hasContent = true;
+        }
+        if(notepadContent) {
+            exportText += `\n📝 產出與整理：\n${notepadContent}\n`;
+            hasContent = true;
+        }
+        
+        if(!hasContent) {
+            return alert("目前沒有勾選完成的任務，也沒有寫下筆記，沒有內容可以打包喔！");
+        }
+
+        navigator.clipboard.writeText(exportText).then(() => {
+            alert("📦 結算報告已成功複製到剪貼簿！\n\n您可以點擊「🔙 回到白板」，將其貼上至「全局筆記本」或是新增一張正式的排程卡片來歸檔。");
+        }).catch(err => {
+            alert("複製失敗，請直接手動全選並複製筆記區內容。");
+        });
+    }
+
     function clearFlowSandbox() {
         if(confirm("⚠️ 警告：這將會徹底刪除沙盒內的所有臨時任務、草稿筆記與計時紀錄。\n\n(放心，白板母體資料不會受到影響！)\n\n您確定要清空嗎？")) {
             localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -445,11 +475,12 @@
         const item = {
             id: Date.now() + Math.random(),
             task: task,
+            content: '', // 臨時新增的任務沒有附加內容
             priority: document.getElementById('newTodoPriority').value,
             date: document.getElementById('newTodoDate').value,
             link: document.getElementById('newTodoLink').value,
             completed: false,
-            source: '臨時' // 區分自己手打的
+            source: '臨時' 
         };
         
         state.todos.push(item);
@@ -502,19 +533,25 @@
             if(item.source === '卡片') sourceBadge = `<span class="badge badge-source">📄 白板</span>`;
             else if(item.source === '棋子') sourceBadge = `<span class="badge badge-source" style="background:#e83e8c;">💡 發想</span>`;
 
+            // 🔥 渲染筆記內容 (從白板匯入的 content)
+            let contentHtml = item.content && item.content.trim() !== '' 
+                ? `<div class="todo-content-box">${item.content}</div>` 
+                : '';
+
             div.innerHTML = `
-                <input type="checkbox" style="transform: scale(1.2); margin-right: 10px; cursor: pointer;" ${item.completed ? 'checked' : ''} onchange="toggleTodo(${item.id})">
+                <input type="checkbox" style="transform: scale(1.2); margin-right: 10px; margin-top: 6px; cursor: pointer;" ${item.completed ? 'checked' : ''} onchange="toggleTodo(${item.id})">
                 <div class="todo-details">
                     <div style="margin-bottom: 2px;">
                         <span class="badge" style="background:${color}">${priorityLabel}</span>
                         ${sourceBadge}
                     </div>
-                    <div style="font-size: 1.05rem;">
+                    <div style="font-size: 1.05rem; margin-top: 4px;">
                         <strong>${item.task}</strong> ${linkHtml}
                     </div>
-                    <div style="font-size:0.8em; color:#adb5bd; margin-top:2px;">${item.date ? '📅 ' + item.date : ''}</div>
+                    ${contentHtml}
+                    <div style="font-size:0.8em; color:#adb5bd; margin-top:4px;">${item.date ? '📅 ' + item.date : ''}</div>
                 </div>
-                <button class="btn-danger" style="padding:4px 8px; background:transparent; color:#dc3545; font-size:1.2rem; border:none;" onclick="deleteTodo(${item.id})">×</button>
+                <button class="btn-danger" style="padding:4px 8px; background:transparent; color:#dc3545; font-size:1.2rem; border:none; margin-top: 2px;" onclick="deleteTodo(${item.id})">×</button>
             `;
             container.appendChild(div);
         });
