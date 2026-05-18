@@ -182,8 +182,17 @@
         <div class="right-panel">
             <div class="note-header">
                 <div style="flex: 1;">
-                    <span style="font-size: 0.85rem; color: #6c757d; font-weight: bold;">當前焦點任務 (Context)</span>
-                    <h2 id="activeTaskTitle" style="margin: 5px 0 0 0; color: var(--primary-color);">全域沙盒草稿 (未選擇任務)</h2>
+                    <span style="font-size: 0.85rem; color: #6c757d; font-weight: bold;">當前焦點任務 (點擊標題可直接修改名稱)</span>
+                    
+                    <!-- [優化] 無縫改名的標題區塊 -->
+                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                        <span id="activeTaskIcon" style="font-size: 1.5rem; display: none;">🎯</span>
+                        <input type="text" id="activeTaskTitle" 
+                               style="margin: 0; color: var(--primary-color); font-size: 1.5rem; font-weight: bold; border: none; background: transparent; outline: none; flex: 1; padding: 0;" 
+                               placeholder="全域沙盒草稿 (未選擇任務)" 
+                               oninput="renameActiveTask()">
+                    </div>
+
                 </div>
                 <div style="text-align: right;">
                     <span style="font-size:0.8rem; color:#adb5bd; display:block; margin-bottom: 8px;" id="saveStatus">已自動儲存</span>
@@ -338,14 +347,18 @@
 
     function refreshActiveNoteUI() {
         const titleEl = document.getElementById('activeTaskTitle');
+        const iconEl = document.getElementById('activeTaskIcon');
         const noteArea = document.getElementById('activeNoteArea');
         const splitBtn = document.getElementById('btn-split-task');
 
         if (state.activeTaskId) {
             const task = state.todos.find(t => t.id === state.activeTaskId);
             if (task) {
-                titleEl.innerText = `🎯 ${task.task}`;
+                // [修改] 支援無縫改名：顯示 icon 並賦值給 input
+                iconEl.style.display = 'inline';
+                titleEl.value = task.task;
                 titleEl.style.color = 'var(--primary-color)';
+                titleEl.readOnly = false;
                 noteArea.value = task.content || "";
                 splitBtn.style.display = 'inline-block';
                 return;
@@ -354,10 +367,26 @@
             }
         }
         
-        titleEl.innerText = "📝 全域沙盒草稿 (未綁定單一任務)";
+        // 全域草稿狀態
+        iconEl.style.display = 'none';
+        titleEl.value = "📝 全域沙盒草稿 (未綁定單一任務)";
         titleEl.style.color = 'var(--dark-color)';
+        titleEl.readOnly = true; // 不允許全域草稿改名
         noteArea.value = state.globalNote || "";
         splitBtn.style.display = 'none'; 
+    }
+
+    // --- 核心功能：無縫修改任務名稱 ---
+    function renameActiveTask() {
+        if (!state.activeTaskId) return;
+        
+        const newName = document.getElementById('activeTaskTitle').value;
+        const task = state.todos.find(t => t.id === state.activeTaskId);
+        if (task) {
+            task.task = newName;
+            renderTodo(); // 即時重繪左側清單
+            saveData();
+        }
     }
 
     function saveActiveNote() {
