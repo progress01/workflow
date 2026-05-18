@@ -69,9 +69,8 @@
         .todo-item.priority-P1 { border-left: 4px solid var(--danger-color); background: #fff3cd; }
         .todo-item.priority-P2 { border-left: 4px solid var(--warning-color); background: #f8d7da; }
         .todo-item.completed { opacity: 0.6; text-decoration: line-through; background: #e9ecef; border-left: 4px solid #adb5bd; }
-        .todo-item.active-task { background: #e0f7fa; border-left: 4px solid #00bcd4; } /* 焦點任務樣式 */
+        .todo-item.active-task { background: #e0f7fa; border-left: 4px solid #00bcd4; }
         
-        .todo-cb-merge { margin-top: 6px; margin-right: 8px; transform: scale(1.2); cursor: pointer; }
         .todo-details { flex-grow: 1; margin-left: 5px; overflow: hidden;}
         .badge { padding: 3px 6px; border-radius: 4px; font-size: 0.75em; color: white; }
         .badge-source { background: #6f42c1; font-size: 0.7em; margin-left: 5px; }
@@ -154,7 +153,7 @@
             </div>
 
             <!-- 任務清單 View -->
-            <div id="view-todo" style="display:none; flex-grow: 1; display: flex; flex-direction: column;">
+            <div id="view-todo" style="display:none; flex-grow: 1; flex-direction: column;">
                 <!-- 快速新增區 -->
                 <div style="background: var(--light-bg); padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
                     <div style="display:flex; gap:5px;">
@@ -188,11 +187,10 @@
                 </div>
                 <div style="text-align: right;">
                     <span style="font-size:0.8rem; color:#adb5bd; display:block; margin-bottom: 8px;" id="saveStatus">已自動儲存</span>
-                    <button id="btn-split-task" class="btn-warning" style="display:none; font-size: 0.85rem; padding: 5px 10px;" onclick="splitActiveTask()">✂️ 依分隔線(---)拆分</button>
+                    <button id="btn-split-task" class="btn-warning" style="display:none; font-size: 0.85rem; padding: 5px 10px;" onclick="splitActiveTask()">✂️ 依分隔線(---)拆解</button>
                 </div>
             </div>
 
-            <!-- 方案 A: 快速模板注入 + MD 工具 -->
             <div class="template-bar">
                 <span style="font-size: 0.85rem; color: #666;">⚡ 模板：</span>
                 <button class="btn-outline" onclick="insertTemplate('bug')">🐛 Bug</button>
@@ -209,9 +207,8 @@
             </div>
 
             <!-- 筆記區 (綁定焦點任務) -->
-            <textarea id="activeNoteArea" placeholder="選擇左側任務並點擊「📝聚焦」，或直接在此處記錄全域靈感...&#10;&#10;支援 Markdown 語法輸入 (按 Tab 鍵可縮排)！&#10;想切分任務時，請在內容中使用「---」分隔線，並點擊右上角「拆分」。" oninput="saveActiveNote()"></textarea>
+            <textarea id="activeNoteArea" placeholder="選擇左側任務並點擊「📝聚焦」，或直接在此處記錄全域靈感...&#10;&#10;支援 Markdown 語法輸入 (按 Tab 鍵可縮排)！&#10;想切分任務時，請在內容中使用「---」分隔線，並點擊右上角「拆解」。" oninput="saveActiveNote()"></textarea>
 
-            <!-- 方案 B: 閃念日誌 (時間軸) -->
             <div class="log-input-group">
                 <button class="btn-success" style="pointer-events: none;">閃念</button>
                 <input type="text" id="quickLogInput" placeholder="輸入短語或進度，按 Enter 自動打上時間戳並寫入筆記..." onkeypress="if(event.key === 'Enter') addQuickLog()">
@@ -294,10 +291,9 @@
         const textarea = document.getElementById('activeNoteArea');
         textarea.addEventListener('keydown', function(e) {
             if (e.key === 'Tab') {
-                e.preventDefault(); // 阻止焦點跳轉
+                e.preventDefault(); 
                 const start = this.selectionStart;
                 const end = this.selectionEnd;
-                // 插入 4 個空格作為縮排
                 this.value = this.value.substring(0, start) + "    " + this.value.substring(end);
                 this.selectionStart = this.selectionEnd = start + 4;
                 saveActiveNote();
@@ -314,7 +310,6 @@
         
         noteArea.value = noteArea.value.substring(0, start) + prefix + selectedText + suffix + noteArea.value.substring(end);
         
-        // 移動游標到中間或結尾
         noteArea.focus();
         if (selectedText.length === 0) {
             noteArea.selectionStart = noteArea.selectionEnd = start + prefix.length;
@@ -333,7 +328,7 @@
         saveActiveNote();
     }
 
-    // --- 方案 C: 自動綁定當前任務 (Notes Context) ---
+    // --- 自動綁定當前任務 ---
     function setActiveTask(id) {
         state.activeTaskId = id;
         refreshActiveNoteUI();
@@ -376,7 +371,7 @@
         saveData();
     }
 
-    // --- 方案 A: 快速模板注入 ---
+    // --- 快速模板注入 ---
     function insertTemplate(type) {
         const noteArea = document.getElementById('activeNoteArea');
         let template = "";
@@ -399,7 +394,7 @@
         saveActiveNote();
     }
 
-    // --- 方案 B: 閃念日誌 (時間軸) ---
+    // --- 閃念日誌 (時間軸) ---
     function addQuickLog() {
         const inputEl = document.getElementById('quickLogInput');
         const text = inputEl.value.trim();
@@ -409,7 +404,6 @@
         const now = new Date();
         const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
         
-        // Markdown bold for time
         noteArea.value += `\n**[${timeStr}]** ${text}`;
         inputEl.value = ''; 
         noteArea.scrollTop = noteArea.scrollHeight;
@@ -417,9 +411,10 @@
         saveActiveNote();
     }
 
-    // --- 核心功能：任務合併 (切割重組) ---
+    // --- 核心功能：任務合併 (修正並強化重組邏輯) ---
     function mergeSelectedTasks() {
-        const checkboxes = document.querySelectorAll('.todo-merge-cb:checked');
+        // [修正] 改為獲取 .todo-cb-merge
+        const checkboxes = document.querySelectorAll('.todo-cb-merge:checked');
         if(checkboxes.length < 2) return alert("💡 請勾選至少兩個任務進行合併！");
 
         let mergedTitle = prompt("請輸入合併後的新任務名稱：", "合併任務集");
@@ -438,8 +433,10 @@
                 if(task.priority === 'P1') highestPriority = 'P1';
                 else if(task.priority === 'P2' && highestPriority !== 'P1') highestPriority = 'P2';
                 
-                mergedContent += `\n### 🧩 [原始來源] ${task.task}\n${task.content ? task.content : '(無內容)'}\n`;
-                if(index < checkboxes.length - 1) mergedContent += `\n---\n`;
+                // [修正] 確保生成的字串結構完美匹配拆分工具的正則表達式
+                let c = task.content ? task.content.trim() : "";
+                mergedContent += `### 🧩 [原始來源] ${task.task}\n${c}\n`;
+                if(index < checkboxes.length - 1) mergedContent += `\n---\n\n`;
             }
         });
 
@@ -458,7 +455,7 @@
         setActiveTask(newTask.id); 
     }
 
-    // --- 核心功能：任務分割 (依據分隔線拆分) ---
+    // --- 核心功能：任務拆解 (完美對應合併結果) ---
     function splitActiveTask() {
         if (!state.activeTaskId) return alert("請先選擇一個焦點任務！");
         
@@ -484,9 +481,10 @@
             let chunk = part.trim();
             if (!chunk) return;
 
-            let title = `${originalTask.task} (分割 ${index + 1})`;
+            let title = `${originalTask.task} (拆解 ${index + 1})`;
             let finalContent = chunk;
 
+            // 若符合合併時打上的原始來源標籤，則完美還原
             const match = chunk.match(/^### 🧩 \[原始來源\] (.*)(?:\n|$)/);
             if (match) {
                 title = match[1].trim();
@@ -514,10 +512,10 @@
         state.todos.unshift(...newTasks);
 
         setActiveTask(null);
-        alert(`✂️ 已成功將該任務分割成 ${newTasks.length} 個獨立任務！`);
+        alert(`✂️ 已成功將該任務拆解成 ${newTasks.length} 個獨立任務！`);
     }
 
-    // --- 產生 Markdown 報告文字 (共用邏輯) ---
+    // --- 產生 Markdown 報告文字 ---
     function generateReportMarkdown() {
         const completedTodos = state.todos.filter(t => t.completed);
         const pendingTodos = state.todos.filter(t => !t.completed);
@@ -536,7 +534,6 @@
             let checkbox = isDone ? '- [x]' : '- [ ]';
             let str = `${checkbox} **${badge}${t.task}**\n`;
             if(t.content && t.content.trim()) {
-                // 使用 Markdown 引用區塊來包覆任務專屬筆記
                 str += `\n> ${t.content.trim().replace(/\n/g, '\n> ')}\n\n`;
             }
             return str;
@@ -557,7 +554,7 @@
         return hasContent ? exportText : null;
     }
 
-    // --- 打包複製 ---
+    // --- 打包與匯出 ---
     function packageForWhiteboard() {
         const exportText = generateReportMarkdown();
         if(!exportText) return alert("目前沙盒內沒有任何任務或筆記可以打包！");
@@ -569,7 +566,6 @@
         });
     }
 
-    // --- 下載 .md 檔案 ---
     function downloadMarkdown() {
         const exportText = generateReportMarkdown();
         if(!exportText) return alert("目前沙盒內沒有任何任務或筆記可以下載！");
@@ -708,9 +704,17 @@
 
             let noteIndicator = (item.content && item.content.trim().length > 0) ? `<span style="font-size:0.8rem; color:#17a2b8;">📝(有筆記)</span>` : '';
 
+            // [修正] 視覺上把「合併勾選框」跟「完成勾選框」分離並美化
             div.innerHTML = `
-                <input type="checkbox" class="todo-cb-merge" value="${item.id}" title="勾選以合併任務">
-                <input type="checkbox" style="transform: scale(1.2); margin-top: 6px; cursor: pointer;" ${item.completed ? 'checked' : ''} onchange="toggleTodo(${item.id})">
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-right: 8px; min-width: 32px; border-right: 1px solid #eee; padding-right: 6px;">
+                    <span style="font-size: 0.65rem; color: #adb5bd; margin-bottom: 2px;">合併</span>
+                    <input type="checkbox" class="todo-cb-merge" value="${item.id}" title="勾選以合併任務" style="cursor: pointer; transform: scale(1.1);">
+                </div>
+                
+                <div style="display: flex; align-items: center; margin-right: 8px; padding-top: 6px;">
+                    <input type="checkbox" title="標示為完成" style="transform: scale(1.3); cursor: pointer;" ${item.completed ? 'checked' : ''} onchange="toggleTodo(${item.id})">
+                </div>
+
                 <div class="todo-details">
                     <div style="margin-bottom: 2px;">
                         <span class="badge" style="background:${color}">${item.priority}</span>
@@ -720,6 +724,7 @@
                         ${item.task}
                     </div>
                 </div>
+                
                 <div class="todo-actions">
                     <button class="${isActive ? 'btn-info' : 'btn-outline'}" style="padding:4px 8px; font-size:0.8rem;" onclick="setActiveTask(${item.id})">
                         ${isActive ? '🎯 焦點中' : '📝 聚焦'}
