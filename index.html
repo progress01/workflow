@@ -184,7 +184,6 @@
                 <div style="flex: 1;">
                     <span style="font-size: 0.85rem; color: #6c757d; font-weight: bold;">當前焦點任務 (點擊標題可直接修改名稱)</span>
                     
-                    <!-- [優化] 無縫改名的標題區塊 -->
                     <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
                         <span id="activeTaskIcon" style="font-size: 1.5rem; display: none;">🎯</span>
                         <input type="text" id="activeTaskTitle" 
@@ -354,7 +353,6 @@
         if (state.activeTaskId) {
             const task = state.todos.find(t => t.id === state.activeTaskId);
             if (task) {
-                // [修改] 支援無縫改名：顯示 icon 並賦值給 input
                 iconEl.style.display = 'inline';
                 titleEl.value = task.task;
                 titleEl.style.color = 'var(--primary-color)';
@@ -367,24 +365,21 @@
             }
         }
         
-        // 全域草稿狀態
         iconEl.style.display = 'none';
         titleEl.value = "📝 全域沙盒草稿 (未綁定單一任務)";
         titleEl.style.color = 'var(--dark-color)';
-        titleEl.readOnly = true; // 不允許全域草稿改名
+        titleEl.readOnly = true; 
         noteArea.value = state.globalNote || "";
         splitBtn.style.display = 'none'; 
     }
 
-    // --- 核心功能：無縫修改任務名稱 ---
     function renameActiveTask() {
         if (!state.activeTaskId) return;
-        
         const newName = document.getElementById('activeTaskTitle').value;
         const task = state.todos.find(t => t.id === state.activeTaskId);
         if (task) {
             task.task = newName;
-            renderTodo(); // 即時重繪左側清單
+            renderTodo(); 
             saveData();
         }
     }
@@ -419,11 +414,9 @@
         noteArea.focus();
         noteArea.selectionStart = startPos + template.length;
         noteArea.selectionEnd = startPos + template.length;
-        
         saveActiveNote();
     }
 
-    // --- 閃念日誌 (時間軸) ---
     function addQuickLog() {
         const inputEl = document.getElementById('quickLogInput');
         const text = inputEl.value.trim();
@@ -440,9 +433,8 @@
         saveActiveNote();
     }
 
-    // --- 核心功能：任務合併 (修正並強化重組邏輯) ---
+    // --- 核心功能：任務合併 ---
     function mergeSelectedTasks() {
-        // [修正] 改為獲取 .todo-cb-merge
         const checkboxes = document.querySelectorAll('.todo-cb-merge:checked');
         if(checkboxes.length < 2) return alert("💡 請勾選至少兩個任務進行合併！");
 
@@ -462,7 +454,6 @@
                 if(task.priority === 'P1') highestPriority = 'P1';
                 else if(task.priority === 'P2' && highestPriority !== 'P1') highestPriority = 'P2';
                 
-                // [修正] 確保生成的字串結構完美匹配拆分工具的正則表達式
                 let c = task.content ? task.content.trim() : "";
                 mergedContent += `### 🧩 [原始來源] ${task.task}\n${c}\n`;
                 if(index < checkboxes.length - 1) mergedContent += `\n---\n\n`;
@@ -484,7 +475,7 @@
         setActiveTask(newTask.id); 
     }
 
-    // --- 核心功能：任務拆解 (完美對應合併結果) ---
+    // --- 核心功能：任務拆解 ---
     function splitActiveTask() {
         if (!state.activeTaskId) return alert("請先選擇一個焦點任務！");
         
@@ -498,7 +489,6 @@
         if(!confirm("確定要將此任務依據分隔線 (---) 拆分成多個獨立任務嗎？\n(原本的大任務將會被移除)")) return;
 
         const parts = content.split(/(?:^|\n)\s*---\s*(?:\n|$)/);
-        
         if (parts.length <= 1) {
              return alert("無法正確辨識分隔線，請確保 `---` 獨立成行且前後有換行！");
         }
@@ -513,7 +503,6 @@
             let title = `${originalTask.task} (拆解 ${index + 1})`;
             let finalContent = chunk;
 
-            // 若符合合併時打上的原始來源標籤，則完美還原
             const match = chunk.match(/^### 🧩 \[原始來源\] (.*)(?:\n|$)/);
             if (match) {
                 title = match[1].trim();
@@ -544,43 +533,59 @@
         alert(`✂️ 已成功將該任務拆解成 ${newTasks.length} 個獨立任務！`);
     }
 
-    // --- 產生 Markdown 報告文字 ---
+    // --- 產生高可讀性的 Markdown 結算報告 (分級看板、縮排降噪、進度儀表板) ---
     function generateReportMarkdown() {
-        const completedTodos = state.todos.filter(t => t.completed);
-        const pendingTodos = state.todos.filter(t => !t.completed);
-        
-        let exportText = `# 心流沙盒結算報告\n*產生時間: ${new Date().toLocaleString('zh-TW')}*\n\n`;
-        let hasContent = false;
+        const totalTasks = state.todos.length;
+        const completedCount = state.todos.filter(t => t.completed).length;
+        const pendingCount = totalTasks - completedCount;
+        const completionRate = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100);
 
-        // 全域筆記
-        if(state.globalNote.trim()) {
-            exportText += `## 📝 全域草稿與靈感\n\n${state.globalNote.trim()}\n\n---\n\n`;
-            hasContent = true;
+        if (totalTasks === 0 && (!state.globalNote || !state.globalNote.trim())) {
+            return null;
         }
 
-        const formatTaskMD = (t, isDone) => {
-            let badge = t.source === '臨時' ? '(臨時) ' : (t.source === '合併' ? '(合併) ' : (t.source === '分割' ? '(分割) ' : ''));
-            let checkbox = isDone ? '- [x]' : '- [ ]';
-            let str = `${checkbox} **${badge}${t.task}**\n`;
-            if(t.content && t.content.trim()) {
-                str += `\n> ${t.content.trim().replace(/\n/g, '\n> ')}\n\n`;
+        let exportText = `# 🌟 心流當日總結\n*結算時間: ${new Date().toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}*\n\n`;
+        
+        exportText += `📊 **戰報統計**：已完成 **${completedCount}** 項 / 剩餘 **${pendingCount}** 項（完工率 **${completionRate}%**）\n\n---\n\n`;
+
+        if (state.globalNote && state.globalNote.trim()) {
+            exportText += `## 📝 全域筆記\n\n${state.globalNote.trim()}\n\n---\n\n`;
+        }
+
+        // 任務格式化邏輯：消除 Blockquote，改用標準 Markdown 4格縮排達成層級降噪
+        const formatTaskMD = (t) => {
+            let checkbox = t.completed ? '- [x]' : '- [ ]';
+            let str = `${checkbox} **${t.task}**\n`;
+            if (t.content && t.content.trim()) {
+                const lines = t.content.trim().split('\n');
+                const indentedContent = lines.map(line => `    ${line}`).join('\n');
+                str += `${indentedContent}\n\n`;
+            } else {
+                str += `\n`;
             }
             return str;
         };
 
-        if(completedTodos.length > 0) {
-            exportText += `## 🎯 今日完成任務\n\n`;
-            completedTodos.forEach(t => { exportText += formatTaskMD(t, true); });
-            hasContent = true;
-        }
+        const p1Tasks = state.todos.filter(t => t.priority === 'P1');
+        const p2Tasks = state.todos.filter(t => t.priority === 'P2');
+        const p3Tasks = state.todos.filter(t => t.priority === 'P3');
 
-        if(pendingTodos.length > 0) {
-            exportText += `## ⏳ 待續 / 未完成任務\n\n`;
-            pendingTodos.forEach(t => { exportText += formatTaskMD(t, false); });
-            hasContent = true;
+        if (p1Tasks.length > 0) {
+            exportText += `## 🔴 【P1 · 核心攻堅】\n\n`;
+            p1Tasks.forEach(t => { exportText += formatTaskMD(t); });
         }
         
-        return hasContent ? exportText : null;
+        if (p2Tasks.length > 0) {
+            exportText += `## 🟡 【P2 · 戰術推進】\n\n`;
+            p2Tasks.forEach(t => { exportText += formatTaskMD(t); });
+        }
+        
+        if (p3Tasks.length > 0) {
+            exportText += `## 🔵 【P3 · 日常雜務】\n\n`;
+            p3Tasks.forEach(t => { exportText += formatTaskMD(t); });
+        }
+        
+        return exportText;
     }
 
     // --- 打包與匯出 ---
@@ -588,11 +593,39 @@
         const exportText = generateReportMarkdown();
         if(!exportText) return alert("目前沙盒內沒有任何任務或筆記可以打包！");
 
-        navigator.clipboard.writeText(exportText).then(() => {
-            alert("📦 結算報告 (Markdown格式) 已複製到剪貼簿！\n\n你可以直接貼回白板母體、Notion 或任何支援 MD 的軟體。");
-        }).catch(err => {
-            alert("複製失敗，請手動複製右側筆記內容。");
-        });
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(exportText).then(() => {
+                alert("📦 當日總結已順利複製到剪貼簿！\n\n您可以直接貼回白板母體作為今日戰果紀錄。");
+            }).catch(err => {
+                fallbackCopyTextToClipboard(exportText);
+            });
+        } else {
+            fallbackCopyTextToClipboard(exportText);
+        }
+    }
+
+    function fallbackCopyTextToClipboard(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.top = "-9999px";
+        textArea.style.left = "-9999px";
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                alert("📦 當日總結已順利透過傳統模式複製到剪貼簿！");
+            } else {
+                alert("複製失敗，請點擊「下載 .md」或手動複製。");
+            }
+        } catch (err) {
+            alert("瀏覽器阻擋了複製動作，請點擊「下載 .md」。");
+        }
+        document.body.removeChild(textArea);
     }
 
     function downloadMarkdown() {
@@ -605,7 +638,7 @@
         a.href = url;
         
         const dateStr = new Date().toISOString().split('T')[0];
-        a.download = `心流報告_${dateStr}.md`;
+        a.download = `心流當日總結_${dateStr}.md`;
         
         document.body.appendChild(a);
         a.click();
@@ -733,7 +766,6 @@
 
             let noteIndicator = (item.content && item.content.trim().length > 0) ? `<span style="font-size:0.8rem; color:#17a2b8;">📝(有筆記)</span>` : '';
 
-            // [修正] 視覺上把「合併勾選框」跟「完成勾選框」分離並美化
             div.innerHTML = `
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-right: 8px; min-width: 32px; border-right: 1px solid #eee; padding-right: 6px;">
                     <span style="font-size: 0.65rem; color: #adb5bd; margin-bottom: 2px;">合併</span>
@@ -774,11 +806,20 @@
     }
 
     function setTimerMode(mode) {
-        stopTimer(); state.mode = mode;
+        clearInterval(state.timerInterval); 
+        state.timerStatus = 'IDLE';
+        state.mode = mode;
         document.getElementById('btn-mode-flex').className = mode === 'FLEXIBLE' ? 'tab-btn active' : 'tab-btn';
         document.getElementById('btn-mode-pomo').className = mode === 'POMODORO' ? 'tab-btn active' : 'tab-btn';
-        if(mode === 'POMODORO') { state.seconds = 25 * 60; state.pomoPhase = 'FOCUS'; } else { state.seconds = 0; }
-        updateDisplay(); saveData();
+        
+        if(mode === 'POMODORO') { 
+            state.seconds = 25 * 60; 
+            state.pomoPhase = 'FOCUS'; 
+        } else { 
+            state.seconds = 0; 
+        }
+        updateDisplay(); 
+        saveData();
     }
 
     function startTimer() {
@@ -792,8 +833,28 @@
         updateDisplay();
     }
 
-    function pauseTimer() { if (state.timerStatus !== 'RUNNING') return; clearInterval(state.timerInterval); state.timerStatus = 'PAUSED'; updateDisplay(); saveData(); }
-    function stopTimer() { clearInterval(state.timerInterval); state.timerStatus = 'IDLE'; setTimerMode(state.mode); }
+    function pauseTimer() { 
+        if (state.timerStatus !== 'RUNNING') return; 
+        clearInterval(state.timerInterval); 
+        state.timerStatus = 'PAUSED'; 
+        updateDisplay(); 
+        saveData(); 
+    }
+    
+    function stopTimer() { 
+        clearInterval(state.timerInterval); 
+        state.timerStatus = 'IDLE'; 
+        
+        if(state.mode === 'POMODORO') {
+            state.seconds = 25 * 60;
+            state.pomoPhase = 'FOCUS';
+        } else {
+            state.seconds = 0;
+        }
+        updateDisplay();
+        saveData();
+    }
+
     function handlePomoFinish() { /* 簡化展示 */ }
     
     function formatTime(sec) {
