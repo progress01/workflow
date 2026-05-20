@@ -11,15 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 
     <style>
-        :root {
-            --primary-color: #007bff;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --danger-color: #dc3545;
-            --dark-color: #343a40;
-            --light-bg: #f8f9fa;
-            --border-color: #ced4da;
-        }
+        :root { --primary-color: #007bff; --success-color: #28a745; --warning-color: #ffc107; --danger-color: #dc3545; --dark-color: #343a40; --light-bg: #f8f9fa; --border-color: #ced4da; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
         
         /* 登入畫面 */
@@ -85,6 +77,11 @@
         /* Countdown */
         .countdown-box { margin-top: 15px; padding: 10px; background: var(--danger-color); color: white; text-align: center; border-radius: 5px; font-weight: bold; }
 
+        /* 📦 結算橫幅 */
+        .checkout-banner { background: #1a1e21; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px; border: 2px solid #ffc107; box-shadow: 0 4px 15px rgba(0,0,0,0.15);}
+        .checkout-btn { background: #ffc107; color: #1a1e21; font-size: 1.2rem; padding: 15px 30px; border-radius: 30px; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: 0.2s;}
+        .checkout-btn:hover { background: #e0a800; transform: scale(1.02); }
+
         /* Footer */
         .app-footer { margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #666; }
 
@@ -111,10 +108,9 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
         <h1 style="margin: 0; white-space: nowrap;">🌟 心流沙盒</h1>
         <div class="header-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button class="btn-info" onclick="importFromWhiteboard()" style="background: #6f42c1;">📥 載入白板資料</button>
-            <button class="btn-success" onclick="packageForWhiteboard()">📦 複製報告</button>
-            <button class="btn-primary" onclick="downloadMarkdown()" style="background: #0056b3;">⬇️ 下載 .md</button>
-            <button class="btn-secondary" onclick="window.location.href='index.html'">🔙 回白板</button>
+            <button class="btn-info" onclick="importFromWhiteboard()" style="background: #6f42c1;">📥 載入白板未完任務</button>
+            <button class="btn-primary" onclick="downloadMarkdown()" style="background: #0056b3;" title="手動備份用">⬇️ 下載 .md</button>
+            <button class="btn-secondary" onclick="window.location.href='whiteboard.html'">🔙 回白板</button>
         </div>
     </div>
 
@@ -157,7 +153,7 @@
                 <!-- 快速新增區 -->
                 <div style="background: var(--light-bg); padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
                     <div style="display:flex; gap:5px;">
-                        <input type="text" id="newTodoTask" placeholder="快速新增任務 (Enter)" style="flex:1" onkeypress="if(event.key === 'Enter') addTodo()">
+                        <input type="text" id="newTodoTask" placeholder="快速新增臨時任務 (Enter)" style="flex:1" onkeypress="if(event.key === 'Enter') addTodo()">
                         <select id="newTodoPriority" style="width: 80px;">
                             <option value="P1">P1</option>
                             <option value="P2">P2</option>
@@ -224,11 +220,18 @@
         </div>
     </div>
 
+    <!-- 📦 結算包裹區 -->
+    <div class="checkout-banner">
+        <h3 style="margin-top:0; color:#ffc107;">沙盒任務結束了嗎？</h3>
+        <p style="color:#adb5bd; margin-bottom:20px;">這會將目前的進度打包成包裹送回白板，由白板自動附加與更新狀態。沙盒將會清空。</p>
+        <button class="checkout-btn" onclick="checkoutToWhiteboard()">📦 結算沙盒並送回白板</button>
+    </div>
+
     <div class="app-footer">
         <div>
-            <span>🔐 任務變更與筆記僅限此沙盒，不污染白板資料。結算可選擇「複製報告」或「下載 .md」。</span>
+            <span>🔐 任務變更與筆記僅限此沙盒，不污染白板資料。結算後請回白板吸收包裹。</span>
         </div>
-        <button class="btn-danger" style="font-size: 0.85rem; padding: 8px 15px;" onclick="clearFlowSandbox()">🧹 徹底清空心流沙盒</button>
+        <button class="btn-danger" style="font-size: 0.85rem; padding: 8px 15px;" onclick="clearFlowSandbox()">🧹 不結算，徹底清空沙盒</button>
     </div>
 </div>
 
@@ -433,7 +436,10 @@
         saveActiveNote();
     }
 
-    // --- 核心功能：任務合併 ---
+    // ==========================================
+    // 💡 核心更新：合併、拆解與結算 Payload 機制
+    // ==========================================
+
     function mergeSelectedTasks() {
         const checkboxes = document.querySelectorAll('.todo-cb-merge:checked');
         if(checkboxes.length < 2) return alert("💡 請勾選至少兩個任務進行合併！");
@@ -444,6 +450,7 @@
 
         let mergedContent = "";
         let idsToDelete = [];
+        let sourceWbIds = [];
         let highestPriority = 'P3';
 
         checkboxes.forEach((cb, index) => {
@@ -454,6 +461,12 @@
                 if(task.priority === 'P1') highestPriority = 'P1';
                 else if(task.priority === 'P2' && highestPriority !== 'P1') highestPriority = 'P2';
                 
+                // 繼承所有的 wbId
+                if (task.wbId) { 
+                    if(Array.isArray(task.wbId)) sourceWbIds.push(...task.wbId); 
+                    else sourceWbIds.push(task.wbId); 
+                }
+
                 let c = task.content ? task.content.trim() : "";
                 mergedContent += `### 🧩 [原始來源] ${task.task}\n${c}\n`;
                 if(index < checkboxes.length - 1) mergedContent += `\n---\n\n`;
@@ -462,6 +475,7 @@
 
         const newTask = {
             id: Date.now() + Math.random(),
+            wbId: sourceWbIds.length > 0 ? sourceWbIds : null, // 陣列保留來源
             task: mergedTitle,
             content: mergedContent.trim(),
             priority: highestPriority,
@@ -475,7 +489,6 @@
         setActiveTask(newTask.id); 
     }
 
-    // --- 核心功能：任務拆解 ---
     function splitActiveTask() {
         if (!state.activeTaskId) return alert("請先選擇一個焦點任務！");
         
@@ -516,6 +529,7 @@
 
             newTasks.push({
                 id: Date.now() + Math.random() + index, 
+                wbId: originalTask.wbId, // 繼承原本的 wbId
                 task: title,
                 content: finalContent,
                 priority: originalTask.priority,
@@ -533,7 +547,50 @@
         alert(`✂️ 已成功將該任務拆解成 ${newTasks.length} 個獨立任務！`);
     }
 
-    // --- 產生高可讀性的 Markdown 結算報告 (分級看板、縮排降噪、進度儀表板) ---
+    // 📦 結算核心邏輯
+    function checkoutToWhiteboard() {
+        if (!confirm("準備結算？\n這會將您在沙盒內的心血打包送回白板的收件匣，並且清空目前的沙盒重新開始。")) return;
+        
+        const payload = { 
+            timestamp: Date.now(), 
+            globalNote: state.globalNote, 
+            updates: [], 
+            newTasks: [] 
+        };
+        
+        state.todos.forEach(t => {
+            if (t.wbId) {
+                // 如果有 wbId (陣列或單字串)，代表要 Append 到白板對應的卡片
+                let ids = Array.isArray(t.wbId) ? t.wbId : [t.wbId];
+                ids.forEach(id => {
+                    payload.updates.push({ 
+                        wbId: id, 
+                        completed: t.completed, 
+                        content: t.content 
+                    });
+                });
+            } else {
+                // 沒 wbId 代表是沙盒臨時生出來的任務
+                payload.newTasks.push({ 
+                    task: t.task, 
+                    content: t.content, 
+                    completed: t.completed, 
+                    priority: t.priority 
+                });
+            }
+        });
+
+        // 存入中介站 LocalStorage
+        localStorage.setItem(`flow_checkout_payload_${currentUser.uid}`, JSON.stringify(payload));
+        
+        // 摧毀沙盒
+        localStorage.removeItem(LOCAL_STORAGE_KEY);
+        alert("📦 結算包裹已送出！即將自動關閉/返回白板。");
+        window.location.href = 'whiteboard.html';
+    }
+
+    // ==========================================
+
     function generateReportMarkdown() {
         const totalTasks = state.todos.length;
         const completedCount = state.todos.filter(t => t.completed).length;
@@ -545,14 +602,12 @@
         }
 
         let exportText = `# 🌟 心流當日總結\n*結算時間: ${new Date().toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}*\n\n`;
-        
         exportText += `📊 **戰報統計**：已完成 **${completedCount}** 項 / 剩餘 **${pendingCount}** 項（完工率 **${completionRate}%**）\n\n---\n\n`;
 
         if (state.globalNote && state.globalNote.trim()) {
             exportText += `## 📝 全域筆記\n\n${state.globalNote.trim()}\n\n---\n\n`;
         }
 
-        // 任務格式化邏輯：消除 Blockquote，改用標準 Markdown 4格縮排達成層級降噪
         const formatTaskMD = (t) => {
             let checkbox = t.completed ? '- [x]' : '- [ ]';
             let str = `${checkbox} **${t.task}**\n`;
@@ -570,62 +625,11 @@
         const p2Tasks = state.todos.filter(t => t.priority === 'P2');
         const p3Tasks = state.todos.filter(t => t.priority === 'P3');
 
-        if (p1Tasks.length > 0) {
-            exportText += `## 🔴 【P1 · 核心攻堅】\n\n`;
-            p1Tasks.forEach(t => { exportText += formatTaskMD(t); });
-        }
-        
-        if (p2Tasks.length > 0) {
-            exportText += `## 🟡 【P2 · 戰術推進】\n\n`;
-            p2Tasks.forEach(t => { exportText += formatTaskMD(t); });
-        }
-        
-        if (p3Tasks.length > 0) {
-            exportText += `## 🔵 【P3 · 日常雜務】\n\n`;
-            p3Tasks.forEach(t => { exportText += formatTaskMD(t); });
-        }
+        if (p1Tasks.length > 0) { exportText += `## 🔴 【P1 · 核心攻堅】\n\n`; p1Tasks.forEach(t => { exportText += formatTaskMD(t); }); }
+        if (p2Tasks.length > 0) { exportText += `## 🟡 【P2 · 戰術推進】\n\n`; p2Tasks.forEach(t => { exportText += formatTaskMD(t); }); }
+        if (p3Tasks.length > 0) { exportText += `## 🔵 【P3 · 日常雜務】\n\n`; p3Tasks.forEach(t => { exportText += formatTaskMD(t); }); }
         
         return exportText;
-    }
-
-    // --- 打包與匯出 ---
-    function packageForWhiteboard() {
-        const exportText = generateReportMarkdown();
-        if(!exportText) return alert("目前沙盒內沒有任何任務或筆記可以打包！");
-
-        if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(exportText).then(() => {
-                alert("📦 當日總結已順利複製到剪貼簿！\n\n您可以直接貼回白板母體作為今日戰果紀錄。");
-            }).catch(err => {
-                fallbackCopyTextToClipboard(exportText);
-            });
-        } else {
-            fallbackCopyTextToClipboard(exportText);
-        }
-    }
-
-    function fallbackCopyTextToClipboard(text) {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed";
-        textArea.style.top = "-9999px";
-        textArea.style.left = "-9999px";
-        
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-
-        try {
-            const successful = document.execCommand('copy');
-            if (successful) {
-                alert("📦 當日總結已順利透過傳統模式複製到剪貼簿！");
-            } else {
-                alert("複製失敗，請點擊「下載 .md」或手動複製。");
-            }
-        } catch (err) {
-            alert("瀏覽器阻擋了複製動作，請點擊「下載 .md」。");
-        }
-        document.body.removeChild(textArea);
     }
 
     function downloadMarkdown() {
@@ -638,7 +642,7 @@
         a.href = url;
         
         const dateStr = new Date().toISOString().split('T')[0];
-        a.download = `心流當日總結_${dateStr}.md`;
+        a.download = `心流備份_${dateStr}.md`;
         
         document.body.appendChild(a);
         a.click();
@@ -647,7 +651,7 @@
     }
 
     function clearFlowSandbox() {
-        if(confirm("⚠️ 警告：這將會徹底刪除沙盒內的所有臨時任務、草稿筆記與計時紀錄。\n\n您確定要清空嗎？")) {
+        if(confirm("⚠️ 警告：這將會徹底刪除沙盒內的所有臨時任務、草稿筆記與計時紀錄。\n且不會送回白板！\n您確定要清空嗎？")) {
             localStorage.removeItem(LOCAL_STORAGE_KEY);
             alert("🧹 沙盒已清空！頁面即將重新載入。");
             location.reload();
@@ -671,10 +675,14 @@
         const wbData = JSON.parse(wbDataRaw);
         let importedCount = 0;
 
+        // 💡 僅匯入狀態不是 2 (綠色/完成) 的卡片
         if (wbData.workspaces) {
             Object.values(wbData.workspaces).forEach(tabCards => {
                 tabCards.forEach(card => {
-                    if (state.todos.some(t => t.wbId === card.id)) return; 
+                    if (card.status === 2) return; // 略過已完成
+                    // 檢查是否已經存在沙盒中 (需處理 wbId 是陣列的情況)
+                    if (state.todos.some(t => Array.isArray(t.wbId) ? t.wbId.includes(card.id) : t.wbId === card.id)) return; 
+                    
                     state.todos.push({
                         id: Date.now() + Math.random(), wbId: card.id,                  
                         task: card.title || '未命名白板卡片', content: card.content || '', 
@@ -686,10 +694,11 @@
             });
         }
 
+        // 發想矩陣也過濾一下進來
         if (wbData.nodes) {
             Object.values(wbData.nodes).forEach(tabNodes => {
                 tabNodes.forEach(node => {
-                    if (state.todos.some(t => t.wbId === node.id)) return;
+                    if (state.todos.some(t => Array.isArray(t.wbId) ? t.wbId.includes(node.id) : t.wbId === node.id)) return;
                     let prio = 'P3'; if(node.tag === 'q1') prio = 'P1'; else if(node.tag === 'q2' || node.tag === 'q3') prio = 'P2';
                     state.todos.push({
                         id: Date.now() + Math.random(), wbId: node.id, task: node.text, content: '',  
@@ -701,9 +710,9 @@
         }
 
         if (importedCount > 0) {
-            alert(`✅ 成功匯入 ${importedCount} 筆白板任務！`);
+            alert(`✅ 成功匯入 ${importedCount} 筆未完成的白板任務！`);
             saveData(); renderTodo(); switchLeftPanel('TODO');
-        } else { alert(`👌 沒有發現新的白板任務需要匯入。`); }
+        } else { alert(`👌 沒有發現新的未完成白板任務需要匯入。`); }
     }
 
     function addTodo() {
@@ -730,7 +739,7 @@
     }
 
     function deleteTodo(id) {
-        if(confirm("確定刪除此任務? (關聯的筆記也會遺失喔！)")) {
+        if(confirm("確定從沙盒刪除此任務? (在結算時，此任務將被視為未變動，原始白板資料不受影響)")) {
             state.todos = state.todos.filter(t => t.id !== id);
             if(state.activeTaskId === id) setActiveTask(null);
             renderTodo(); saveData();
@@ -748,7 +757,7 @@
         });
 
         if (sorted.length === 0) {
-            container.innerHTML = "<div style='text-align:center; color:#aaa; padding:20px; font-size: 0.9rem;'>目前無任務。<br>載入白板或上方快速新增！</div>";
+            container.innerHTML = "<div style='text-align:center; color:#aaa; padding:20px; font-size: 0.9rem;'>目前無任務。<br>請點擊上方載入白板資料！</div>";
             return;
         }
 
@@ -855,7 +864,7 @@
         saveData();
     }
 
-    function handlePomoFinish() { /* 簡化展示 */ }
+    function handlePomoFinish() { /* 簡化保留原始流程 */ }
     
     function formatTime(sec) {
         let h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
