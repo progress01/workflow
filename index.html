@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人運營中心 (Ops Hub Pro)</title>
+    <title>個人運營中心 Pro Max (Ops Hub)</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
@@ -14,6 +14,7 @@
         :root { 
             --primary-color: #007bff; --success-color: #28a745; --warning-color: #ffc107; 
             --danger-color: #dc3545; --dark-color: #343a40; --light-bg: #f8f9fa; --border-color: #ced4da; 
+            --heat-0: #ebedf0; --heat-1: #9be9a8; --heat-2: #40c463; --heat-3: #30a14e; --heat-4: #216e39;
         }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; color: #333; }
         
@@ -25,7 +26,6 @@
         .nav-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
         .nav-tab-btn { background: #495057; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .nav-tab-btn.active { background: var(--primary-color); }
-        .nav-tab-btn:hover:not(.active) { background: #6c757d; }
 
         .view-section { padding: 20px; display: none; }
         .view-section.active { display: block; }
@@ -34,9 +34,9 @@
         button:hover { opacity: 0.9; }
         .btn-danger { background: var(--danger-color); }
         .btn-success { background: var(--success-color); }
-        .btn-warning { background: var(--warning-color); color: #333; }
-        .btn-secondary { background: #6c757d; }
         .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--dark-color); }
+        .btn-secondary { background: #6c757d; }
+        .btn-warning { background: var(--warning-color); color: #333; }
         
         input[type="text"], input[type="number"], input[type="date"], select, textarea { padding: 8px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; }
 
@@ -53,7 +53,7 @@
 
         /* KPI 卡片 */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); position: relative; }
+        .stat-card { background: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
         .stat-card h4 { margin: 0 0 5px 0; color: #6c757d; font-size: 0.85rem; }
         .stat-card .val { font-size: 1.6rem; font-weight: bold; color: var(--dark-color); }
         .stat-card .comparison { font-size: 0.75rem; font-weight: bold; margin-top: 5px; }
@@ -64,11 +64,25 @@
         /* 圖表與表格 */
         .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .chart-container { background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); height: 300px; position: relative; }
-        
         .table-wrapper { max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; text-align: left; }
         th, td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
         th { background: var(--light-bg); position: sticky; top: 0; z-index: 10; }
+
+        /* 進階賽局分析專屬 (Sabermetrics) */
+        .saber-panel { border: 1px solid var(--border-color); background: white; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
+        .saber-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 15px; color: #495057; border-bottom: 2px solid var(--light-bg); padding-bottom: 8px; }
+        
+        .progress-container { margin-bottom: 15px; }
+        .progress-label { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #6c757d; }
+        .progress-bar-bg { background: #e9ecef; height: 12px; border-radius: 6px; overflow: hidden; position: relative; }
+        .progress-bar-fill { height: 100%; transition: width 0.5s ease-in-out; }
+
+        .heatmap-scroll { overflow-x: auto; padding-bottom: 10px; }
+        .heatmap-grid { display: flex; gap: 4px; }
+        .heatmap-col { display: flex; flex-direction: column; gap: 4px; }
+        .heatmap-cell { width: 14px; height: 14px; border-radius: 3px; background: var(--heat-0); }
+        .heat-1 { background: var(--heat-1); } .heat-2 { background: var(--heat-2); } .heat-3 { background: var(--heat-3); } .heat-4 { background: var(--heat-4); }
 
         /* 沙盒佈局 */
         .sandbox-layout { display: flex; gap: 20px; align-items: stretch; }
@@ -83,28 +97,27 @@
         textarea { flex-grow: 1; min-height: 300px; font-family: monospace; padding: 15px; resize: vertical; }
         .sandbox-actions { display: flex; justify-content: space-between; align-items: center; background: #e9ecef; padding: 10px 15px; border-radius: 8px; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
 
-        /* RWD 響應式調整 */
         @media (max-width: 768px) {
             .app-header { flex-direction: column; align-items: stretch; }
             .nav-tabs { justify-content: center; }
             .sandbox-layout { flex-direction: column; }
             .charts-grid { grid-template-columns: 1fr; }
-            .timer-display { font-size: 2.5rem; }
         }
     </style>
 </head>
 <body>
 
 <div id="login-screen">
-    <h1 style="font-size: 2rem; margin-bottom: 10px;">🛡️ 個人運營中心 Pro</h1>
+    <h1 style="font-size: 2rem; margin-bottom: 10px;">🛡️ 個人運營中心 Pro Max</h1>
     <button class="login-btn" onclick="loginFirebase()">連結資料庫</button>
 </div>
 
 <div class="container" id="app-container">
     <div class="app-header">
-        <div style="font-size: 1.2rem; font-weight: bold;">🛡️ Ops Hub Pro</div>
+        <div style="font-size: 1.2rem; font-weight: bold;">🛡️ Ops Hub Pro Max</div>
         <div class="nav-tabs">
-            <button class="nav-tab-btn active" onclick="switchView('dashboard')" id="btn-tab-dashboard">📊 高級儀表板</button>
+            <button class="nav-tab-btn active" onclick="switchView('dashboard')" id="btn-tab-dashboard">📊 基礎儀表板</button>
+            <button class="nav-tab-btn" onclick="switchView('sabermetrics')" id="btn-tab-sabermetrics">🔬 進階賽局分析</button>
             <button class="nav-tab-btn" onclick="switchView('sandbox')" id="btn-tab-sandbox">🌟 心流沙盒</button>
         </div>
         <div style="display: flex; gap: 8px;">
@@ -122,12 +135,9 @@
             <label style="font-weight:bold; display:block; margin-bottom:5px;">🔄 月固定訂閱總額 (Netflix/房租等)</label>
             <input type="number" id="cfg-subscriptions" value="1500" onchange="saveLocalConfig()">
         </div>
-        <div style="display:flex; align-items:flex-end;">
-            <span style="font-size:0.8rem; color:#856404;">ℹ️ 此處參數僅存於本地瀏覽器，用於計算精準【可用真實結餘】，絕對不污染雲端資料庫。</span>
-        </div>
     </div>
 
-    <div id="view-dashboard" class="view-section active">
+    <div class="view-section" style="display: block; padding-bottom: 0;" id="global-controls">
         <div class="ga-controls">
             <div class="ga-row">
                 <div class="ga-label">📅 分析區間</div>
@@ -140,17 +150,19 @@
                 <div id="custom-dates" style="display: none; gap: 5px; align-items: center;">
                     <input type="date" id="custom-start"> <span>-</span> <input type="date" id="custom-end">
                 </div>
-            </div>
-            <div class="ga-row">
-                <div class="ga-label">👁️ 分析模式</div>
-                <div class="btn-group" id="mode-btn-group">
-                    <button class="btn-filter active" onclick="setAnalysisMode('trend', this)">📈 趨勢分佈與 Pacing 速率</button>
-                    <button class="btn-filter" onclick="setAnalysisMode('structure', this)">📊 結構佔比與分類涵攝</button>
-                </div>
                 <button class="btn-success" style="margin-left: auto;" onclick="executeAnalysis()">🚀 執行全維度解析</button>
             </div>
+            <div class="ga-row" id="dashboard-modes">
+                <div class="ga-label">👁️ 基礎模式</div>
+                <div class="btn-group" id="mode-btn-group">
+                    <button class="btn-filter active" onclick="setAnalysisMode('trend', this)">📈 趨勢分佈</button>
+                    <button class="btn-filter" onclick="setAnalysisMode('structure', this)">📊 結構佔比 (分類涵攝)</button>
+                </div>
+            </div>
         </div>
+    </div>
 
+    <div id="view-dashboard" class="view-section active" style="padding-top: 0;">
         <div class="stats-grid">
             <div class="stat-card">
                 <h4>💸 區間開銷總計</h4>
@@ -183,58 +195,74 @@
         <h4 style="margin: 0 0 10px 0; color: #495057;">📝 區間足跡快照明細</h4>
         <div class="table-wrapper">
             <table>
-                <thead>
-                    <tr><th>日期</th><th>類型</th><th>分類定義</th><th>數值</th><th>備註快照</th></tr>
-                </thead>
+                <thead><tr><th>日期</th><th>類型</th><th>分類定義</th><th>數值</th><th>備註快照</th></tr></thead>
                 <tbody id="table-body"></tbody>
             </table>
         </div>
     </div>
 
-    <div id="view-sandbox" class="view-section">
+    <div id="view-sabermetrics" class="view-section" style="padding-top: 0;">
+        
+        <div class="saber-panel">
+            <div class="saber-title">⏱️ 預算消耗 vs. 時間流逝 (Pacing Tracker)</div>
+            <div class="progress-container">
+                <div class="progress-label"><span>區間時間流逝比例</span> <span id="saber-time-pct">0%</span></div>
+                <div class="progress-bar-bg"><div id="saber-time-bar" class="progress-bar-fill" style="background:#007bff; width:0%;"></div></div>
+            </div>
+            <div class="progress-container">
+                <div class="progress-label"><span>可用預算消耗比例</span> <span id="saber-burn-pct">0%</span></div>
+                <div class="progress-bar-bg"><div id="saber-burn-bar" class="progress-bar-fill" style="background:#28a745; width:0%;"></div></div>
+            </div>
+            <div style="font-size: 0.85rem; color: #6c757d; margin-top: 10px;" id="saber-pacing-msg">分析中...</div>
+        </div>
+
+        <div class="saber-panel">
+            <div class="saber-title">📉 支出變異極端值與 7 日移動平均線 (MA)</div>
+            <div style="height: 300px; position: relative;">
+                <canvas id="saberOutlierChart"></canvas>
+            </div>
+            <div style="font-size: 0.85rem; color: #6c757d; margin-top: 10px;">
+                * 紅點標示為超過「平均值 + 1.5倍標準差 ($\mu + 1.5\sigma$)」的極端支出日。折線為平滑雜訊後的 7 日預期趨勢線。
+            </div>
+        </div>
+
+        <div class="saber-panel">
+            <div class="saber-title">🔥 過去 90 天習慣與學習一致性 (Consistency Matrix)</div>
+            <div class="heatmap-scroll">
+                <div class="heatmap-grid" id="saber-heatmap">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-sandbox" class="view-section" style="padding-top: 0;">
         <div class="sandbox-layout">
             <div class="panel-left">
                 <div class="timer-box">
-                    <div style="display: flex; justify-content: center; gap: 5px; margin-bottom: 10px;">
-                        <button class="btn-secondary" style="flex:1; font-size: 0.8rem;" onclick="setTimerMode('FLEX')">彈性計時</button>
-                        <button class="btn-danger" style="flex:1; font-size: 0.8rem;" onclick="setTimerMode('POMO')">番茄鐘(25m)</button>
-                    </div>
+                    <div style="display: flex; gap: 5px; margin-bottom: 10px;"><button class="btn-secondary" style="flex:1;" onclick="setTimerMode('FLEX')">彈性計時</button><button class="btn-danger" style="flex:1;" onclick="setTimerMode('POMO')">番茄鐘</button></div>
                     <div class="timer-display" id="timeDisplay">00:00:00</div>
                     <div style="color: #6c757d; font-size: 0.85rem; margin-bottom: 10px;" id="timerStatus">閒置中</div>
-                    <div style="display: flex; gap: 5px;">
-                        <button class="btn-success" style="flex:1;" onclick="startTimer()">▶</button>
-                        <button class="btn-warning" style="flex:1;" onclick="pauseTimer()">⏸</button>
-                        <button class="btn-secondary" style="flex:1;" onclick="stopTimer()">⏹</button>
-                    </div>
+                    <div style="display: flex; gap: 5px;"><button class="btn-success" style="flex:1;" onclick="startTimer()">▶</button><button class="btn-warning" style="flex:1;" onclick="pauseTimer()">⏸</button><button class="btn-secondary" style="flex:1;" onclick="stopTimer()">⏹</button></div>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="margin: 0; color: #495057;">📋 本地複本任務</h4>
-                    <button class="btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="importWhiteboardTasks()">📥 載入白板任務</button>
-                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;"><h4 style="margin:0;">📋 本地複本</h4><button class="btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="importWhiteboardTasks()">📥 載入</button></div>
                 <div class="task-list" id="sandbox-task-list"></div>
             </div>
             <div class="panel-right">
-                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                    <h4 style="margin: 0; color: #495057;">📝 密閉式發想沙盒 (Markdown)</h4>
-                    <span style="font-size: 0.8rem; color: #adb5bd;" id="sandbox-save-status">自動儲存於本地</span>
-                </div>
-                <input type="text" id="sandbox-task-title" placeholder="全域發想草稿" readonly style="font-weight: bold; color: var(--primary-color); border: none; border-bottom: 1px dashed #ced4da; border-radius: 0; outline: none; padding-left: 0;">
-                <textarea id="sandbox-note-area" oninput="saveSandboxState()" placeholder="在此輸入筆記、拆解步驟...\n此處變更只會存在於瀏覽器暫存中。"></textarea>
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;"><h4 style="margin:0;">📝 密閉式發想沙盒</h4><span style="font-size: 0.8rem; color: #adb5bd;" id="sandbox-save-status">自動儲存</span></div>
+                <input type="text" id="sandbox-task-title" placeholder="全域草稿" readonly style="font-weight:bold; color:var(--primary-color); border:none; border-bottom:1px dashed #ced4da; outline:none;">
+                <textarea id="sandbox-note-area" oninput="saveSandboxState()"></textarea>
             </div>
         </div>
         <div class="sandbox-actions">
-            <div style="font-size: 0.85rem; color: #856404;"><strong>ℹ️ 物理隔離狀態：</strong> 所有的修改與筆記只會留在當前視窗，結束後請記得匯出。</div>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn-success" onclick="exportSandboxMarkdown()">⬇️ 輸出成果 (.md)</button>
-                <button class="btn-danger" onclick="clearSandbox()">🧹 徹底清空沙盒</button>
-            </div>
+            <div style="font-size: 0.85rem; color: #856404;"><strong>ℹ️ 物理隔離狀態：</strong> 變更僅存於瀏覽器暫存。</div>
+            <div style="display: flex; gap: 10px;"><button class="btn-success" onclick="exportSandboxMarkdown()">⬇️ 輸出 (.md)</button><button class="btn-danger" onclick="clearSandbox()">🧹 清空沙盒</button></div>
         </div>
     </div>
 </div>
 
 <script>
     // ==========================================
-    // 1. Firebase 初始化與狀態控制
+    // 1. Firebase 初始化
     // ==========================================
     const firebaseConfig = { apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU", authDomain: "maplestoryboss.firebaseapp.com", projectId: "maplestoryboss", storageBucket: "maplestoryboss.firebasestorage.app", messagingSenderId: "198034430854", appId: "1:198034430854:web:527ffcee039e223b972a07" };
     firebase.initializeApp(firebaseConfig);
@@ -261,14 +289,23 @@
         }
     });
 
-    function loginFirebase() { auth.signInWithPopup(provider).catch(err => alert("登入失敗: " + err.message)); }
+    function loginFirebase() { auth.signInWithPopup(provider).catch(e => console.error(e)); }
     function logoutFirebase() { auth.signOut(); }
     
     function switchView(viewName) {
         document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
+        
+        // 全域控制列在沙盒模式隱藏
+        document.getElementById('global-controls').style.display = (viewName === 'sandbox') ? 'none' : 'block';
+        // 基礎模式切換按鈕僅在 dashboard 顯示
+        document.getElementById('dashboard-modes').style.display = (viewName === 'dashboard') ? 'flex' : 'none';
+
         document.getElementById(`view-${viewName}`).classList.add('active');
         document.getElementById(`btn-tab-${viewName}`).classList.add('active');
+        
+        // 切換時重繪對應圖表避免 Canvas 尺寸錯誤
+        if (fullRecords.length > 0) executeAnalysis();
     }
     
     const getLocalYMD = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -280,407 +317,361 @@
     }
 
     // ==========================================
-    // 2. 本地設定隔離儲存 (LocalStorage)
+    // 2. 本地設定與 GA 時間控制
     // ==========================================
     function toggleConfigPanel() {
-        const panel = document.getElementById('local-config');
-        panel.style.display = (panel.style.display === 'grid') ? 'none' : 'grid';
+        const p = document.getElementById('local-config');
+        p.style.display = (p.style.display === 'grid') ? 'none' : 'grid';
     }
-    
     function saveLocalConfig() {
         if(!currentUser) return;
-        const config = {
+        localStorage.setItem(`local_hub_config_${currentUser.uid}`, JSON.stringify({
             salary: parseFloat(document.getElementById('cfg-salary').value) || 0,
             subs: parseFloat(document.getElementById('cfg-subscriptions').value) || 0
-        };
-        localStorage.setItem(`local_hub_config_${currentUser.uid}`, JSON.stringify(config));
-        executeAnalysis(); // 自動重新解析計算
+        }));
+        executeAnalysis();
     }
-    
     function loadLocalConfig() {
         if(!currentUser) return;
         const raw = localStorage.getItem(`local_hub_config_${currentUser.uid}`);
         if(raw) {
-            try {
-                const config = JSON.parse(raw);
-                document.getElementById('cfg-salary').value = config.salary;
-                document.getElementById('cfg-subscriptions').value = config.subs;
-            } catch(e) { console.warn("載入設定失敗", e); }
+            try { const c = JSON.parse(raw); document.getElementById('cfg-salary').value = c.salary; document.getElementById('cfg-subscriptions').value = c.subs; } catch(e){}
         }
     }
 
-    // ==========================================
-    // 3. GA 核心高級數據分析模組
-    // ==========================================
     function setDateRange(range, btnEl) {
-        document.querySelectorAll('#date-btn-group .btn-filter').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('#date-btn-group .btn-filter').forEach(b => b.classList.remove('active'));
         btnEl.classList.add('active');
-        const now = new Date();
-        const customDiv = document.getElementById('custom-dates');
-        const startInput = document.getElementById('custom-start');
-        const endInput = document.getElementById('custom-end');
-        customDiv.style.display = 'none';
+        const now = new Date(), startInput = document.getElementById('custom-start'), endInput = document.getElementById('custom-end');
+        document.getElementById('custom-dates').style.display = 'none';
 
-        if (range === '7days') {
-            endInput.value = getLocalYMD(now);
-            startInput.value = getLocalYMD(new Date(now.setDate(now.getDate() - 6)));
-        } else if (range === '30days') {
-            endInput.value = getLocalYMD(now);
-            startInput.value = getLocalYMD(new Date(now.setDate(now.getDate() - 29)));
-        } else if (range === 'month') {
-            startInput.value = getLocalYMD(now).substring(0, 7) + "-01";
-            endInput.value = getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-        } else if (range === 'custom') {
-            customDiv.style.display = 'flex';
-        }
+        if (range === '7days') { endInput.value = getLocalYMD(now); startInput.value = getLocalYMD(new Date(now.setDate(now.getDate() - 6))); } 
+        else if (range === '30days') { endInput.value = getLocalYMD(now); startInput.value = getLocalYMD(new Date(now.setDate(now.getDate() - 29))); } 
+        else if (range === 'month') { startInput.value = getLocalYMD(now).substring(0, 7) + "-01"; endInput.value = getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0)); } 
+        else if (range === 'custom') { document.getElementById('custom-dates').style.display = 'flex'; }
     }
-
     function setAnalysisMode(mode, btnEl) {
-        document.querySelectorAll('#mode-btn-group .btn-filter').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('#mode-btn-group .btn-filter').forEach(b => b.classList.remove('active'));
         btnEl.classList.add('active');
         currentAnalysisMode = mode;
+        if(document.getElementById('view-dashboard').classList.contains('active')) executeAnalysis();
     }
 
+    // ==========================================
+    // 3. 資料擷取與主分析樞紐
+    // ==========================================
     async function fetchDashboardData() {
         try {
             const uidParam = currentUser.uid + "_life";
-            const snapshot = await db.collection("LifeApp_Records").where("uid", "==", uidParam).get();
+            const snap = await db.collection("LifeApp_Records").where("uid", "==", uidParam).get();
             fullRecords = [];
-            snapshot.forEach(doc => fullRecords.push({ id: doc.id, ...doc.data() }));
-            
-            // 按日期正序排列，方便時間軸圖表繪製
-            fullRecords.sort((a, b) => new Date(a.date) - new Date(b.date) || a.timestamp - b.timestamp);
+            snap.forEach(doc => fullRecords.push({ id: doc.id, ...doc.data() }));
+            fullRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
             executeAnalysis();
-        } catch (error) { 
-            console.error("Firebase 同步錯誤:", error);
-            alert("同步失敗：無法讀取資料庫。請確認網路連線或重新整理。"); 
-        }
+        } catch (e) { console.error(e); }
     }
 
     function executeAnalysis() {
-        if (!fullRecords.length) {
-            document.getElementById('table-body').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px;">資料庫無紀錄</td></tr>';
-            return;
-        }
+        if (!fullRecords.length) return;
+        const startStr = document.getElementById('custom-start').value, endStr = document.getElementById('custom-end').value;
+        const cStart = new Date(startStr), cEnd = new Date(endStr);
+        const totalDays = Math.ceil((cEnd - cStart) / (1000 * 60 * 60 * 24)) + 1;
         
-        const startStr = document.getElementById('custom-start').value;
-        const endStr = document.getElementById('custom-end').value;
-        
-        // 邊界運算 (計算上一期以製作 MoM)
-        const currStart = new Date(startStr);
-        const currEnd = new Date(endStr);
-        const dayDiff = Math.ceil((currEnd - currStart) / (1000 * 60 * 60 * 24)) + 1;
-        
-        const prevEnd = new Date(currStart.getTime() - (1000 * 60 * 60 * 24));
-        const prevStart = new Date(prevEnd.getTime() - ((dayDiff - 1) * 1000 * 60 * 60 * 24));
-        const prevStartStr = getLocalYMD(prevStart);
-        const prevEndStr = getLocalYMD(prevEnd);
+        // 環比時間切片
+        const pEnd = new Date(cStart.getTime() - (86400000));
+        const pStart = new Date(pEnd.getTime() - ((totalDays - 1) * 86400000));
+        const currSlice = fullRecords.filter(r => r.date >= startStr && r.date <= endStr);
+        const prevSlice = fullRecords.filter(r => r.date >= getLocalYMD(pStart) && r.date <= getLocalYMD(pEnd));
 
-        // 篩選當期與上期資料
-        const currentSlice = fullRecords.filter(r => r.date >= startStr && r.date <= endStr);
-        const previousSlice = fullRecords.filter(r => r.date >= prevStartStr && r.date <= prevEndStr);
-
-        let currMetrics = { expense: 0, income: 0, growth: 0, food: 0, burn: 0 };
+        // 基礎指標計算
+        let cm = { exp: 0, inc: 0, grw: 0, food: 0, burn: 0 }, pm = { exp: 0, inc: 0, grw: 0 };
         const tbody = document.getElementById('table-body');
-        tbody.innerHTML = '';
+        if(tbody) tbody.innerHTML = '';
 
-        // 處理當期明細 (表格部分倒序插入，最新在最上方)
-        currentSlice.forEach(r => {
-            if (r.type === 'expense' || r.type === 'extra_expense') currMetrics.expense += r.amount;
-            if (r.type === 'income' || r.type === 'extra_income') currMetrics.income += r.amount;
-            if (r.type === 'learning' || r.type === 'habit') currMetrics.growth += r.amount;
-            if (r.type === 'food') currMetrics.food += r.amount;
-            if (r.type === 'exercise') currMetrics.burn += r.amount;
+        currSlice.forEach(r => {
+            if (r.type.includes('expense')) cm.exp += r.amount;
+            if (r.type.includes('income')) cm.inc += r.amount;
+            if (r.type === 'learning' || r.type === 'habit') cm.grw += r.amount;
+            if (r.type === 'food') cm.food += r.amount;
+            if (r.type === 'exercise') cm.burn += r.amount;
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${r.date.substring(5)}</td><td><span class="badge" style="background:${getTypeColor(r.type)}">${r.type}</span></td><td>${r.categoryText || r.category}</td><td style="font-weight:bold;">${r.amount.toLocaleString()}</td><td style="color:#666; font-size:0.8rem;">${r.note||''}</td>`;
-            tbody.insertBefore(tr, tbody.firstChild);
+            if(tbody) {
+                const tr = document.createElement('tr');
+                let cat = r.categoryText || r.category || '未分類';
+                tr.innerHTML = `<td>${r.date.substring(5)}</td><td><span class="badge" style="background:${getTypeColor(r.type)}">${r.type}</span></td><td>${cat}</td><td style="font-weight:bold;">${r.amount.toLocaleString()}</td><td style="color:#666; font-size:0.8rem;">${r.note||''}</td>`;
+                tbody.insertBefore(tr, tbody.firstChild);
+            }
+        });
+        
+        prevSlice.forEach(r => {
+            if (r.type.includes('expense')) pm.exp += r.amount;
+            if (r.type.includes('income')) pm.inc += r.amount;
+            if (r.type === 'learning' || r.type === 'habit') pm.grw += r.amount;
         });
 
-        if(currentSlice.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px;">此區間無資料</td></tr>';
+        // KPI 卡片更新
+        const baseSal = parseFloat(document.getElementById('cfg-salary').value) || 0;
+        const baseSub = parseFloat(document.getElementById('cfg-subscriptions').value) || 0;
+        
+        if(document.getElementById('stat-expense')) {
+            document.getElementById('stat-expense').innerText = cm.exp.toLocaleString();
+            document.getElementById('stat-income').innerText = cm.inc.toLocaleString();
+            document.getElementById('stat-balance').innerText = ((baseSal + cm.inc) - cm.exp - baseSub).toLocaleString();
+            document.getElementById('stat-growth').innerText = cm.grw;
+            renderComparisonBadge('cmp-expense', cm.exp, pm.exp, true);
+            renderComparisonBadge('cmp-income', cm.inc, pm.inc, false);
+            renderComparisonBadge('cmp-growth', cm.grw, pm.grw, false);
         }
 
-        // 處理上期資料
-        let prevMetrics = { expense: 0, income: 0, growth: 0 };
-        previousSlice.forEach(r => {
-            if (r.type === 'expense' || r.type === 'extra_expense') prevMetrics.expense += r.amount;
-            if (r.type === 'income' || r.type === 'extra_income') prevMetrics.income += r.amount;
-            if (r.type === 'learning' || r.type === 'habit') prevMetrics.growth += r.amount;
-        });
-
-        // 真實結餘運算
-        const baseSalary = parseFloat(document.getElementById('cfg-salary').value) || 0;
-        const baseSubs = parseFloat(document.getElementById('cfg-subscriptions').value) || 0;
-        const realBalance = (baseSalary + currMetrics.income) - currMetrics.expense - baseSubs;
-
-        // KPI UI 更新
-        document.getElementById('stat-expense').innerText = currMetrics.expense.toLocaleString();
-        document.getElementById('stat-income').innerText = currMetrics.income.toLocaleString();
-        document.getElementById('stat-balance').innerText = realBalance.toLocaleString();
-        document.getElementById('stat-growth').innerText = currMetrics.growth;
-
-        // 熱量指標
-        const calNet = currMetrics.burn - currMetrics.food;
-        const statCal = document.getElementById('stat-calorie');
-        if(statCal) {
-            statCal.innerText = calNet > 0 ? `+${calNet}` : calNet;
-            statCal.style.color = calNet >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
-        }
-
-        // 環比標籤更新
-        renderComparisonBadge('cmp-expense', currMetrics.expense, prevMetrics.expense, true);
-        renderComparisonBadge('cmp-income', currMetrics.income, prevMetrics.income, false);
-        renderComparisonBadge('cmp-growth', currMetrics.growth, prevMetrics.growth, false);
-
-        // 圖表渲染派遣
-        if (currentAnalysisMode === 'trend') {
-            // 注意：要畫 Pacing，需依賴剩餘/可用預算
-            const availableBudget = baseSalary - baseSubs;
-            renderTrendCharts(currentSlice, dayDiff, availableBudget);
-        } else {
-            renderStructureCharts(currentSlice);
+        // 依據目前顯示的 View 分派渲染
+        if (document.getElementById('view-dashboard').classList.contains('active')) {
+            if (currentAnalysisMode === 'trend') renderTrendCharts(currSlice);
+            else renderStructureCharts(currSlice);
+        } else if (document.getElementById('view-sabermetrics').classList.contains('active')) {
+            renderSabermetrics(currSlice, fullRecords, totalDays, baseSal, baseSub, cm.exp);
         }
     }
 
-    function renderComparisonBadge(elementId, curr, prev, isExpense = false) {
-        const el = document.getElementById(elementId);
-        if (!el) return;
-        if (prev === 0) { el.innerText = "較上期 --"; el.className = "comparison comp-neutral"; return; }
-        
-        const pct = ((curr - prev) / prev * 100).toFixed(1);
-        
-        if (curr > prev) {
-            el.innerText = `較上期 +${pct}% ▲`;
-            el.className = `comparison ${isExpense ? 'comp-up' : 'comp-down'}`;
-        } else if (curr < prev) {
-            el.innerText = `較上期 ${pct}% ▼`;
-            el.className = `comparison ${isExpense ? 'comp-down' : 'comp-up'}`;
-        } else {
-            el.innerText = `較上期 持平`;
-            el.className = "comparison comp-neutral";
-        }
+    function renderComparisonBadge(id, c, p, isExp) {
+        const el = document.getElementById(id);
+        if(!el) return;
+        if(p===0) { el.innerText="較上期 --"; el.className="comparison comp-neutral"; return; }
+        const pct = ((c-p)/p*100).toFixed(1);
+        if(c>p) { el.innerText=`較上期 +${pct}% ▲`; el.className=`comparison ${isExp?'comp-up':'comp-down'}`; }
+        else if(c<p) { el.innerText=`較上期 ${pct}% ▼`; el.className=`comparison ${isExp?'comp-down':'comp-up'}`; }
+        else { el.innerText="持平"; el.className="comparison comp-neutral"; }
     }
 
     // ==========================================
-    // 4. 圖表視覺化引擎 (Trend vs Structure)
+    // 4A. 基礎儀表板繪製 (Trend & Structure)
     // ==========================================
-    function renderTrendCharts(records, totalDays, availableBudget) {
-        let dailyData = {};
-        records.forEach(r => {
-            if (!dailyData[r.date]) dailyData[r.date] = { expense: 0, health: 0, growth: 0 };
-            if (r.type === 'expense' || r.type === 'extra_expense') dailyData[r.date].expense += r.amount;
-            if (r.type === 'exercise') dailyData[r.date].health += r.amount;
-            if (r.type === 'food') dailyData[r.date].health -= r.amount;
-            if (r.type === 'learning' || r.type === 'habit') dailyData[r.date].growth += r.amount;
+    function renderTrendCharts(records) {
+        let dates = new Set(), dData = {};
+        records.forEach(r => { dates.add(r.date); 
+            if(!dData[r.date]) dData[r.date] = {fin:0, hlth:0, grw:0};
+            if(r.type.includes('income')) dData[r.date].fin += r.amount;
+            if(r.type.includes('expense')) dData[r.date].fin -= r.amount;
+            if(r.type === 'exercise') dData[r.date].hlth += r.amount;
+            if(r.type === 'food') dData[r.date].hlth -= r.amount;
+            if(r.type === 'learning' || r.type === 'habit') dData[r.date].grw += r.amount;
         });
-
-        const sortedDates = Object.keys(dailyData).sort();
-        
-        // Pacing (預期消耗速率)
-        const dailyIdealBurn = availableBudget / (totalDays || 1);
-        let accActualExpense = 0;
-        let actualExpenseTimeline = [];
-        let idealPacingTimeline = [];
-
-        sortedDates.forEach((d, idx) => {
-            accActualExpense += dailyData[d].expense;
-            actualExpenseTimeline.push(accActualExpense);
-            idealPacingTimeline.push(Math.round(dailyIdealBurn * (idx + 1)));
-        });
-
-        // Chart 1: 財務 Pacing 複合線圖
-        const finCtx = document.getElementById('financeChart').getContext('2d');
-        if (chartInstances['financeChart']) chartInstances['financeChart'].destroy();
-        chartInstances['financeChart'] = new Chart(finCtx, {
-            type: 'line',
-            data: {
-                labels: sortedDates.length ? sortedDates : ['無資料'],
-                datasets: [
-                    { label: '實際累積支出', data: actualExpenseTimeline.length ? actualExpenseTimeline : [0], borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.05)', fill: true, tension: 0.2 },
-                    { label: '理想消耗預算線', data: idealPacingTimeline.length ? idealPacingTimeline : [0], borderColor: '#6c757d', borderDash: [5, 5], pointRadius: 0, fill: false }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '📈 支出與 Pacing 控制線' }, legend: {position: 'bottom'} } }
-        });
-
-        // Chart 2: 每日熱量淨值
-        drawChart('healthChart', 'line', '單日熱量盈虧', sortedDates, sortedDates.map(d => dailyData[d].health), '#28a745');
-        
-        // Chart 3: 成長積累
-        let accG = 0;
-        drawChart('growthChart', 'line', '成長路徑累積', sortedDates, sortedDates.map(d => { accG += dailyData[d].growth; return accG; }), '#17a2b8');
+        const arr = Array.from(dates).sort();
+        drawChart('financeChart', 'line', '單日淨現金流', arr, arr.map(d=>dData[d].fin), '#007bff');
+        drawChart('healthChart', 'line', '單日熱量盈虧', arr, arr.map(d=>dData[d].hlth), '#28a745');
+        let acc = 0; drawChart('growthChart', 'line', '成長累積曲線', arr, arr.map(d=> { acc += dData[d].grw; return acc; }), '#17a2b8');
     }
 
     function renderStructureCharts(records) {
-        let expCats = {}, foodCats = {}, grwCats = {};
-        
+        let fCats = {}, hCats = {'總攝取 (Food)':0, '活動消耗 (Exercise)':0}, gCats = {};
         records.forEach(r => {
             const cat = r.categoryText || r.category || '未分類';
-            if (r.type === 'expense' || r.type === 'extra_expense') expCats[cat] = (expCats[cat] || 0) + r.amount;
-            if (r.type === 'food') foodCats[cat] = (foodCats[cat] || 0) + r.amount;
-            if (r.type === 'learning' || r.type === 'habit') grwCats[cat] = (grwCats[cat] || 0) + r.amount;
+            if (r.type.includes('expense')) fCats[cat] = (fCats[cat]||0) + r.amount;
+            if (r.type === 'food') hCats['總攝取 (Food)'] += r.amount;
+            if (r.type === 'exercise') hCats['活動消耗 (Exercise)'] += r.amount;
+            if (r.type === 'learning' || r.type === 'habit') gCats[cat] = (gCats[cat]||0) + r.amount;
         });
-
-        const parseObj = (obj) => {
-            const sorted = Object.entries(obj).sort((a,b) => b[1] - a[1]);
-            return { labels: sorted.map(x => x[0]), data: sorted.map(x => x[1]) };
-        };
-
-        const fData = parseObj(expCats);
-        const hData = parseObj(foodCats);
-        const gData = parseObj(grwCats);
-
-        drawChart('financeChart', 'doughnut', '支出結構佔比', fData.labels, fData.data, ['#dc3545', '#ffc107', '#fd7e14', '#e83e8c', '#6f42c1', '#6c757d']);
-        drawChart('healthChart', 'doughnut', '攝取來源佔比', hData.labels, hData.data, ['#fd7e14', '#ffc107', '#20c997', '#6c757d']);
-        drawChart('growthChart', 'bar', '習慣與學習權重', gData.labels, gData.data, '#17a2b8');
+        const sortObj = (o) => { const s = Object.entries(o).sort((a,b)=>b[1]-a[1]); return {l: s.map(x=>x[0]), d: s.map(x=>x[1])}; };
+        const f = sortObj(fCats), g = sortObj(gCats);
+        
+        drawChart('financeChart', 'doughnut', '支出結構佔比', f.l, f.d, ['#dc3545', '#ffc107', '#fd7e14', '#e83e8c', '#6f42c1', '#6c757d']);
+        drawChart('healthChart', 'doughnut', '熱量收支二元對比', Object.keys(hCats), Object.values(hCats), ['#fd7e14', '#20c997']);
+        drawChart('growthChart', 'bar', '學習習慣分佈', g.l, g.d, '#17a2b8');
     }
 
     function drawChart(id, type, label, labels, data, colors) {
-        const ctx = document.getElementById(id).getContext('2d');
+        const ctx = document.getElementById(id);
+        if(!ctx) return;
         if (chartInstances[id]) chartInstances[id].destroy();
-        const isDoughnut = type === 'doughnut';
-        
-        chartInstances[id] = new Chart(ctx, {
+        const isD = type === 'doughnut';
+        chartInstances[id] = new Chart(ctx.getContext('2d'), {
             type: type,
-            data: {
-                labels: labels.length ? labels : ['無資料'],
-                datasets: [{
-                    label: label, data: data.length ? data : [0],
-                    backgroundColor: isDoughnut ? colors : (Array.isArray(colors) ? colors[0] : colors + '22'),
-                    borderColor: isDoughnut ? '#fff' : colors, borderWidth: 1.5, fill: type === 'line', tension: 0.2
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: label }, legend: { display: isDoughnut, position: 'right' } } }
+            data: { labels: labels.length?labels:['無'], datasets: [{ label: label, data: data.length?data:[0], backgroundColor: isD?colors:(Array.isArray(colors)?colors[0]:colors+'33'), borderColor: isD?'#fff':colors, borderWidth: 1.5, fill: type==='line', tension:0.2 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: {display:true, text:label}, legend: {display:isD, position:'right'} } }
         });
     }
 
-    function getTypeColor(t) { return (t==='expense'||t==='extra_expense')?'#dc3545':(t==='income'||t==='extra_income')?'#28a745':(t==='food')?'#fd7e14':(t==='exercise')?'#20c997':'#17a2b8'; }
+    function getTypeColor(t) { return t.includes('expense')?'#dc3545':t.includes('income')?'#28a745':t==='food'?'#fd7e14':t==='exercise'?'#20c997':'#17a2b8'; }
 
     // ==========================================
-    // 5. 獨立心流沙盒模組 (LocalStorage Buffer)
+    // 4B. 進階賽局分析 (Sabermetrics Modules)
+    // ==========================================
+    function renderSabermetrics(currSlice, allData, totalDays, baseSalary, baseSubs, totalExpense) {
+        // --- 模組 B: Pacing 預算 vs 時間 ---
+        const now = new Date(), startD = new Date(document.getElementById('custom-start').value), endD = new Date(document.getElementById('custom-end').value);
+        let timePct = 100;
+        if (now >= startD && now <= endD) {
+            const passed = Math.ceil((now - startD) / (1000 * 60 * 60 * 24));
+            timePct = Math.min(100, Math.round((passed / totalDays) * 100));
+        } else if (now < startD) { timePct = 0; }
+        
+        const availableBudget = baseSalary - baseSubs;
+        const burnPct = availableBudget > 0 ? Math.min(100, Math.round((totalExpense / availableBudget) * 100)) : 0;
+        
+        document.getElementById('saber-time-pct').innerText = timePct + '%';
+        document.getElementById('saber-time-bar').style.width = timePct + '%';
+        document.getElementById('saber-burn-pct').innerText = burnPct + '%';
+        document.getElementById('saber-burn-bar').style.width = burnPct + '%';
+        document.getElementById('saber-burn-bar').style.background = burnPct > timePct ? '#dc3545' : '#28a745';
+        
+        const msgEl = document.getElementById('saber-pacing-msg');
+        if(burnPct > timePct + 5) msgEl.innerHTML = `🚨 <strong>超支警戒：</strong> 資金消耗速度超越時間流逝，建議降低近期花費。`;
+        else msgEl.innerHTML = `✅ <strong>步調穩健：</strong> 花費控制在預期期望值內。`;
+
+        // --- 模組 C: 變異數極端值與 7 日 MA ---
+        let dailyMap = {};
+        currSlice.forEach(r => { if(r.type.includes('expense')) dailyMap[r.date] = (dailyMap[r.date]||0) + r.amount; });
+        const datesArr = Object.keys(dailyMap).sort();
+        const expArr = datesArr.map(d => dailyMap[d]);
+        
+        let pointColors = [];
+        let ma7Arr = [];
+        
+        if (expArr.length > 0) {
+            const mean = expArr.reduce((a,b)=>a+b, 0) / expArr.length;
+            const variance = expArr.reduce((a,b)=>a+Math.pow(b-mean, 2), 0) / expArr.length;
+            const stdDev = Math.sqrt(variance);
+            const threshold = mean + 1.5 * stdDev;
+
+            expArr.forEach((val, i) => {
+                pointColors.push(val > threshold ? '#dc3545' : '#007bff');
+                // 計算 7MA (過去包含自己共7天)
+                let sliceStr = Math.max(0, i - 6);
+                let sliceArr = expArr.slice(sliceStr, i + 1);
+                ma7Arr.push(sliceArr.reduce((a,b)=>a+b,0) / sliceArr.length);
+            });
+        }
+
+        const ctxOutlier = document.getElementById('saberOutlierChart').getContext('2d');
+        if (chartInstances['saberOutlierChart']) chartInstances['saberOutlierChart'].destroy();
+        chartInstances['saberOutlierChart'] = new Chart(ctxOutlier, {
+            type: 'bar',
+            data: {
+                labels: datesArr.length ? datesArr : ['無'],
+                datasets: [
+                    { label: '7日移動平均線 (7MA)', type: 'line', data: ma7Arr, borderColor: '#ffc107', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 },
+                    { label: '單日花費 (紅點為極端值)', data: expArr, backgroundColor: pointColors, borderRadius: 4 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
+        });
+
+        // --- 模組 D: 90 天連勝熱力圖 ---
+        const heatGrid = document.getElementById('saber-heatmap');
+        heatGrid.innerHTML = '';
+        
+        // 建立過去 90 天的資料字典
+        let heatData = {};
+        const today = new Date();
+        for(let i=89; i>=0; i--) {
+            let d = new Date(); d.setDate(today.getDate() - i);
+            heatData[getLocalYMD(d)] = 0;
+        }
+        
+        allData.forEach(r => {
+            if((r.type === 'learning' || r.type === 'habit') && heatData[r.date] !== undefined) {
+                heatData[r.date] += r.amount;
+            }
+        });
+
+        // 繪製 7xN 矩陣 (每一直排為一週)
+        const heatDates = Object.keys(heatData);
+        let colDiv = null;
+        heatDates.forEach((d, idx) => {
+            if (idx % 7 === 0) {
+                colDiv = document.createElement('div');
+                colDiv.className = 'heatmap-col';
+                heatGrid.appendChild(colDiv);
+            }
+            const cell = document.createElement('div');
+            const count = heatData[d];
+            cell.className = `heatmap-cell ${count >= 4 ? 'heat-4' : count >= 3 ? 'heat-3' : count >= 2 ? 'heat-2' : count === 1 ? 'heat-1' : ''}`;
+            cell.title = `${d}: 執行 ${count} 次`;
+            colDiv.appendChild(cell);
+        });
+        
+        // 自動捲動到最右側 (最新日期)
+        setTimeout(() => { const scrollCont = document.querySelector('.heatmap-scroll'); if(scrollCont) scrollCont.scrollLeft = scrollCont.scrollWidth; }, 100);
+    }
+
+    // ==========================================
+    // 5. 心流沙盒 (Flow Sandbox)
     // ==========================================
     let sandboxState = { tasks: [], activeId: null, globalNote: "", timer: { mode: 'FLEX', seconds: 0, status: 'IDLE', intervalId: null } };
-    function getSandboxKey() { return currentUser ? `flow_sandbox_pro_${currentUser.uid}` : 'flow_sandbox_pro_temp'; }
+    function getSandboxKey() { return currentUser ? `flow_sandbox_pro_${currentUser.uid}` : 'flow_sandbox_temp'; }
 
     function loadSandboxState() {
         const raw = localStorage.getItem(getSandboxKey());
-        if (raw) {
-            try {
-                const data = JSON.parse(raw);
-                sandboxState.tasks = data.tasks || [];
-                sandboxState.activeId = data.activeId || null;
-                sandboxState.globalNote = data.globalNote || "";
-            } catch (e) { console.warn("載入沙盒資料失敗", e); }
-        }
+        if (raw) { try { const d = JSON.parse(raw); sandboxState.tasks=d.tasks||[]; sandboxState.activeId=d.activeId||null; sandboxState.globalNote=d.globalNote||""; } catch(e){} }
         renderSandboxTasks(); refreshSandboxNoteArea();
     }
 
     function saveSandboxState() {
         if (!currentUser) return;
-        const noteArea = document.getElementById('sandbox-note-area');
-        if (sandboxState.activeId) {
-            const t = sandboxState.tasks.find(x => x.id === sandboxState.activeId);
-            if(t) t.note = noteArea.value;
-        } else { sandboxState.globalNote = noteArea.value; }
-
+        const area = document.getElementById('sandbox-note-area');
+        if (sandboxState.activeId) { const t = sandboxState.tasks.find(x=>x.id===sandboxState.activeId); if(t) t.note = area.value; } 
+        else { sandboxState.globalNote = area.value; }
         localStorage.setItem(getSandboxKey(), JSON.stringify({ tasks: sandboxState.tasks, activeId: sandboxState.activeId, globalNote: sandboxState.globalNote }));
         document.getElementById('sandbox-save-status').innerText = `已儲存 ${new Date().toLocaleTimeString('zh-TW', {hour12:false})}`;
     }
 
     function importWhiteboardTasks() {
         if(!currentUser) return;
-        const wbRaw = localStorage.getItem(`whiteboard_state_${currentUser.uid}`);
-        if(!wbRaw) return alert("找不到白板資料！請確定主系統有正常運作且儲存。");
-        
+        const raw = localStorage.getItem(`whiteboard_state_${currentUser.uid}`);
+        if(!raw) return alert("找不到白板資料！");
         try {
-            const wbData = JSON.parse(wbRaw);
-            let count = 0;
-            if (wbData.workspaces) {
-                Object.values(wbData.workspaces).forEach(cards => {
+            let count = 0, wb = JSON.parse(raw);
+            if(wb.workspaces) {
+                Object.values(wb.workspaces).forEach(cards => {
                     cards.forEach(c => {
-                        // 略過完成狀態 (2) 以及已經匯入過的任務
-                        if (c.status === 2 || sandboxState.tasks.some(t => t.wbId === c.id)) return;
-                        sandboxState.tasks.push({ id: Date.now() + Math.random(), wbId: c.id, title: c.title || '未命名', note: c.content || '', completed: false });
+                        if(c.status === 2 || sandboxState.tasks.some(t=>t.wbId===c.id)) return;
+                        sandboxState.tasks.push({ id:Date.now()+Math.random(), wbId:c.id, title:c.title||'未命名', note:c.content||'', completed:false });
                         count++;
                     });
                 });
             }
-            if(count > 0) { alert(`已安全載入 ${count} 筆複本任務進沙盒緩衝區。`); saveSandboxState(); renderSandboxTasks(); }
-            else { alert("沒有發現新的未完成白板任務。"); }
-        } catch (e) { console.error("解析白板資料失敗", e); }
+            if(count>0) { alert(`已載入 ${count} 筆複本任務。`); saveSandboxState(); renderSandboxTasks(); } else alert("無未完成任務。");
+        } catch(e){}
     }
 
     function renderSandboxTasks() {
-        const list = document.getElementById('sandbox-task-list');
-        list.innerHTML = "";
-        
-        if (sandboxState.tasks.length === 0) {
-            list.innerHTML = `<div style="padding:15px; text-align:center; color:#adb5bd; font-size:0.9rem;">目前無任務，請點擊上方「載入白板任務」。</div>`;
-            return;
-        }
-
+        const list = document.getElementById('sandbox-task-list'); list.innerHTML = "";
         sandboxState.tasks.forEach(t => {
             const div = document.createElement('div');
             div.className = `task-item ${sandboxState.activeId === t.id ? 'active' : ''}`;
-            div.innerHTML = `
-                <div style="display:flex; align-items:center; gap:8px; width:100%;">
-                    <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleSandboxTask(${t.id}, event)" style="cursor:pointer; transform:scale(1.2);">
-                    <div onclick="setSandboxActiveTask(${t.id})" style="flex-grow:1; font-weight:bold; ${t.completed?'text-decoration:line-through;opacity:0.5;':''}">${t.title}</div>
-                </div>
-            `;
+            div.innerHTML = `<div style="display:flex; align-items:center; gap:8px; width:100%;"><input type="checkbox" ${t.completed?'checked':''} onchange="toggleSandboxTask(${t.id}, event)"><div onclick="setSandboxActiveTask(${t.id})" style="flex-grow:1; font-weight:bold; ${t.completed?'text-decoration:line-through;opacity:0.5;':''}">${t.title}</div></div>`;
             list.appendChild(div);
         });
     }
 
-    function toggleSandboxTask(id, e) { e.stopPropagation(); const t = sandboxState.tasks.find(x => x.id === id); if(t) t.completed = !t.completed; saveSandboxState(); renderSandboxTasks(); }
+    function toggleSandboxTask(id, e) { e.stopPropagation(); const t = sandboxState.tasks.find(x=>x.id===id); if(t) t.completed = !t.completed; saveSandboxState(); renderSandboxTasks(); }
     function setSandboxActiveTask(id) { sandboxState.activeId = id; saveSandboxState(); renderSandboxTasks(); refreshSandboxNoteArea(); }
-
     function refreshSandboxNoteArea() {
-        const titleEl = document.getElementById('sandbox-task-title');
-        const areaEl = document.getElementById('sandbox-note-area');
-        if (sandboxState.activeId) {
-            const t = sandboxState.tasks.find(x => x.id === sandboxState.activeId);
-            if(t) { titleEl.value = `🎯 ${t.title}`; areaEl.value = t.note || ""; return; }
-        }
-        titleEl.value = "全域發想草稿筆記"; areaEl.value = sandboxState.globalNote || "";
+        const titleEl = document.getElementById('sandbox-task-title'), areaEl = document.getElementById('sandbox-note-area');
+        if (sandboxState.activeId) { const t = sandboxState.tasks.find(x=>x.id===sandboxState.activeId); if(t) { titleEl.value = `🎯 ${t.title}`; areaEl.value = t.note || ""; return; } }
+        titleEl.value = "全域發想草稿"; areaEl.value = sandboxState.globalNote || "";
     }
 
-    // Timer Logic
+    // Timer
     function setTimerMode(m) { stopTimer(); sandboxState.timer.mode = m; sandboxState.timer.seconds = m==='POMO'?25*60:0; updateTimerDisplay(); }
     function startTimer() {
         if(sandboxState.timer.status === 'RUNNING') return;
-        sandboxState.timer.status = 'RUNNING'; document.getElementById('timerStatus').innerText = '🔥 心流高能運算中';
+        sandboxState.timer.status = 'RUNNING'; document.getElementById('timerStatus').innerText = '🔥 運算中';
         sandboxState.timer.intervalId = setInterval(() => {
             if(sandboxState.timer.mode === 'FLEX') sandboxState.timer.seconds++;
-            else { sandboxState.timer.seconds--; if(sandboxState.timer.seconds<=0) { stopTimer(); alert('🍅 番茄鐘時間到，請休息一下！'); } }
+            else { sandboxState.timer.seconds--; if(sandboxState.timer.seconds<=0) { stopTimer(); alert('🍅 番茄鐘時間到！'); } }
             updateTimerDisplay();
         }, 1000);
     }
     function pauseTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'PAUSED'; document.getElementById('timerStatus').innerText = '⏸️ 暫停'; }
-    function stopTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'IDLE'; document.getElementById('timerStatus').innerText = '閒置中'; updateTimerDisplay(); }
+    function stopTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'IDLE'; document.getElementById('timerStatus').innerText = '閒置'; updateTimerDisplay(); }
     function updateTimerDisplay() { const s = sandboxState.timer.seconds; document.getElementById('timeDisplay').innerText = `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
 
-    function clearSandbox() { if(confirm("確定清空沙盒緩衝區？此動作不會影響到雲端白板資料，但「本地草稿」將消失。")) { stopTimer(); localStorage.removeItem(getSandboxKey()); location.reload(); } }
-    
+    function clearSandbox() { if(confirm("確定清空沙盒？本地草稿將消失！")) { stopTimer(); localStorage.removeItem(getSandboxKey()); location.reload(); } }
     function exportSandboxMarkdown() {
-        let text = `# 🌟 心流沙盒最終收割戰報\n*匯出時間: ${new Date().toLocaleString('zh-TW')}*\n\n`;
-        if (sandboxState.globalNote.trim()) text += `## 📝 全域沙盒靈感\n${sandboxState.globalNote}\n\n---\n\n`;
-        
-        let hasTasks = false;
-        sandboxState.tasks.forEach(t => { 
-            hasTasks = true;
-            text += `### ${t.completed ? '[x]' : '[ ]'} ${t.title}\n`;
-            if(t.note.trim()) text += `${t.note}\n\n`; 
-            else text += `\n`;
-        });
-
-        if (!hasTasks && !sandboxState.globalNote.trim()) {
-            return alert("沙盒內目前沒有任何筆記或任務可以匯出！");
-        }
-
-        const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `OpsHub_Sandbox_${getLocalYMD()}.md`;
+        let text = `# 心流沙盒匯出\n\n`;
+        if (sandboxState.globalNote.trim()) text += `## 全域筆記\n${sandboxState.globalNote}\n\n`;
+        sandboxState.tasks.forEach(t => { text += `### ${t.completed ? '[x]' : '[ ]'} ${t.title}\n${t.note}\n\n`; });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type:'text/markdown;charset=utf-8'})); a.download = `OpsHub_Sandbox.md`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
 </script>
