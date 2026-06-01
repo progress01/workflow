@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人高級數據分析中心 (Ops Hub Pro)</title>
+    <title>個人運營中心 (Ops Hub Pro)</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
@@ -22,9 +22,10 @@
         
         .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: none; flex-direction: column; overflow: hidden; }
         .app-header { background: var(--dark-color); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .nav-tabs { display: flex; gap: 10px; }
-        .nav-tab-btn { background: #495057; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .nav-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
+        .nav-tab-btn { background: #495057; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         .nav-tab-btn.active { background: var(--primary-color); }
+        .nav-tab-btn:hover:not(.active) { background: #6c757d; }
 
         .view-section { padding: 20px; display: none; }
         .view-section.active { display: block; }
@@ -43,7 +44,7 @@
         .ga-controls { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px; }
         .ga-row { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
         .ga-label { font-weight: bold; color: #495057; min-width: 80px; }
-        .btn-group { display: flex; gap: 5px; }
+        .btn-group { display: flex; gap: 5px; flex-wrap: wrap; }
         .btn-filter { background: #e9ecef; color: #495057; border: 1px solid #ced4da; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;}
         .btn-filter.active { background: #007bff; color: white; border-color: #007bff; }
         
@@ -60,6 +61,7 @@
         .comp-down { color: var(--success-color); }
         .comp-neutral { color: #6c757d; }
 
+        /* 圖表與表格 */
         .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .chart-container { background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); height: 300px; position: relative; }
         
@@ -73,17 +75,21 @@
         .panel-left { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px; }
         .panel-right { flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 10px; }
         .timer-box { background: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; }
-        .timer-display { font-size: 3rem; font-weight: bold; margin: 10px 0; }
+        .timer-display { font-size: 3rem; font-weight: bold; margin: 10px 0; font-variant-numeric: tabular-nums;}
         .task-list { flex-grow: 1; max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; background: white; }
         .task-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
         .task-item.active { border-left: 4px solid var(--primary-color); background: #e9ecef; }
         .task-item.completed { opacity: 0.6; text-decoration: line-through; }
-        textarea { flex-grow: 1; min-height: 300px; font-family: monospace; padding: 15px; }
+        textarea { flex-grow: 1; min-height: 300px; font-family: monospace; padding: 15px; resize: vertical; }
         .sandbox-actions { display: flex; justify-content: space-between; align-items: center; background: #e9ecef; padding: 10px 15px; border-radius: 8px; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
 
+        /* RWD 響應式調整 */
         @media (max-width: 768px) {
+            .app-header { flex-direction: column; align-items: stretch; }
+            .nav-tabs { justify-content: center; }
             .sandbox-layout { flex-direction: column; }
             .charts-grid { grid-template-columns: 1fr; }
+            .timer-display { font-size: 2.5rem; }
         }
     </style>
 </head>
@@ -98,23 +104,26 @@
     <div class="app-header">
         <div style="font-size: 1.2rem; font-weight: bold;">🛡️ Ops Hub Pro</div>
         <div class="nav-tabs">
-            <button class="nav-tab-btn active" onclick="switchView('dashboard')" id="btn-tab-dashboard">📊 GA 數據高級儀表板</button>
+            <button class="nav-tab-btn active" onclick="switchView('dashboard')" id="btn-tab-dashboard">📊 高級儀表板</button>
             <button class="nav-tab-btn" onclick="switchView('sandbox')" id="btn-tab-sandbox">🌟 心流沙盒</button>
         </div>
-        <button class="btn-outline" style="color:white; border-color:white; padding: 4px 10px;" onclick="toggleConfigPanel()">⚙️ 本地配置面板</button>
+        <div style="display: flex; gap: 8px;">
+            <button class="btn-outline" style="color:white; border-color:white; padding: 4px 10px;" onclick="toggleConfigPanel()">⚙️ 本地配置</button>
+            <button class="btn-danger" style="padding: 4px 10px;" onclick="logoutFirebase()">登出</button>
+        </div>
     </div>
 
     <div id="local-config" class="config-panel">
         <div>
-            <label style="font-weight:bold; display:block; margin-bottom:5px;">💰 每月基本預算 (薪水基底)</label>
+            <label style="font-weight:bold; display:block; margin-bottom:5px;">💰 每月基本預算 (薪水/資金池)</label>
             <input type="number" id="cfg-salary" value="50000" onchange="saveLocalConfig()">
         </div>
         <div>
-            <label style="font-weight:bold; display:block; margin-bottom:5px;">🔄 獨立加總月固定訂閱總額 (如 Netflix/軟體)</label>
+            <label style="font-weight:bold; display:block; margin-bottom:5px;">🔄 月固定訂閱總額 (Netflix/房租等)</label>
             <input type="number" id="cfg-subscriptions" value="1500" onchange="saveLocalConfig()">
         </div>
         <div style="display:flex; align-items:flex-end;">
-            <span style="font-size:0.8rem; color:#856404;">ℹ️ 此處引數僅存於本地，用於精準計算【可用真實結餘】。</span>
+            <span style="font-size:0.8rem; color:#856404;">ℹ️ 此處參數僅存於本地瀏覽器，用於計算精準【可用真實結餘】，絕對不污染雲端資料庫。</span>
         </div>
     </div>
 
@@ -156,10 +165,10 @@
             <div class="stat-card">
                 <h4>💳 可用預算真實結餘</h4>
                 <div class="val" id="stat-balance" style="color:var(--primary-color);">0</div>
-                <div class="comparison" id="cmp-balance" style="color:#6c757d;">包含本地薪水與訂閱攤提</div>
+                <div class="comparison" id="cmp-balance" style="color:#6c757d;">基於本地薪水與訂閱參數計算</div>
             </div>
             <div class="stat-card">
-                <h4>📚 成長與習慣追蹤</h4>
+                <h4>📚 成長與習慣追蹤 (次)</h4>
                 <div class="val" id="stat-growth" style="color: #17a2b8;">0</div>
                 <div class="comparison" id="cmp-growth">較上期 --</div>
             </div>
@@ -200,7 +209,7 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <h4 style="margin: 0; color: #495057;">📋 本地複本任務</h4>
-                    <button class="btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="importWhiteboardTasks()">📥 載入白板</button>
+                    <button class="btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="importWhiteboardTasks()">📥 載入白板任務</button>
                 </div>
                 <div class="task-list" id="sandbox-task-list"></div>
             </div>
@@ -209,12 +218,12 @@
                     <h4 style="margin: 0; color: #495057;">📝 密閉式發想沙盒 (Markdown)</h4>
                     <span style="font-size: 0.8rem; color: #adb5bd;" id="sandbox-save-status">自動儲存於本地</span>
                 </div>
-                <input type="text" id="sandbox-task-title" placeholder="全域發想草稿" readonly style="font-weight: bold; color: var(--primary-color); border: none; border-bottom: 1px dashed #ced4da; border-radius: 0;">
-                <textarea id="sandbox-note-area" oninput="saveSandboxState()"></textarea>
+                <input type="text" id="sandbox-task-title" placeholder="全域發想草稿" readonly style="font-weight: bold; color: var(--primary-color); border: none; border-bottom: 1px dashed #ced4da; border-radius: 0; outline: none; padding-left: 0;">
+                <textarea id="sandbox-note-area" oninput="saveSandboxState()" placeholder="在此輸入筆記、拆解步驟...\n此處變更只會存在於瀏覽器暫存中。"></textarea>
             </div>
         </div>
         <div class="sandbox-actions">
-            <div style="font-size: 0.85rem; color: #856404;"><strong>ℹ️ 物理隔離狀態：</strong> 所有的修改與筆記只會留在當前視窗，不污染資料庫。</div>
+            <div style="font-size: 0.85rem; color: #856404;"><strong>ℹ️ 物理隔離狀態：</strong> 所有的修改與筆記只會留在當前視窗，結束後請記得匯出。</div>
             <div style="display: flex; gap: 10px;">
                 <button class="btn-success" onclick="exportSandboxMarkdown()">⬇️ 輸出成果 (.md)</button>
                 <button class="btn-danger" onclick="clearSandbox()">🧹 徹底清空沙盒</button>
@@ -225,7 +234,7 @@
 
 <script>
     // ==========================================
-    // 1. Firebase 初始化
+    // 1. Firebase 初始化與狀態控制
     // ==========================================
     const firebaseConfig = { apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU", authDomain: "maplestoryboss.firebaseapp.com", projectId: "maplestoryboss", storageBucket: "maplestoryboss.firebasestorage.app", messagingSenderId: "198034430854", appId: "1:198034430854:web:527ffcee039e223b972a07" };
     firebase.initializeApp(firebaseConfig);
@@ -234,6 +243,10 @@
     const provider = new firebase.auth.GoogleAuthProvider();
 
     let currentUser = null;
+    let fullRecords = [];
+    let chartInstances = {};
+    let currentAnalysisMode = 'trend';
+
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUser = user;
@@ -248,23 +261,32 @@
         }
     });
 
-    function loginFirebase() { auth.signInWithPopup(provider); }
+    function loginFirebase() { auth.signInWithPopup(provider).catch(err => alert("登入失敗: " + err.message)); }
     function logoutFirebase() { auth.signOut(); }
+    
     function switchView(viewName) {
         document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
         document.getElementById(`view-${viewName}`).classList.add('active');
         document.getElementById(`btn-tab-${viewName}`).classList.add('active');
     }
+    
     const getLocalYMD = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
+    function initApp() {
+        setDateRange('month', document.querySelector('#date-btn-group .active'));
+        fetchDashboardData();
+        loadSandboxState();
+    }
+
     // ==========================================
-    // 2. 本地設定隔離儲存
+    // 2. 本地設定隔離儲存 (LocalStorage)
     // ==========================================
     function toggleConfigPanel() {
         const panel = document.getElementById('local-config');
         panel.style.display = (panel.style.display === 'grid') ? 'none' : 'grid';
     }
+    
     function saveLocalConfig() {
         if(!currentUser) return;
         const config = {
@@ -274,23 +296,22 @@
         localStorage.setItem(`local_hub_config_${currentUser.uid}`, JSON.stringify(config));
         executeAnalysis(); // 自動重新解析計算
     }
+    
     function loadLocalConfig() {
         if(!currentUser) return;
         const raw = localStorage.getItem(`local_hub_config_${currentUser.uid}`);
         if(raw) {
-            const config = JSON.parse(raw);
-            document.getElementById('cfg-salary').value = config.salary;
-            document.getElementById('cfg-subscriptions').value = config.subs;
+            try {
+                const config = JSON.parse(raw);
+                document.getElementById('cfg-salary').value = config.salary;
+                document.getElementById('cfg-subscriptions').value = config.subs;
+            } catch(e) { console.warn("載入設定失敗", e); }
         }
     }
 
     // ==========================================
     // 3. GA 核心高級數據分析模組
     // ==========================================
-    let fullRecords = [];
-    let chartInstances = {};
-    let currentAnalysisMode = 'trend';
-
     function setDateRange(range, btnEl) {
         document.querySelectorAll('#date-btn-group .btn-filter').forEach(btn => btn.classList.remove('active'));
         btnEl.classList.add('active');
@@ -322,27 +343,30 @@
 
     async function fetchDashboardData() {
         try {
-            const snapshot = await db.collection("LifeApp_Records").where("uid", "==", currentUser.uid + "_life").get();
+            const uidParam = currentUser.uid + "_life";
+            const snapshot = await db.collection("LifeApp_Records").where("uid", "==", uidParam).get();
             fullRecords = [];
             snapshot.forEach(doc => fullRecords.push({ id: doc.id, ...doc.data() }));
-            fullRecords.sort((a, b) => new Date(a.date) - new Date(b.date)); // 正序便於時間軸處理
+            
+            // 按日期正序排列，方便時間軸圖表繪製
+            fullRecords.sort((a, b) => new Date(a.date) - new Date(b.date) || a.timestamp - b.timestamp);
             executeAnalysis();
-        } catch (error) { alert("同步失敗"); }
-    }
-
-    function initApp() {
-        setDateRange('month', document.querySelector('#date-btn-group .active'));
-        fetchDashboardData();
-        loadSandboxState();
+        } catch (error) { 
+            console.error("Firebase 同步錯誤:", error);
+            alert("同步失敗：無法讀取資料庫。請確認網路連線或重新整理。"); 
+        }
     }
 
     function executeAnalysis() {
-        if (!fullRecords.length) return;
+        if (!fullRecords.length) {
+            document.getElementById('table-body').innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px;">資料庫無紀錄</td></tr>';
+            return;
+        }
         
         const startStr = document.getElementById('custom-start').value;
         const endStr = document.getElementById('custom-end').value;
         
-        // 計算時間切片大小與模組 C（上一期）的邊界
+        // 邊界運算 (計算上一期以製作 MoM)
         const currStart = new Date(startStr);
         const currEnd = new Date(endStr);
         const dayDiff = Math.ceil((currEnd - currStart) / (1000 * 60 * 60 * 24)) + 1;
@@ -356,11 +380,11 @@
         const currentSlice = fullRecords.filter(r => r.date >= startStr && r.date <= endStr);
         const previousSlice = fullRecords.filter(r => r.date >= prevStartStr && r.date <= prevEndStr);
 
-        // 計算當期指標
         let currMetrics = { expense: 0, income: 0, growth: 0, food: 0, burn: 0 };
         const tbody = document.getElementById('table-body');
         tbody.innerHTML = '';
 
+        // 處理當期明細 (表格部分倒序插入，最新在最上方)
         currentSlice.forEach(r => {
             if (r.type === 'expense' || r.type === 'extra_expense') currMetrics.expense += r.amount;
             if (r.type === 'income' || r.type === 'extra_income') currMetrics.income += r.amount;
@@ -368,13 +392,16 @@
             if (r.type === 'food') currMetrics.food += r.amount;
             if (r.type === 'exercise') currMetrics.burn += r.amount;
 
-            // 渲染明細 (倒序排列，最新鮮的在上方)
             const tr = document.createElement('tr');
             tr.innerHTML = `<td>${r.date.substring(5)}</td><td><span class="badge" style="background:${getTypeColor(r.type)}">${r.type}</span></td><td>${r.categoryText || r.category}</td><td style="font-weight:bold;">${r.amount.toLocaleString()}</td><td style="color:#666; font-size:0.8rem;">${r.note||''}</td>`;
             tbody.insertBefore(tr, tbody.firstChild);
         });
 
-        // 計算上期指標 (用於環比)
+        if(currentSlice.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:15px;">此區間無資料</td></tr>';
+        }
+
+        // 處理上期資料
         let prevMetrics = { expense: 0, income: 0, growth: 0 };
         previousSlice.forEach(r => {
             if (r.type === 'expense' || r.type === 'extra_expense') prevMetrics.expense += r.amount;
@@ -382,30 +409,35 @@
             if (r.type === 'learning' || r.type === 'habit') prevMetrics.growth += r.amount;
         });
 
-        // 讀取本地薪水與訂閱引數
+        // 真實結餘運算
         const baseSalary = parseFloat(document.getElementById('cfg-salary').value) || 0;
         const baseSubs = parseFloat(document.getElementById('cfg-subscriptions').value) || 0;
-        
-        // 精準可用結餘算式：(薪水+外部收入) - 實際花費 - 訂閱
         const realBalance = (baseSalary + currMetrics.income) - currMetrics.expense - baseSubs;
 
-        // 更新 KPI 卡片
+        // KPI UI 更新
         document.getElementById('stat-expense').innerText = currMetrics.expense.toLocaleString();
         document.getElementById('stat-income').innerText = currMetrics.income.toLocaleString();
         document.getElementById('stat-balance').innerText = realBalance.toLocaleString();
         document.getElementById('stat-growth').innerText = currMetrics.growth;
 
+        // 熱量指標
         const calNet = currMetrics.burn - currMetrics.food;
-        document.getElementById('stat-calorie').innerText = calNet > 0 ? `+${calNet}` : calNet;
+        const statCal = document.getElementById('stat-calorie');
+        if(statCal) {
+            statCal.innerText = calNet > 0 ? `+${calNet}` : calNet;
+            statCal.style.color = calNet >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+        }
 
-        // 渲染模組 C 環比標籤
+        // 環比標籤更新
         renderComparisonBadge('cmp-expense', currMetrics.expense, prevMetrics.expense, true);
         renderComparisonBadge('cmp-income', currMetrics.income, prevMetrics.income, false);
         renderComparisonBadge('cmp-growth', currMetrics.growth, prevMetrics.growth, false);
 
-        // 渲染模式
+        // 圖表渲染派遣
         if (currentAnalysisMode === 'trend') {
-            renderTrendCharts(currentSlice, dayDiff, baseSalary);
+            // 注意：要畫 Pacing，需依賴剩餘/可用預算
+            const availableBudget = baseSalary - baseSubs;
+            renderTrendCharts(currentSlice, dayDiff, availableBudget);
         } else {
             renderStructureCharts(currentSlice);
         }
@@ -413,7 +445,9 @@
 
     function renderComparisonBadge(elementId, curr, prev, isExpense = false) {
         const el = document.getElementById(elementId);
+        if (!el) return;
         if (prev === 0) { el.innerText = "較上期 --"; el.className = "comparison comp-neutral"; return; }
+        
         const pct = ((curr - prev) / prev * 100).toFixed(1);
         
         if (curr > prev) {
@@ -429,9 +463,9 @@
     }
 
     // ==========================================
-    // 4. 高級視覺化引擎 (模組 A 與 模組 B)
+    // 4. 圖表視覺化引擎 (Trend vs Structure)
     // ==========================================
-    function renderTrendCharts(records, totalDays, baseSalary) {
+    function renderTrendCharts(records, totalDays, availableBudget) {
         let dailyData = {};
         records.forEach(r => {
             if (!dailyData[r.date]) dailyData[r.date] = { expense: 0, health: 0, growth: 0 };
@@ -443,8 +477,8 @@
 
         const sortedDates = Object.keys(dailyData).sort();
         
-        // 模組 B: Pacing 理想消耗速率計算 (將可用預算平均分配至每一天)
-        const dailyIdealBurn = baseSalary / totalDays;
+        // Pacing (預期消耗速率)
+        const dailyIdealBurn = availableBudget / (totalDays || 1);
         let accActualExpense = 0;
         let actualExpenseTimeline = [];
         let idealPacingTimeline = [];
@@ -455,29 +489,30 @@
             idealPacingTimeline.push(Math.round(dailyIdealBurn * (idx + 1)));
         });
 
-        // 繪製財務 Pacing 複合對比圖
+        // Chart 1: 財務 Pacing 複合線圖
         const finCtx = document.getElementById('financeChart').getContext('2d');
         if (chartInstances['financeChart']) chartInstances['financeChart'].destroy();
         chartInstances['financeChart'] = new Chart(finCtx, {
             type: 'line',
             data: {
-                labels: sortedDates,
+                labels: sortedDates.length ? sortedDates : ['無資料'],
                 datasets: [
-                    { label: '實際累積支出', data: actualExpenseTimeline, borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.05)', fill: true, tension: 0.2 },
-                    { label: '理想預算消耗控制線 (Pacing)', data: idealPacingTimeline, borderColor: '#6c757d', borderDash: [5, 5], pointRadius: 0, fill: false }
+                    { label: '實際累積支出', data: actualExpenseTimeline.length ? actualExpenseTimeline : [0], borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.05)', fill: true, tension: 0.2 },
+                    { label: '理想消耗預算線', data: idealPacingTimeline.length ? idealPacingTimeline : [0], borderColor: '#6c757d', borderDash: [5, 5], pointRadius: 0, fill: false }
                 ]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '📈 支出與 Pacing 預算斜率對比' } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '📈 支出與 Pacing 控制線' }, legend: {position: 'bottom'} } }
         });
 
-        // 繪製其餘趨勢圖
-        drawChart('healthChart', 'line', '單日熱量赤字/盈餘波動', sortedDates, sortedDates.map(d => dailyData[d].health), '#28a745');
+        // Chart 2: 每日熱量淨值
+        drawChart('healthChart', 'line', '單日熱量盈虧', sortedDates, sortedDates.map(d => dailyData[d].health), '#28a745');
+        
+        // Chart 3: 成長積累
         let accG = 0;
-        drawChart('growthChart', 'line', '成長路徑累積曲線', sortedDates, sortedDates.map(d => { accG += dailyData[d].growth; return accG; }), '#17a2b8');
+        drawChart('growthChart', 'line', '成長路徑累積', sortedDates, sortedDates.map(d => { accG += dailyData[d].growth; return accG; }), '#17a2b8');
     }
 
     function renderStructureCharts(records) {
-        // 模組 A: 分類涵攝結構收斂
         let expCats = {}, foodCats = {}, grwCats = {};
         
         records.forEach(r => {
@@ -496,9 +531,9 @@
         const hData = parseObj(foodCats);
         const gData = parseObj(grwCats);
 
-        drawChart('financeChart', 'doughnut', '支出結構佔比 (Where the money went)', fData.labels, fData.data, ['#dc3545', '#ffc107', '#fd7e14', '#e83e8c', '#6f42c1', '#6c757d']);
-        drawChart('healthChart', 'doughnut', '攝取食物結構分佈', hData.labels, hData.data, ['#fd7e14', '#ffc107', '#20c997', '#6c757d']);
-        drawChart('growthChart', 'bar', '習慣與學習項目權重', gData.labels, gData.data, '#17a2b8');
+        drawChart('financeChart', 'doughnut', '支出結構佔比', fData.labels, fData.data, ['#dc3545', '#ffc107', '#fd7e14', '#e83e8c', '#6f42c1', '#6c757d']);
+        drawChart('healthChart', 'doughnut', '攝取來源佔比', hData.labels, hData.data, ['#fd7e14', '#ffc107', '#20c997', '#6c757d']);
+        drawChart('growthChart', 'bar', '習慣與學習權重', gData.labels, gData.data, '#17a2b8');
     }
 
     function drawChart(id, type, label, labels, data, colors) {
@@ -523,7 +558,7 @@
     function getTypeColor(t) { return (t==='expense'||t==='extra_expense')?'#dc3545':(t==='income'||t==='extra_income')?'#28a745':(t==='food')?'#fd7e14':(t==='exercise')?'#20c997':'#17a2b8'; }
 
     // ==========================================
-    // 5. 心流沙盒模組 (完全保留且物理隔離)
+    // 5. 獨立心流沙盒模組 (LocalStorage Buffer)
     // ==========================================
     let sandboxState = { tasks: [], activeId: null, globalNote: "", timer: { mode: 'FLEX', seconds: 0, status: 'IDLE', intervalId: null } };
     function getSandboxKey() { return currentUser ? `flow_sandbox_pro_${currentUser.uid}` : 'flow_sandbox_pro_temp'; }
@@ -536,7 +571,7 @@
                 sandboxState.tasks = data.tasks || [];
                 sandboxState.activeId = data.activeId || null;
                 sandboxState.globalNote = data.globalNote || "";
-            } catch (e) {}
+            } catch (e) { console.warn("載入沙盒資料失敗", e); }
         }
         renderSandboxTasks(); refreshSandboxNoteArea();
     }
@@ -556,31 +591,41 @@
     function importWhiteboardTasks() {
         if(!currentUser) return;
         const wbRaw = localStorage.getItem(`whiteboard_state_${currentUser.uid}`);
-        if(!wbRaw) return alert("找不到白板資料！");
+        if(!wbRaw) return alert("找不到白板資料！請確定主系統有正常運作且儲存。");
         
-        const wbData = JSON.parse(wbRaw);
-        let count = 0;
-        if (wbData.workspaces) {
-            Object.values(wbData.workspaces).forEach(cards => {
-                cards.forEach(c => {
-                    if (c.status === 2 || sandboxState.tasks.some(t => t.wbId === c.id)) return;
-                    sandboxState.tasks.push({ id: Date.now() + Math.random(), wbId: c.id, title: c.title || '未命名', note: c.content || '', completed: false });
-                    count++;
+        try {
+            const wbData = JSON.parse(wbRaw);
+            let count = 0;
+            if (wbData.workspaces) {
+                Object.values(wbData.workspaces).forEach(cards => {
+                    cards.forEach(c => {
+                        // 略過完成狀態 (2) 以及已經匯入過的任務
+                        if (c.status === 2 || sandboxState.tasks.some(t => t.wbId === c.id)) return;
+                        sandboxState.tasks.push({ id: Date.now() + Math.random(), wbId: c.id, title: c.title || '未命名', note: c.content || '', completed: false });
+                        count++;
+                    });
                 });
-            });
-        }
-        if(count > 0) { alert(`已安全複製 ${count} 筆任務進沙盒緩衝區。`); saveSandboxState(); renderSandboxTasks(); }
+            }
+            if(count > 0) { alert(`已安全載入 ${count} 筆複本任務進沙盒緩衝區。`); saveSandboxState(); renderSandboxTasks(); }
+            else { alert("沒有發現新的未完成白板任務。"); }
+        } catch (e) { console.error("解析白板資料失敗", e); }
     }
 
     function renderSandboxTasks() {
         const list = document.getElementById('sandbox-task-list');
         list.innerHTML = "";
+        
+        if (sandboxState.tasks.length === 0) {
+            list.innerHTML = `<div style="padding:15px; text-align:center; color:#adb5bd; font-size:0.9rem;">目前無任務，請點擊上方「載入白板任務」。</div>`;
+            return;
+        }
+
         sandboxState.tasks.forEach(t => {
             const div = document.createElement('div');
             div.className = `task-item ${sandboxState.activeId === t.id ? 'active' : ''}`;
             div.innerHTML = `
                 <div style="display:flex; align-items:center; gap:8px; width:100%;">
-                    <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleSandboxTask(${t.id}, event)">
+                    <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleSandboxTask(${t.id}, event)" style="cursor:pointer; transform:scale(1.2);">
                     <div onclick="setSandboxActiveTask(${t.id})" style="flex-grow:1; font-weight:bold; ${t.completed?'text-decoration:line-through;opacity:0.5;':''}">${t.title}</div>
                 </div>
             `;
@@ -601,7 +646,7 @@
         titleEl.value = "全域發想草稿筆記"; areaEl.value = sandboxState.globalNote || "";
     }
 
-    // Timer Engine
+    // Timer Logic
     function setTimerMode(m) { stopTimer(); sandboxState.timer.mode = m; sandboxState.timer.seconds = m==='POMO'?25*60:0; updateTimerDisplay(); }
     function startTimer() {
         if(sandboxState.timer.status === 'RUNNING') return;
@@ -613,14 +658,27 @@
         }, 1000);
     }
     function pauseTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'PAUSED'; document.getElementById('timerStatus').innerText = '⏸️ 暫停'; }
-    function stopTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'IDLE'; document.getElementById('timerStatus').innerText = '閒置'; updateTimerDisplay(); }
+    function stopTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'IDLE'; document.getElementById('timerStatus').innerText = '閒置中'; updateTimerDisplay(); }
     function updateTimerDisplay() { const s = sandboxState.timer.seconds; document.getElementById('timeDisplay').innerText = `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
 
-    function clearSandbox() { if(confirm("確定清空沙盒緩衝區？此動作不會影響到雲端白板，但本地草稿將消失。")) { stopTimer(); localStorage.removeItem(getSandboxKey()); location.reload(); } }
+    function clearSandbox() { if(confirm("確定清空沙盒緩衝區？此動作不會影響到雲端白板資料，但「本地草稿」將消失。")) { stopTimer(); localStorage.removeItem(getSandboxKey()); location.reload(); } }
+    
     function exportSandboxMarkdown() {
-        let text = `# 🌟 心流沙盒最終收割戰報\n\n`;
-        if (sandboxState.globalNote.trim()) text += `## 📝 全域沙盒靈感\n${sandboxState.globalNote}\n\n`;
-        sandboxState.tasks.forEach(t => { text += `### ${t.completed ? '[x]' : '[ ]'} ${t.title}\n${t.note}\n\n`; });
+        let text = `# 🌟 心流沙盒最終收割戰報\n*匯出時間: ${new Date().toLocaleString('zh-TW')}*\n\n`;
+        if (sandboxState.globalNote.trim()) text += `## 📝 全域沙盒靈感\n${sandboxState.globalNote}\n\n---\n\n`;
+        
+        let hasTasks = false;
+        sandboxState.tasks.forEach(t => { 
+            hasTasks = true;
+            text += `### ${t.completed ? '[x]' : '[ ]'} ${t.title}\n`;
+            if(t.note.trim()) text += `${t.note}\n\n`; 
+            else text += `\n`;
+        });
+
+        if (!hasTasks && !sandboxState.globalNote.trim()) {
+            return alert("沙盒內目前沒有任何筆記或任務可以匯出！");
+        }
+
         const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `OpsHub_Sandbox_${getLocalYMD()}.md`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
