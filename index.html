@@ -3,278 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>心流工作區</title>
+    <title>個人高級數據分析中心 (Ops Hub Pro)</title>
     
-    <!-- Firebase CDN -->
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        :root { --primary-color: #007bff; --success-color: #28a745; --warning-color: #ffc107; --danger-color: #dc3545; --dark-color: #343a40; --light-bg: #f8f9fa; --border-color: #ced4da; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
+        :root { 
+            --primary-color: #007bff; --success-color: #28a745; --warning-color: #ffc107; 
+            --danger-color: #dc3545; --dark-color: #343a40; --light-bg: #f8f9fa; --border-color: #ced4da; 
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; color: #333; }
         
-        /* 登入畫面 */
         #login-screen { position: fixed; inset: 0; background: radial-gradient(circle at center, #343a40 0%, #1a1e21 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; color: white; }
         .login-btn { background: var(--primary-color); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
-        .login-btn:hover { background: #0056b3; }
+        
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: none; flex-direction: column; overflow: hidden; }
+        .app-header { background: var(--dark-color); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .nav-tabs { display: flex; gap: 10px; }
+        .nav-tab-btn { background: #495057; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .nav-tab-btn.active { background: var(--primary-color); }
 
-        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-top: 5px solid var(--danger-color); display: none; flex-direction: column; }
-        h1, h2, h3 { margin-top: 0; color: var(--dark-color); }
-        
-        /* Layout */
-        .main-layout { display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch; }
-        .left-panel { flex: 1; min-width: 320px; max-width: 450px; border: 2px solid var(--primary-color); border-radius: 8px; padding: 15px; background: #fff; display: flex; flex-direction: column; }
-        .right-panel { flex: 2; min-width: 300px; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 15px;}
-        
-        /* Timer Styles */
-        .timer-display { font-size: 3.5rem; font-weight: bold; text-align: center; margin: 10px 0; color: var(--dark-color); border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f8f9fa; }
-        .gif-container { width: 120px; height: 120px; margin: 0 auto; display: flex; align-items: center; justify-content: center; border: 2px dashed #ccc; border-radius: 8px; overflow: hidden; background: white; }
-        .gif-container img { width: 100%; height: 100%; object-fit: cover; }
-        .controls { display: flex; justify-content: space-between; gap: 5px; margin-top: 10px; }
-        button { cursor: pointer; padding: 8px 12px; border: none; border-radius: 5px; font-weight: bold; color: white; transition: 0.2s; font-size: 0.9rem;}
+        .view-section { padding: 20px; display: none; }
+        .view-section.active { display: block; }
+
+        button { cursor: pointer; padding: 8px 15px; border: none; border-radius: 5px; font-weight: bold; color: white; transition: 0.2s; background: var(--primary-color); }
         button:hover { opacity: 0.9; }
+        .btn-danger { background: var(--danger-color); }
         .btn-success { background: var(--success-color); }
         .btn-warning { background: var(--warning-color); color: #333; }
-        .btn-danger { background: var(--danger-color); }
-        .btn-primary { background: var(--primary-color); }
-        .btn-info { background: #17a2b8; }
         .btn-secondary { background: #6c757d; }
-        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--dark-color); padding: 5px 8px; font-size: 0.85rem;}
-        .btn-outline:hover { background: var(--light-bg); }
-        .btn-md-tool { background: #e9ecef; border: 1px solid #ced4da; color: #495057; font-family: monospace; padding: 4px 8px;}
-        .btn-md-tool:hover { background: #dee2e6; }
+        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--dark-color); }
         
-        /* Tabs */
-        .tabs { display: flex; gap: 5px; margin-bottom: 10px; justify-content: center; }
-        .tab-btn { background: #e9ecef; color: #495057; flex: 1; padding: 10px; }
-        .tab-btn.active { background: #17a2b8; color: white; }
+        input[type="text"], input[type="number"], input[type="date"], select, textarea { padding: 8px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; }
 
-        /* Inputs */
-        input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; font-size: 0.95rem; }
-        textarea { flex: 1; min-height: 350px; font-family: 'Courier New', Courier, monospace; resize: vertical; background: #fdfdfd; line-height: 1.6; font-size: 1rem; border: 2px solid #e9ecef;}
-        textarea:focus { outline: none; border-color: var(--info-color, #17a2b8); box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.1); }
-
-        /* Todo List */
-        .todo-item { display: flex; align-items: flex-start; background: #fff; border-bottom: 1px solid #eee; padding: 12px 8px; transition: 0.2s; position: relative;}
-        .todo-item:hover { background: #f8f9fa; }
-        .todo-item.priority-P1 { border-left: 4px solid var(--danger-color); background: #fff3cd; }
-        .todo-item.priority-P2 { border-left: 4px solid var(--warning-color); background: #f8d7da; }
-        .todo-item.completed { opacity: 0.6; text-decoration: line-through; background: #e9ecef; border-left: 4px solid #adb5bd; }
-        .todo-item.active-task { background: #e0f7fa; border-left: 4px solid #00bcd4; }
+        /* GA Controls */
+        .ga-controls { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px; }
+        .ga-row { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .ga-label { font-weight: bold; color: #495057; min-width: 80px; }
+        .btn-group { display: flex; gap: 5px; }
+        .btn-filter { background: #e9ecef; color: #495057; border: 1px solid #ced4da; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;}
+        .btn-filter.active { background: #007bff; color: white; border-color: #007bff; }
         
-        .todo-details { flex-grow: 1; margin-left: 5px; overflow: hidden;}
-        .badge { padding: 3px 6px; border-radius: 4px; font-size: 0.75em; color: white; }
-        .badge-source { background: #6f42c1; font-size: 0.7em; margin-left: 5px; }
-        .todo-actions { display: flex; flex-direction: column; gap: 5px; margin-left: 5px;}
-        
-        /* Note Panel Specifics */
-        .note-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 10px; border-bottom: 2px solid var(--light-bg); margin-bottom: 10px; }
-        .template-bar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; background: var(--light-bg); padding: 8px; border-radius: 6px; align-items: center;}
-        .log-input-group { display: flex; gap: 8px; margin-top: 10px; }
-        .log-input-group input { margin: 0; border: 2px solid var(--success-color); }
-        
-        /* Countdown */
-        .countdown-box { margin-top: 15px; padding: 10px; background: var(--danger-color); color: white; text-align: center; border-radius: 5px; font-weight: bold; }
+        /* 本地設定面板 */
+        .config-panel { background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
 
-        /* 📦 結算橫幅 */
-        .checkout-banner { background: #1a1e21; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-top: 20px; border: 2px solid #ffc107; box-shadow: 0 4px 15px rgba(0,0,0,0.15);}
-        .checkout-btn { background: #ffc107; color: #1a1e21; font-size: 1.2rem; padding: 15px 30px; border-radius: 30px; border: none; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: 0.2s;}
-        .checkout-btn:hover { background: #e0a800; transform: scale(1.02); }
+        /* KPI 卡片 */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); position: relative; }
+        .stat-card h4 { margin: 0 0 5px 0; color: #6c757d; font-size: 0.85rem; }
+        .stat-card .val { font-size: 1.6rem; font-weight: bold; color: var(--dark-color); }
+        .stat-card .comparison { font-size: 0.75rem; font-weight: bold; margin-top: 5px; }
+        .comp-up { color: var(--danger-color); }
+        .comp-down { color: var(--success-color); }
+        .comp-neutral { color: #6c757d; }
 
-        /* Footer */
-        .app-footer { margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #666; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .chart-container { background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); height: 300px; position: relative; }
+        
+        .table-wrapper { max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        th { background: var(--light-bg); position: sticky; top: 0; z-index: 10; }
+
+        /* 沙盒佈局 */
+        .sandbox-layout { display: flex; gap: 20px; align-items: stretch; }
+        .panel-left { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px; }
+        .panel-right { flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 10px; }
+        .timer-box { background: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; }
+        .timer-display { font-size: 3rem; font-weight: bold; margin: 10px 0; }
+        .task-list { flex-grow: 1; max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; background: white; }
+        .task-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .task-item.active { border-left: 4px solid var(--primary-color); background: #e9ecef; }
+        .task-item.completed { opacity: 0.6; text-decoration: line-through; }
+        textarea { flex-grow: 1; min-height: 300px; font-family: monospace; padding: 15px; }
+        .sandbox-actions { display: flex; justify-content: space-between; align-items: center; background: #e9ecef; padding: 10px 15px; border-radius: 8px; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
 
         @media (max-width: 768px) {
-            .main-layout { flex-direction: column; }
-            .timer-display { font-size: 2.5rem; }
-            textarea { height: 250px; }
-            .app-footer { flex-direction: column; gap: 10px; }
-            .header-buttons { flex-direction: column; width: 100%; }
+            .sandbox-layout { flex-direction: column; }
+            .charts-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-<!-- 登入畫面 -->
 <div id="login-screen">
-    <h1 style="font-size: 2.5rem; margin-bottom: 10px;">🌟 心流工作區</h1>
-    <p style="color: #adb5bd; margin-bottom: 30px;">戰術執行沙盒</p>
-    <button class="login-btn" onclick="loginFirebase()">與白板帳號同步登入</button>
+    <h1 style="font-size: 2rem; margin-bottom: 10px;">🛡️ 個人運營中心 Pro</h1>
+    <button class="login-btn" onclick="loginFirebase()">連結資料庫</button>
 </div>
 
-<!-- 應用程式本體 -->
 <div class="container" id="app-container">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 2px solid #f0f2f5; padding-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-        <h1 style="margin: 0; white-space: nowrap;">🌟 心流沙盒</h1>
-        <div class="header-buttons" style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button class="btn-info" onclick="importFromWhiteboard()" style="background: #6f42c1;">📥 載入白板未完任務</button>
-            <button class="btn-primary" onclick="downloadMarkdown()" style="background: #0056b3;" title="手動備份用">⬇️ 下載 .md</button>
-            <button class="btn-secondary" onclick="window.location.href='whiteboard.html'">🔙 回白板</button>
+    <div class="app-header">
+        <div style="font-size: 1.2rem; font-weight: bold;">🛡️ Ops Hub Pro</div>
+        <div class="nav-tabs">
+            <button class="nav-tab-btn active" onclick="switchView('dashboard')" id="btn-tab-dashboard">📊 GA 數據高級儀表板</button>
+            <button class="nav-tab-btn" onclick="switchView('sandbox')" id="btn-tab-sandbox">🌟 心流沙盒</button>
         </div>
+        <button class="btn-outline" style="color:white; border-color:white; padding: 4px 10px;" onclick="toggleConfigPanel()">⚙️ 本地配置面板</button>
     </div>
 
-    <div class="main-layout">
-        <!-- 左側：控制面板 (計時器 / 任務清單) -->
-        <div class="left-panel">
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchLeftPanel('TIMER')" id="tab-timer">⏱️ 計時器</button>
-                <button class="tab-btn" onclick="switchLeftPanel('TODO')" id="tab-todo">📋 任務矩陣</button>
-            </div>
-
-            <!-- 計時器 View -->
-            <div id="view-timer">
-                <div class="tabs" style="margin-bottom: 15px;">
-                    <button class="tab-btn active" onclick="setTimerMode('FLEXIBLE')" id="btn-mode-flex">彈性計時</button>
-                    <button class="tab-btn" onclick="setTimerMode('POMODORO')" id="btn-mode-pomo">番茄時鐘</button>
-                </div>
-                
-                <div class="timer-display" id="timeDisplay">00:00:00</div>
-                <div class="gif-container" id="gifContainer">
-                    <span style="color:#ccc">GIF (停止)</span>
-                </div>
-                <div style="text-align:center; margin: 10px 0; font-weight:bold; color:#6c757d;" id="statusText">狀態: 閒置</div>
-                
-                <div class="controls">
-                    <button class="btn-success" onclick="startTimer()">▶ 啟動</button>
-                    <button class="btn-warning" onclick="pauseTimer()">⏸ 暫停</button>
-                    <button class="btn-primary" onclick="stopTimer()">⏹ 停止</button>
-                </div>
-
-                <hr style="border:0; border-top:1px dashed #ced4da; margin: 20px 0;">
-                <h4 style="margin:5px 0; color:var(--danger-color);">🎯 死線倒數</h4>
-                <input type="text" id="deadlineTask" placeholder="專案名稱" oninput="updateCountdown()">
-                <input type="date" id="deadlineDate" onchange="updateCountdown()">
-                <div id="countdownDisplay" class="countdown-box" style="display:none;"></div>
-            </div>
-
-            <!-- 任務清單 View -->
-            <div id="view-todo" style="display:none; flex-grow: 1; flex-direction: column;">
-                <!-- 快速新增區 -->
-                <div style="background: var(--light-bg); padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
-                    <div style="display:flex; gap:5px;">
-                        <input type="text" id="newTodoTask" placeholder="快速新增臨時任務 (Enter)" style="flex:1" onkeypress="if(event.key === 'Enter') addTodo()">
-                        <select id="newTodoPriority" style="width: 80px;">
-                            <option value="P1">P1</option>
-                            <option value="P2">P2</option>
-                            <option value="P3" selected>P3</option>
-                        </select>
-                        <button class="btn-primary" onclick="addTodo()">➕</button>
-                    </div>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 5px;">
-                    <button class="btn-outline" style="font-size: 0.8rem; padding: 4px 8px;" onclick="mergeSelectedTasks()">🔗 合併選中任務</button>
-                    <button class="btn-secondary" style="font-size: 0.8rem; padding: 4px 8px;" onclick="clearCompletedTodos()">清除已完成</button>
-                </div>
-                
-                <div id="todoListContainer" style="flex-grow: 1; max-height: 500px; overflow-y: auto; border-top: 1px solid #dee2e6;">
-                    <!-- Todos 會生成在這裡 -->
-                </div>
-            </div>
-        </div>
-
-        <!-- 右側：動態筆記焦點區 -->
-        <div class="right-panel">
-            <div class="note-header">
-                <div style="flex: 1;">
-                    <span style="font-size: 0.85rem; color: #6c757d; font-weight: bold;">當前焦點任務 (點擊標題可直接修改名稱)</span>
-                    
-                    <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                        <span id="activeTaskIcon" style="font-size: 1.5rem; display: none;">🎯</span>
-                        <input type="text" id="activeTaskTitle" 
-                               style="margin: 0; color: var(--primary-color); font-size: 1.5rem; font-weight: bold; border: none; background: transparent; outline: none; flex: 1; padding: 0;" 
-                               placeholder="全域沙盒草稿 (未選擇任務)" 
-                               oninput="renameActiveTask()">
-                    </div>
-
-                </div>
-                <div style="text-align: right;">
-                    <span style="font-size:0.8rem; color:#adb5bd; display:block; margin-bottom: 8px;" id="saveStatus">已自動儲存</span>
-                    <button id="btn-split-task" class="btn-warning" style="display:none; font-size: 0.85rem; padding: 5px 10px;" onclick="splitActiveTask()">✂️ 依分隔線(---)拆解</button>
-                </div>
-            </div>
-
-            <div class="template-bar">
-                <span style="font-size: 0.85rem; color: #666;">⚡ 模板：</span>
-                <button class="btn-outline" onclick="insertTemplate('bug')">🐛 Bug</button>
-                <button class="btn-outline" onclick="insertTemplate('dissect')">🔍 拆解</button>
-                <button class="btn-outline" onclick="insertTemplate('review')">📝 覆盤</button>
-                <button class="btn-outline" onclick="insertTemplate('divider')">✂️ ---</button>
-                
-                <span style="color: #ccc; margin: 0 5px;">|</span>
-                <span style="font-size: 0.85rem; color: #666;">MD：</span>
-                <button class="btn-md-tool" onclick="wrapMarkdown('**', '**')" title="粗體"><b>B</b></button>
-                <button class="btn-md-tool" onclick="wrapMarkdown('*', '*')" title="斜體"><i>I</i></button>
-                <button class="btn-md-tool" onclick="wrapMarkdown('`', '`')" title="程式碼">`code`</button>
-                <button class="btn-md-tool" onclick="insertPrefix('- ')" title="清單清單">• List</button>
-            </div>
-
-            <!-- 筆記區 (綁定焦點任務) -->
-            <textarea id="activeNoteArea" placeholder="選擇左側任務並點擊「📝聚焦」，或直接在此處記錄全域靈感...&#10;&#10;支援 Markdown 語法輸入 (按 Tab 鍵可縮排)！&#10;想切分任務時，請在內容中使用「---」分隔線，並點擊右上角「拆解」。" oninput="saveActiveNote()"></textarea>
-
-            <div class="log-input-group">
-                <button class="btn-success" style="pointer-events: none;">閃念</button>
-                <input type="text" id="quickLogInput" placeholder="輸入短語或進度，按 Enter 自動打上時間戳並寫入筆記..." onkeypress="if(event.key === 'Enter') addQuickLog()">
-            </div>
-        </div>
-    </div>
-
-    <!-- 📦 結算包裹區 -->
-    <div class="checkout-banner">
-        <h3 style="margin-top:0; color:#ffc107;">沙盒任務結束了嗎？</h3>
-        <p style="color:#adb5bd; margin-bottom:20px;">這會將目前的進度打包成包裹送回白板，由白板自動附加與更新狀態。沙盒將會清空。</p>
-        <button class="checkout-btn" onclick="checkoutToWhiteboard()">📦 結算沙盒並送回白板</button>
-    </div>
-
-    <div class="app-footer">
+    <div id="local-config" class="config-panel">
         <div>
-            <span>🔐 任務變更與筆記僅限此沙盒，不污染白板資料。結算後請回白板吸收包裹。</span>
+            <label style="font-weight:bold; display:block; margin-bottom:5px;">💰 每月基本預算 (薪水基底)</label>
+            <input type="number" id="cfg-salary" value="50000" onchange="saveLocalConfig()">
         </div>
-        <button class="btn-danger" style="font-size: 0.85rem; padding: 8px 15px;" onclick="clearFlowSandbox()">🧹 不結算，徹底清空沙盒</button>
+        <div>
+            <label style="font-weight:bold; display:block; margin-bottom:5px;">🔄 獨立加總月固定訂閱總額 (如 Netflix/軟體)</label>
+            <input type="number" id="cfg-subscriptions" value="1500" onchange="saveLocalConfig()">
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+            <span style="font-size:0.8rem; color:#856404;">ℹ️ 此處引數僅存於本地，用於精準計算【可用真實結餘】。</span>
+        </div>
+    </div>
+
+    <div id="view-dashboard" class="view-section active">
+        <div class="ga-controls">
+            <div class="ga-row">
+                <div class="ga-label">📅 分析區間</div>
+                <div class="btn-group" id="date-btn-group">
+                    <button class="btn-filter" onclick="setDateRange('7days', this)">近 7 天</button>
+                    <button class="btn-filter" onclick="setDateRange('30days', this)">近 30 天</button>
+                    <button class="btn-filter active" onclick="setDateRange('month', this)">本月</button>
+                    <button class="btn-filter" onclick="setDateRange('custom', this)">自訂</button>
+                </div>
+                <div id="custom-dates" style="display: none; gap: 5px; align-items: center;">
+                    <input type="date" id="custom-start"> <span>-</span> <input type="date" id="custom-end">
+                </div>
+            </div>
+            <div class="ga-row">
+                <div class="ga-label">👁️ 分析模式</div>
+                <div class="btn-group" id="mode-btn-group">
+                    <button class="btn-filter active" onclick="setAnalysisMode('trend', this)">📈 趨勢分佈與 Pacing 速率</button>
+                    <button class="btn-filter" onclick="setAnalysisMode('structure', this)">📊 結構佔比與分類涵攝</button>
+                </div>
+                <button class="btn-success" style="margin-left: auto;" onclick="executeAnalysis()">🚀 執行全維度解析</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>💸 區間開銷總計</h4>
+                <div class="val" id="stat-expense" style="color:var(--danger-color);">0</div>
+                <div class="comparison" id="cmp-expense">較上期 --</div>
+            </div>
+            <div class="stat-card">
+                <h4>💰 區間外部收入</h4>
+                <div class="val" id="stat-income" style="color:var(--success-color);">0</div>
+                <div class="comparison" id="cmp-income">較上期 --</div>
+            </div>
+            <div class="stat-card">
+                <h4>💳 可用預算真實結餘</h4>
+                <div class="val" id="stat-balance" style="color:var(--primary-color);">0</div>
+                <div class="comparison" id="cmp-balance" style="color:#6c757d;">包含本地薪水與訂閱攤提</div>
+            </div>
+            <div class="stat-card">
+                <h4>📚 成長與習慣追蹤</h4>
+                <div class="val" id="stat-growth" style="color: #17a2b8;">0</div>
+                <div class="comparison" id="cmp-growth">較上期 --</div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-container"><canvas id="financeChart"></canvas></div>
+            <div class="chart-container"><canvas id="healthChart"></canvas></div>
+            <div class="chart-container"><canvas id="growthChart"></canvas></div>
+        </div>
+
+        <h4 style="margin: 0 0 10px 0; color: #495057;">📝 區間足跡快照明細</h4>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr><th>日期</th><th>類型</th><th>分類定義</th><th>數值</th><th>備註快照</th></tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="view-sandbox" class="view-section">
+        <div class="sandbox-layout">
+            <div class="panel-left">
+                <div class="timer-box">
+                    <div style="display: flex; justify-content: center; gap: 5px; margin-bottom: 10px;">
+                        <button class="btn-secondary" style="flex:1; font-size: 0.8rem;" onclick="setTimerMode('FLEX')">彈性計時</button>
+                        <button class="btn-danger" style="flex:1; font-size: 0.8rem;" onclick="setTimerMode('POMO')">番茄鐘(25m)</button>
+                    </div>
+                    <div class="timer-display" id="timeDisplay">00:00:00</div>
+                    <div style="color: #6c757d; font-size: 0.85rem; margin-bottom: 10px;" id="timerStatus">閒置中</div>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="btn-success" style="flex:1;" onclick="startTimer()">▶</button>
+                        <button class="btn-warning" style="flex:1;" onclick="pauseTimer()">⏸</button>
+                        <button class="btn-secondary" style="flex:1;" onclick="stopTimer()">⏹</button>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0; color: #495057;">📋 本地複本任務</h4>
+                    <button class="btn-outline" style="padding: 4px 8px; font-size: 0.8rem;" onclick="importWhiteboardTasks()">📥 載入白板</button>
+                </div>
+                <div class="task-list" id="sandbox-task-list"></div>
+            </div>
+            <div class="panel-right">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <h4 style="margin: 0; color: #495057;">📝 密閉式發想沙盒 (Markdown)</h4>
+                    <span style="font-size: 0.8rem; color: #adb5bd;" id="sandbox-save-status">自動儲存於本地</span>
+                </div>
+                <input type="text" id="sandbox-task-title" placeholder="全域發想草稿" readonly style="font-weight: bold; color: var(--primary-color); border: none; border-bottom: 1px dashed #ced4da; border-radius: 0;">
+                <textarea id="sandbox-note-area" oninput="saveSandboxState()"></textarea>
+            </div>
+        </div>
+        <div class="sandbox-actions">
+            <div style="font-size: 0.85rem; color: #856404;"><strong>ℹ️ 物理隔離狀態：</strong> 所有的修改與筆記只會留在當前視窗，不污染資料庫。</div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-success" onclick="exportSandboxMarkdown()">⬇️ 輸出成果 (.md)</button>
+                <button class="btn-danger" onclick="clearSandbox()">🧹 徹底清空沙盒</button>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    // --- Firebase 配置 ---
-    const firebaseConfig = {
-        apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
-        authDomain: "maplestoryboss.firebaseapp.com",
-        projectId: "maplestoryboss",
-        storageBucket: "maplestoryboss.firebasestorage.app",
-        messagingSenderId: "198034430854",
-        appId: "1:198034430854:web:527ffcee039e223b972a07"
-    };
+    // ==========================================
+    // 1. Firebase 初始化
+    // ==========================================
+    const firebaseConfig = { apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU", authDomain: "maplestoryboss.firebaseapp.com", projectId: "maplestoryboss", storageBucket: "maplestoryboss.firebasestorage.app", messagingSenderId: "198034430854", appId: "1:198034430854:web:527ffcee039e223b972a07" };
     firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
     const auth = firebase.auth();
     const provider = new firebase.auth.GoogleAuthProvider();
 
-    // --- Configuration ---
-    const GIF_URL = "https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif";
     let currentUser = null;
-    let LOCAL_STORAGE_KEY = 'flow_workspace_data';
-    
-    // --- State ---
-    let state = {
-        mode: 'FLEXIBLE', 
-        timerStatus: 'IDLE', 
-        seconds: 0,
-        pomoPhase: 'FOCUS', 
-        pomoCount: 0,
-        timerInterval: null,
-        todos: [],
-        globalNote: "", 
-        activeTaskId: null, 
-        lastSave: Date.now()
-    };
-
-    // --- Auth & Init ---
     auth.onAuthStateChanged((user) => {
         if (user) {
             currentUser = user;
-            LOCAL_STORAGE_KEY = `flow_workspace_data_${user.uid}`;
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-container').style.display = 'flex';
+            loadLocalConfig();
             initApp();
         } else {
             currentUser = null;
@@ -283,658 +248,382 @@
         }
     });
 
-    function loginFirebase() {
-        auth.signInWithPopup(provider).catch(err => alert("登入失敗: " + err.message));
+    function loginFirebase() { auth.signInWithPopup(provider); }
+    function logoutFirebase() { auth.signOut(); }
+    function switchView(viewName) {
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(`view-${viewName}`).classList.add('active');
+        document.getElementById(`btn-tab-${viewName}`).classList.add('active');
+    }
+    const getLocalYMD = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+    // ==========================================
+    // 2. 本地設定隔離儲存
+    // ==========================================
+    function toggleConfigPanel() {
+        const panel = document.getElementById('local-config');
+        panel.style.display = (panel.style.display === 'grid') ? 'none' : 'grid';
+    }
+    function saveLocalConfig() {
+        if(!currentUser) return;
+        const config = {
+            salary: parseFloat(document.getElementById('cfg-salary').value) || 0,
+            subs: parseFloat(document.getElementById('cfg-subscriptions').value) || 0
+        };
+        localStorage.setItem(`local_hub_config_${currentUser.uid}`, JSON.stringify(config));
+        executeAnalysis(); // 自動重新解析計算
+    }
+    function loadLocalConfig() {
+        if(!currentUser) return;
+        const raw = localStorage.getItem(`local_hub_config_${currentUser.uid}`);
+        if(raw) {
+            const config = JSON.parse(raw);
+            document.getElementById('cfg-salary').value = config.salary;
+            document.getElementById('cfg-subscriptions').value = config.subs;
+        }
+    }
+
+    // ==========================================
+    // 3. GA 核心高級數據分析模組
+    // ==========================================
+    let fullRecords = [];
+    let chartInstances = {};
+    let currentAnalysisMode = 'trend';
+
+    function setDateRange(range, btnEl) {
+        document.querySelectorAll('#date-btn-group .btn-filter').forEach(btn => btn.classList.remove('active'));
+        btnEl.classList.add('active');
+        const now = new Date();
+        const customDiv = document.getElementById('custom-dates');
+        const startInput = document.getElementById('custom-start');
+        const endInput = document.getElementById('custom-end');
+        customDiv.style.display = 'none';
+
+        if (range === '7days') {
+            endInput.value = getLocalYMD(now);
+            startInput.value = getLocalYMD(new Date(now.setDate(now.getDate() - 6)));
+        } else if (range === '30days') {
+            endInput.value = getLocalYMD(now);
+            startInput.value = getLocalYMD(new Date(now.setDate(now.getDate() - 29)));
+        } else if (range === 'month') {
+            startInput.value = getLocalYMD(now).substring(0, 7) + "-01";
+            endInput.value = getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+        } else if (range === 'custom') {
+            customDiv.style.display = 'flex';
+        }
+    }
+
+    function setAnalysisMode(mode, btnEl) {
+        document.querySelectorAll('#mode-btn-group .btn-filter').forEach(btn => btn.classList.remove('active'));
+        btnEl.classList.add('active');
+        currentAnalysisMode = mode;
+    }
+
+    async function fetchDashboardData() {
+        try {
+            const snapshot = await db.collection("LifeApp_Records").where("uid", "==", currentUser.uid + "_life").get();
+            fullRecords = [];
+            snapshot.forEach(doc => fullRecords.push({ id: doc.id, ...doc.data() }));
+            fullRecords.sort((a, b) => new Date(a.date) - new Date(b.date)); // 正序便於時間軸處理
+            executeAnalysis();
+        } catch (error) { alert("同步失敗"); }
     }
 
     function initApp() {
-        loadData();
-        renderTodo();
-        updateCountdown();
-        updateDisplay();
-        refreshActiveNoteUI();
-        switchLeftPanel('TODO'); 
-        setupTextareaTabKey();
+        setDateRange('month', document.querySelector('#date-btn-group .active'));
+        fetchDashboardData();
+        loadSandboxState();
     }
 
-    // --- 攔截 Tab 鍵輸入縮排 ---
-    function setupTextareaTabKey() {
-        const textarea = document.getElementById('activeNoteArea');
-        textarea.addEventListener('keydown', function(e) {
-            if (e.key === 'Tab') {
-                e.preventDefault(); 
-                const start = this.selectionStart;
-                const end = this.selectionEnd;
-                this.value = this.value.substring(0, start) + "    " + this.value.substring(end);
-                this.selectionStart = this.selectionEnd = start + 4;
-                saveActiveNote();
-            }
+    function executeAnalysis() {
+        if (!fullRecords.length) return;
+        
+        const startStr = document.getElementById('custom-start').value;
+        const endStr = document.getElementById('custom-end').value;
+        
+        // 計算時間切片大小與模組 C（上一期）的邊界
+        const currStart = new Date(startStr);
+        const currEnd = new Date(endStr);
+        const dayDiff = Math.ceil((currEnd - currStart) / (1000 * 60 * 60 * 24)) + 1;
+        
+        const prevEnd = new Date(currStart.getTime() - (1000 * 60 * 60 * 24));
+        const prevStart = new Date(prevEnd.getTime() - ((dayDiff - 1) * 1000 * 60 * 60 * 24));
+        const prevStartStr = getLocalYMD(prevStart);
+        const prevEndStr = getLocalYMD(prevEnd);
+
+        // 篩選當期與上期資料
+        const currentSlice = fullRecords.filter(r => r.date >= startStr && r.date <= endStr);
+        const previousSlice = fullRecords.filter(r => r.date >= prevStartStr && r.date <= prevEndStr);
+
+        // 計算當期指標
+        let currMetrics = { expense: 0, income: 0, growth: 0, food: 0, burn: 0 };
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+
+        currentSlice.forEach(r => {
+            if (r.type === 'expense' || r.type === 'extra_expense') currMetrics.expense += r.amount;
+            if (r.type === 'income' || r.type === 'extra_income') currMetrics.income += r.amount;
+            if (r.type === 'learning' || r.type === 'habit') currMetrics.growth += r.amount;
+            if (r.type === 'food') currMetrics.food += r.amount;
+            if (r.type === 'exercise') currMetrics.burn += r.amount;
+
+            // 渲染明細 (倒序排列，最新鮮的在上方)
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${r.date.substring(5)}</td><td><span class="badge" style="background:${getTypeColor(r.type)}">${r.type}</span></td><td>${r.categoryText || r.category}</td><td style="font-weight:bold;">${r.amount.toLocaleString()}</td><td style="color:#666; font-size:0.8rem;">${r.note||''}</td>`;
+            tbody.insertBefore(tr, tbody.firstChild);
         });
-    }
 
-    // --- Markdown 編輯輔助 ---
-    function wrapMarkdown(prefix, suffix) {
-        const noteArea = document.getElementById('activeNoteArea');
-        const start = noteArea.selectionStart;
-        const end = noteArea.selectionEnd;
-        const selectedText = noteArea.value.substring(start, end);
+        // 計算上期指標 (用於環比)
+        let prevMetrics = { expense: 0, income: 0, growth: 0 };
+        previousSlice.forEach(r => {
+            if (r.type === 'expense' || r.type === 'extra_expense') prevMetrics.expense += r.amount;
+            if (r.type === 'income' || r.type === 'extra_income') prevMetrics.income += r.amount;
+            if (r.type === 'learning' || r.type === 'habit') prevMetrics.growth += r.amount;
+        });
+
+        // 讀取本地薪水與訂閱引數
+        const baseSalary = parseFloat(document.getElementById('cfg-salary').value) || 0;
+        const baseSubs = parseFloat(document.getElementById('cfg-subscriptions').value) || 0;
         
-        noteArea.value = noteArea.value.substring(0, start) + prefix + selectedText + suffix + noteArea.value.substring(end);
-        
-        noteArea.focus();
-        if (selectedText.length === 0) {
-            noteArea.selectionStart = noteArea.selectionEnd = start + prefix.length;
+        // 精準可用結餘算式：(薪水+外部收入) - 實際花費 - 訂閱
+        const realBalance = (baseSalary + currMetrics.income) - currMetrics.expense - baseSubs;
+
+        // 更新 KPI 卡片
+        document.getElementById('stat-expense').innerText = currMetrics.expense.toLocaleString();
+        document.getElementById('stat-income').innerText = currMetrics.income.toLocaleString();
+        document.getElementById('stat-balance').innerText = realBalance.toLocaleString();
+        document.getElementById('stat-growth').innerText = currMetrics.growth;
+
+        const calNet = currMetrics.burn - currMetrics.food;
+        document.getElementById('stat-calorie').innerText = calNet > 0 ? `+${calNet}` : calNet;
+
+        // 渲染模組 C 環比標籤
+        renderComparisonBadge('cmp-expense', currMetrics.expense, prevMetrics.expense, true);
+        renderComparisonBadge('cmp-income', currMetrics.income, prevMetrics.income, false);
+        renderComparisonBadge('cmp-growth', currMetrics.growth, prevMetrics.growth, false);
+
+        // 渲染模式
+        if (currentAnalysisMode === 'trend') {
+            renderTrendCharts(currentSlice, dayDiff, baseSalary);
         } else {
-            noteArea.selectionStart = noteArea.selectionEnd = start + prefix.length + selectedText.length + suffix.length;
+            renderStructureCharts(currentSlice);
         }
-        saveActiveNote();
     }
 
-    function insertPrefix(prefix) {
-        const noteArea = document.getElementById('activeNoteArea');
-        const start = noteArea.selectionStart;
-        noteArea.value = noteArea.value.substring(0, start) + prefix + noteArea.value.substring(start);
-        noteArea.focus();
-        noteArea.selectionStart = noteArea.selectionEnd = start + prefix.length;
-        saveActiveNote();
-    }
-
-    // --- 自動綁定當前任務 ---
-    function setActiveTask(id) {
-        state.activeTaskId = id;
-        refreshActiveNoteUI();
-        renderTodo(); 
-        saveData();
-    }
-
-    function refreshActiveNoteUI() {
-        const titleEl = document.getElementById('activeTaskTitle');
-        const iconEl = document.getElementById('activeTaskIcon');
-        const noteArea = document.getElementById('activeNoteArea');
-        const splitBtn = document.getElementById('btn-split-task');
-
-        if (state.activeTaskId) {
-            const task = state.todos.find(t => t.id === state.activeTaskId);
-            if (task) {
-                iconEl.style.display = 'inline';
-                titleEl.value = task.task;
-                titleEl.style.color = 'var(--primary-color)';
-                titleEl.readOnly = false;
-                noteArea.value = task.content || "";
-                splitBtn.style.display = 'inline-block';
-                return;
-            } else {
-                state.activeTaskId = null;
-            }
-        }
+    function renderComparisonBadge(elementId, curr, prev, isExpense = false) {
+        const el = document.getElementById(elementId);
+        if (prev === 0) { el.innerText = "較上期 --"; el.className = "comparison comp-neutral"; return; }
+        const pct = ((curr - prev) / prev * 100).toFixed(1);
         
-        iconEl.style.display = 'none';
-        titleEl.value = "📝 全域沙盒草稿 (未綁定單一任務)";
-        titleEl.style.color = 'var(--dark-color)';
-        titleEl.readOnly = true; 
-        noteArea.value = state.globalNote || "";
-        splitBtn.style.display = 'none'; 
-    }
-
-    function renameActiveTask() {
-        if (!state.activeTaskId) return;
-        const newName = document.getElementById('activeTaskTitle').value;
-        const task = state.todos.find(t => t.id === state.activeTaskId);
-        if (task) {
-            task.task = newName;
-            renderTodo(); 
-            saveData();
-        }
-    }
-
-    function saveActiveNote() {
-        const noteArea = document.getElementById('activeNoteArea');
-        if (state.activeTaskId) {
-            const task = state.todos.find(t => t.id === state.activeTaskId);
-            if (task) task.content = noteArea.value;
+        if (curr > prev) {
+            el.innerText = `較上期 +${pct}% ▲`;
+            el.className = `comparison ${isExpense ? 'comp-up' : 'comp-down'}`;
+        } else if (curr < prev) {
+            el.innerText = `較上期 ${pct}% ▼`;
+            el.className = `comparison ${isExpense ? 'comp-down' : 'comp-up'}`;
         } else {
-            state.globalNote = noteArea.value;
+            el.innerText = `較上期 持平`;
+            el.className = "comparison comp-neutral";
         }
-        saveData();
-    }
-
-    // --- 快速模板注入 ---
-    function insertTemplate(type) {
-        const noteArea = document.getElementById('activeNoteArea');
-        let template = "";
-        
-        switch(type) {
-            case 'bug': template = "\n### 🐛 異常現象\n\n### 🔬 測試假設\n\n### 🛠️ 下一步\n"; break;
-            case 'dissect': template = "\n### 🎯 現況與目標\n\n### 🚧 卡關點\n\n### 💡 解法構思\n1. \n2. \n"; break;
-            case 'review': template = "\n### ✅ 已完成\n\n### ❌ 待優化\n\n### 📌 備註\n"; break;
-            case 'divider': template = "\n---\n"; break;
-        }
-
-        const startPos = noteArea.selectionStart;
-        const endPos = noteArea.selectionEnd;
-        noteArea.value = noteArea.value.substring(0, startPos) + template + noteArea.value.substring(endPos, noteArea.value.length);
-        
-        noteArea.focus();
-        noteArea.selectionStart = startPos + template.length;
-        noteArea.selectionEnd = startPos + template.length;
-        saveActiveNote();
-    }
-
-    function addQuickLog() {
-        const inputEl = document.getElementById('quickLogInput');
-        const text = inputEl.value.trim();
-        if (!text) return;
-
-        const noteArea = document.getElementById('activeNoteArea');
-        const now = new Date();
-        const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        
-        noteArea.value += `\n**[${timeStr}]** ${text}`;
-        inputEl.value = ''; 
-        noteArea.scrollTop = noteArea.scrollHeight;
-        
-        saveActiveNote();
     }
 
     // ==========================================
-    // 💡 核心更新：合併、拆解與結算 Payload 機制
+    // 4. 高級視覺化引擎 (模組 A 與 模組 B)
     // ==========================================
-
-    function mergeSelectedTasks() {
-        const checkboxes = document.querySelectorAll('.todo-cb-merge:checked');
-        if(checkboxes.length < 2) return alert("💡 請勾選至少兩個任務進行合併！");
-
-        let mergedTitle = prompt("請輸入合併後的新任務名稱：", "合併任務集");
-        if(mergedTitle === null) return; 
-        if(mergedTitle.trim() === "") mergedTitle = "合併任務集";
-
-        let mergedContent = "";
-        let idsToDelete = [];
-        let sourceWbIds = [];
-        let highestPriority = 'P3';
-
-        checkboxes.forEach((cb, index) => {
-            const id = parseFloat(cb.value);
-            const task = state.todos.find(t => t.id === id);
-            if(task) {
-                idsToDelete.push(id);
-                if(task.priority === 'P1') highestPriority = 'P1';
-                else if(task.priority === 'P2' && highestPriority !== 'P1') highestPriority = 'P2';
-                
-                // 繼承所有的 wbId
-                if (task.wbId) { 
-                    if(Array.isArray(task.wbId)) sourceWbIds.push(...task.wbId); 
-                    else sourceWbIds.push(task.wbId); 
-                }
-
-                let c = task.content ? task.content.trim() : "";
-                mergedContent += `### 🧩 [原始來源] ${task.task}\n${c}\n`;
-                if(index < checkboxes.length - 1) mergedContent += `\n---\n\n`;
-            }
+    function renderTrendCharts(records, totalDays, baseSalary) {
+        let dailyData = {};
+        records.forEach(r => {
+            if (!dailyData[r.date]) dailyData[r.date] = { expense: 0, health: 0, growth: 0 };
+            if (r.type === 'expense' || r.type === 'extra_expense') dailyData[r.date].expense += r.amount;
+            if (r.type === 'exercise') dailyData[r.date].health += r.amount;
+            if (r.type === 'food') dailyData[r.date].health -= r.amount;
+            if (r.type === 'learning' || r.type === 'habit') dailyData[r.date].growth += r.amount;
         });
 
-        const newTask = {
-            id: Date.now() + Math.random(),
-            wbId: sourceWbIds.length > 0 ? sourceWbIds : null, // 陣列保留來源
-            task: mergedTitle,
-            content: mergedContent.trim(),
-            priority: highestPriority,
-            date: '', link: '', completed: false, source: '合併'
+        const sortedDates = Object.keys(dailyData).sort();
+        
+        // 模組 B: Pacing 理想消耗速率計算 (將可用預算平均分配至每一天)
+        const dailyIdealBurn = baseSalary / totalDays;
+        let accActualExpense = 0;
+        let actualExpenseTimeline = [];
+        let idealPacingTimeline = [];
+
+        sortedDates.forEach((d, idx) => {
+            accActualExpense += dailyData[d].expense;
+            actualExpenseTimeline.push(accActualExpense);
+            idealPacingTimeline.push(Math.round(dailyIdealBurn * (idx + 1)));
+        });
+
+        // 繪製財務 Pacing 複合對比圖
+        const finCtx = document.getElementById('financeChart').getContext('2d');
+        if (chartInstances['financeChart']) chartInstances['financeChart'].destroy();
+        chartInstances['financeChart'] = new Chart(finCtx, {
+            type: 'line',
+            data: {
+                labels: sortedDates,
+                datasets: [
+                    { label: '實際累積支出', data: actualExpenseTimeline, borderColor: '#dc3545', backgroundColor: 'rgba(220,53,69,0.05)', fill: true, tension: 0.2 },
+                    { label: '理想預算消耗控制線 (Pacing)', data: idealPacingTimeline, borderColor: '#6c757d', borderDash: [5, 5], pointRadius: 0, fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: '📈 支出與 Pacing 預算斜率對比' } } }
+        });
+
+        // 繪製其餘趨勢圖
+        drawChart('healthChart', 'line', '單日熱量赤字/盈餘波動', sortedDates, sortedDates.map(d => dailyData[d].health), '#28a745');
+        let accG = 0;
+        drawChart('growthChart', 'line', '成長路徑累積曲線', sortedDates, sortedDates.map(d => { accG += dailyData[d].growth; return accG; }), '#17a2b8');
+    }
+
+    function renderStructureCharts(records) {
+        // 模組 A: 分類涵攝結構收斂
+        let expCats = {}, foodCats = {}, grwCats = {};
+        
+        records.forEach(r => {
+            const cat = r.categoryText || r.category || '未分類';
+            if (r.type === 'expense' || r.type === 'extra_expense') expCats[cat] = (expCats[cat] || 0) + r.amount;
+            if (r.type === 'food') foodCats[cat] = (foodCats[cat] || 0) + r.amount;
+            if (r.type === 'learning' || r.type === 'habit') grwCats[cat] = (grwCats[cat] || 0) + r.amount;
+        });
+
+        const parseObj = (obj) => {
+            const sorted = Object.entries(obj).sort((a,b) => b[1] - a[1]);
+            return { labels: sorted.map(x => x[0]), data: sorted.map(x => x[1]) };
         };
 
-        state.todos = state.todos.filter(t => !idsToDelete.includes(t.id));
-        state.todos.unshift(newTask); 
-        
-        alert("✅ 任務已成功合併！筆記已自動串接。");
-        setActiveTask(newTask.id); 
+        const fData = parseObj(expCats);
+        const hData = parseObj(foodCats);
+        const gData = parseObj(grwCats);
+
+        drawChart('financeChart', 'doughnut', '支出結構佔比 (Where the money went)', fData.labels, fData.data, ['#dc3545', '#ffc107', '#fd7e14', '#e83e8c', '#6f42c1', '#6c757d']);
+        drawChart('healthChart', 'doughnut', '攝取食物結構分佈', hData.labels, hData.data, ['#fd7e14', '#ffc107', '#20c997', '#6c757d']);
+        drawChart('growthChart', 'bar', '習慣與學習項目權重', gData.labels, gData.data, '#17a2b8');
     }
 
-    function splitActiveTask() {
-        if (!state.activeTaskId) return alert("請先選擇一個焦點任務！");
+    function drawChart(id, type, label, labels, data, colors) {
+        const ctx = document.getElementById(id).getContext('2d');
+        if (chartInstances[id]) chartInstances[id].destroy();
+        const isDoughnut = type === 'doughnut';
         
-        const noteArea = document.getElementById('activeNoteArea');
-        const content = noteArea.value.trim();
-        
-        if (!content.includes('---')) {
-            return alert("✂️ 找不到分隔線！\n請在筆記中輸入 `---` 來標示您想分割的斷點。");
-        }
-
-        if(!confirm("確定要將此任務依據分隔線 (---) 拆分成多個獨立任務嗎？\n(原本的大任務將會被移除)")) return;
-
-        const parts = content.split(/(?:^|\n)\s*---\s*(?:\n|$)/);
-        if (parts.length <= 1) {
-             return alert("無法正確辨識分隔線，請確保 `---` 獨立成行且前後有換行！");
-        }
-
-        const originalTask = state.todos.find(t => t.id === state.activeTaskId);
-        let newTasks = [];
-
-        parts.forEach((part, index) => {
-            let chunk = part.trim();
-            if (!chunk) return;
-
-            let title = `${originalTask.task} (拆解 ${index + 1})`;
-            let finalContent = chunk;
-
-            const match = chunk.match(/^### 🧩 \[原始來源\] (.*)(?:\n|$)/);
-            if (match) {
-                title = match[1].trim();
-                finalContent = chunk.substring(match[0].length).trim(); 
-            } else {
-                const firstLine = chunk.split('\n')[0].replace(/^#+\s*/, '').trim();
-                if(firstLine && firstLine.length < 30) {
-                    title = firstLine;
-                }
-            }
-
-            newTasks.push({
-                id: Date.now() + Math.random() + index, 
-                wbId: originalTask.wbId, // 繼承原本的 wbId
-                task: title,
-                content: finalContent,
-                priority: originalTask.priority,
-                date: originalTask.date,
-                link: originalTask.link,
-                completed: false,
-                source: '分割'
-            });
+        chartInstances[id] = new Chart(ctx, {
+            type: type,
+            data: {
+                labels: labels.length ? labels : ['無資料'],
+                datasets: [{
+                    label: label, data: data.length ? data : [0],
+                    backgroundColor: isDoughnut ? colors : (Array.isArray(colors) ? colors[0] : colors + '22'),
+                    borderColor: isDoughnut ? '#fff' : colors, borderWidth: 1.5, fill: type === 'line', tension: 0.2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: label }, legend: { display: isDoughnut, position: 'right' } } }
         });
-
-        state.todos = state.todos.filter(t => t.id !== state.activeTaskId);
-        state.todos.unshift(...newTasks);
-
-        setActiveTask(null);
-        alert(`✂️ 已成功將該任務拆解成 ${newTasks.length} 個獨立任務！`);
     }
 
-    // 📦 結算核心邏輯
-    function checkoutToWhiteboard() {
-        if (!confirm("準備結算？\n這會將您在沙盒內的心血打包送回白板的收件匣，並且清空目前的沙盒重新開始。")) return;
-        
-        const payload = { 
-            timestamp: Date.now(), 
-            globalNote: state.globalNote, 
-            updates: [], 
-            newTasks: [] 
-        };
-        
-        state.todos.forEach(t => {
-            if (t.wbId) {
-                // 如果有 wbId (陣列或單字串)，代表要 Append 到白板對應的卡片
-                let ids = Array.isArray(t.wbId) ? t.wbId : [t.wbId];
-                ids.forEach(id => {
-                    payload.updates.push({ 
-                        wbId: id, 
-                        completed: t.completed, 
-                        content: t.content 
-                    });
-                });
-            } else {
-                // 沒 wbId 代表是沙盒臨時生出來的任務
-                payload.newTasks.push({ 
-                    task: t.task, 
-                    content: t.content, 
-                    completed: t.completed, 
-                    priority: t.priority 
-                });
-            }
-        });
-
-        // 存入中介站 LocalStorage
-        localStorage.setItem(`flow_checkout_payload_${currentUser.uid}`, JSON.stringify(payload));
-        
-        // 摧毀沙盒
-        localStorage.removeItem(LOCAL_STORAGE_KEY);
-        alert("📦 結算包裹已送出！即將自動關閉/返回白板。");
-        window.location.href = 'https://progress01.github.io/workflow/';
-    }
+    function getTypeColor(t) { return (t==='expense'||t==='extra_expense')?'#dc3545':(t==='income'||t==='extra_income')?'#28a745':(t==='food')?'#fd7e14':(t==='exercise')?'#20c997':'#17a2b8'; }
 
     // ==========================================
+    // 5. 心流沙盒模組 (完全保留且物理隔離)
+    // ==========================================
+    let sandboxState = { tasks: [], activeId: null, globalNote: "", timer: { mode: 'FLEX', seconds: 0, status: 'IDLE', intervalId: null } };
+    function getSandboxKey() { return currentUser ? `flow_sandbox_pro_${currentUser.uid}` : 'flow_sandbox_pro_temp'; }
 
-    function generateReportMarkdown() {
-        const totalTasks = state.todos.length;
-        const completedCount = state.todos.filter(t => t.completed).length;
-        const pendingCount = totalTasks - completedCount;
-        const completionRate = totalTasks === 0 ? 0 : Math.round((completedCount / totalTasks) * 100);
-
-        if (totalTasks === 0 && (!state.globalNote || !state.globalNote.trim())) {
-            return null;
-        }
-
-        let exportText = `# 🌟 心流當日總結\n*結算時間: ${new Date().toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}*\n\n`;
-        exportText += `📊 **戰報統計**：已完成 **${completedCount}** 項 / 剩餘 **${pendingCount}** 項（完工率 **${completionRate}%**）\n\n---\n\n`;
-
-        if (state.globalNote && state.globalNote.trim()) {
-            exportText += `## 📝 全域筆記\n\n${state.globalNote.trim()}\n\n---\n\n`;
-        }
-
-        const formatTaskMD = (t) => {
-            let checkbox = t.completed ? '- [x]' : '- [ ]';
-            let str = `${checkbox} **${t.task}**\n`;
-            if (t.content && t.content.trim()) {
-                const lines = t.content.trim().split('\n');
-                const indentedContent = lines.map(line => `    ${line}`).join('\n');
-                str += `${indentedContent}\n\n`;
-            } else {
-                str += `\n`;
-            }
-            return str;
-        };
-
-        const p1Tasks = state.todos.filter(t => t.priority === 'P1');
-        const p2Tasks = state.todos.filter(t => t.priority === 'P2');
-        const p3Tasks = state.todos.filter(t => t.priority === 'P3');
-
-        if (p1Tasks.length > 0) { exportText += `## 🔴 【P1 · 核心攻堅】\n\n`; p1Tasks.forEach(t => { exportText += formatTaskMD(t); }); }
-        if (p2Tasks.length > 0) { exportText += `## 🟡 【P2 · 戰術推進】\n\n`; p2Tasks.forEach(t => { exportText += formatTaskMD(t); }); }
-        if (p3Tasks.length > 0) { exportText += `## 🔵 【P3 · 日常雜務】\n\n`; p3Tasks.forEach(t => { exportText += formatTaskMD(t); }); }
-        
-        return exportText;
-    }
-
-    function downloadMarkdown() {
-        const exportText = generateReportMarkdown();
-        if(!exportText) return alert("目前沙盒內沒有任何任務或筆記可以下載！");
-
-        const blob = new Blob([exportText], { type: 'text/markdown;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        
-        const dateStr = new Date().toISOString().split('T')[0];
-        a.download = `心流備份_${dateStr}.md`;
-        
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
-    function clearFlowSandbox() {
-        if(confirm("⚠️ 警告：這將會徹底刪除沙盒內的所有臨時任務、草稿筆記與計時紀錄。\n且不會送回白板！\n您確定要清空嗎？")) {
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-            alert("🧹 沙盒已清空！頁面即將重新載入。");
-            location.reload();
-        }
-    }
-
-    function clearCompletedTodos() {
-        state.todos = state.todos.filter(t => !t.completed);
-        if(state.activeTaskId && !state.todos.find(t=>t.id===state.activeTaskId)) {
-            setActiveTask(null);
-        }
-        saveData(); renderTodo();
-    }
-
-    // --- Todo 操作 ---
-    function importFromWhiteboard() {
-        if (!currentUser) return alert("無法獲取使用者資訊！");
-        const wbDataRaw = localStorage.getItem(`whiteboard_state_${currentUser.uid}`);
-        if (!wbDataRaw) return alert("⚠️ 找不到白板資料！");
-
-        const wbData = JSON.parse(wbDataRaw);
-        let importedCount = 0;
-
-        // 💡 僅匯入狀態不是 2 (綠色/完成) 的卡片
-        if (wbData.workspaces) {
-            Object.values(wbData.workspaces).forEach(tabCards => {
-                tabCards.forEach(card => {
-                    if (card.status === 2) return; // 略過已完成
-                    // 檢查是否已經存在沙盒中 (需處理 wbId 是陣列的情況)
-                    if (state.todos.some(t => Array.isArray(t.wbId) ? t.wbId.includes(card.id) : t.wbId === card.id)) return; 
-                    
-                    state.todos.push({
-                        id: Date.now() + Math.random(), wbId: card.id,                  
-                        task: card.title || '未命名白板卡片', content: card.content || '', 
-                        priority: (card.status === 3 || card.color === 'red') ? 'P1' : 'P2', 
-                        date: card.dateSingle || card.dateStart || '', link: '', completed: false, source: '卡片'
-                    });
-                    importedCount++;
-                });
-            });
-        }
-
-        // 發想矩陣也過濾一下進來
-        if (wbData.nodes) {
-            Object.values(wbData.nodes).forEach(tabNodes => {
-                tabNodes.forEach(node => {
-                    if (state.todos.some(t => Array.isArray(t.wbId) ? t.wbId.includes(node.id) : t.wbId === node.id)) return;
-                    let prio = 'P3'; if(node.tag === 'q1') prio = 'P1'; else if(node.tag === 'q2' || node.tag === 'q3') prio = 'P2';
-                    state.todos.push({
-                        id: Date.now() + Math.random(), wbId: node.id, task: node.text, content: '',  
-                        priority: prio, date: '', link: '', completed: false, source: '發想'
-                    });
-                    importedCount++;
-                });
-            });
-        }
-
-        if (importedCount > 0) {
-            alert(`✅ 成功匯入 ${importedCount} 筆未完成的白板任務！`);
-            saveData(); renderTodo(); switchLeftPanel('TODO');
-        } else { alert(`👌 沒有發現新的未完成白板任務需要匯入。`); }
-    }
-
-    function addTodo() {
-        const taskInput = document.getElementById('newTodoTask');
-        const task = taskInput.value;
-        if (!task) return alert("請輸入任務名稱");
-        
-        const item = {
-            id: Date.now() + Math.random(),
-            task: task, content: '', 
-            priority: document.getElementById('newTodoPriority').value,
-            date: '', link: '', completed: false, source: '臨時' 
-        };
-        
-        state.todos.unshift(item);
-        taskInput.value = '';
-        renderTodo(); saveData(); setActiveTask(item.id);
-    }
-
-    function toggleTodo(id) {
-        const item = state.todos.find(t => t.id === id);
-        if (item) item.completed = !item.completed;
-        renderTodo(); saveData();
-    }
-
-    function deleteTodo(id) {
-        if(confirm("確定從沙盒刪除此任務? (在結算時，此任務將被視為未變動，原始白板資料不受影響)")) {
-            state.todos = state.todos.filter(t => t.id !== id);
-            if(state.activeTaskId === id) setActiveTask(null);
-            renderTodo(); saveData();
-        }
-    }
-
-    function renderTodo() {
-        const container = document.getElementById('todoListContainer');
-        container.innerHTML = "";
-        
-        const sorted = [...state.todos].sort((a,b) => {
-            if(a.completed !== b.completed) return a.completed ? 1 : -1;
-            if(a.priority !== b.priority) return a.priority.localeCompare(b.priority);
-            return 0;
-        });
-
-        if (sorted.length === 0) {
-            container.innerHTML = "<div style='text-align:center; color:#aaa; padding:20px; font-size: 0.9rem;'>目前無任務。<br>請點擊上方載入白板資料！</div>";
-            return;
-        }
-
-        sorted.forEach(item => {
-            const div = document.createElement('div');
-            const isActive = state.activeTaskId === item.id;
-            div.className = `todo-item priority-${item.priority} ${item.completed ? 'completed' : ''} ${isActive ? 'active-task' : ''}`;
-            
-            let color = item.priority === 'P1' ? '#dc3545' : (item.priority === 'P2' ? '#ffc107' : '#007bff');
-            let sourceBadge = '';
-            if(item.source === '卡片') sourceBadge = `<span class="badge badge-source">白板</span>`;
-            else if(item.source === '發想') sourceBadge = `<span class="badge badge-source" style="background:#e83e8c;">發想</span>`;
-            else if(item.source === '合併') sourceBadge = `<span class="badge badge-source" style="background:#28a745;">合併</span>`;
-            else if(item.source === '分割') sourceBadge = `<span class="badge badge-source" style="background:#fd7e14;">✂️ 分割</span>`;
-
-            let noteIndicator = (item.content && item.content.trim().length > 0) ? `<span style="font-size:0.8rem; color:#17a2b8;">📝(有筆記)</span>` : '';
-
-            div.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-right: 8px; min-width: 32px; border-right: 1px solid #eee; padding-right: 6px;">
-                    <span style="font-size: 0.65rem; color: #adb5bd; margin-bottom: 2px;">合併</span>
-                    <input type="checkbox" class="todo-cb-merge" value="${item.id}" title="勾選以合併任務" style="cursor: pointer; transform: scale(1.1);">
-                </div>
-                
-                <div style="display: flex; align-items: center; margin-right: 8px; padding-top: 6px;">
-                    <input type="checkbox" title="標示為完成" style="transform: scale(1.3); cursor: pointer;" ${item.completed ? 'checked' : ''} onchange="toggleTodo(${item.id})">
-                </div>
-
-                <div class="todo-details">
-                    <div style="margin-bottom: 2px;">
-                        <span class="badge" style="background:${color}">${item.priority}</span>
-                        ${sourceBadge} ${noteIndicator}
-                    </div>
-                    <div style="font-size: 0.95rem; margin-top: 4px; font-weight: bold; color: ${isActive ? '#0056b3' : '#333'};">
-                        ${item.task}
-                    </div>
-                </div>
-                
-                <div class="todo-actions">
-                    <button class="${isActive ? 'btn-info' : 'btn-outline'}" style="padding:4px 8px; font-size:0.8rem;" onclick="setActiveTask(${item.id})">
-                        ${isActive ? '🎯 焦點中' : '📝 聚焦'}
-                    </button>
-                    <button class="btn-danger" style="padding:2px 8px; background:transparent; color:#dc3545; font-size:1rem; border:none;" onclick="deleteTodo(${item.id})">×</button>
-                </div>
-            `;
-            container.appendChild(div);
-        });
-    }
-
-    // --- Panel & Timer Logic ---
-    function switchLeftPanel(panel) {
-        document.getElementById('view-timer').style.display = panel === 'TIMER' ? 'block' : 'none';
-        document.getElementById('view-todo').style.display = panel === 'TODO' ? 'flex' : 'none';
-        document.getElementById('tab-timer').className = panel === 'TIMER' ? 'tab-btn active' : 'tab-btn';
-        document.getElementById('tab-todo').className = panel === 'TODO' ? 'tab-btn active' : 'tab-btn';
-    }
-
-    function setTimerMode(mode) {
-        clearInterval(state.timerInterval); 
-        state.timerStatus = 'IDLE';
-        state.mode = mode;
-        document.getElementById('btn-mode-flex').className = mode === 'FLEXIBLE' ? 'tab-btn active' : 'tab-btn';
-        document.getElementById('btn-mode-pomo').className = mode === 'POMODORO' ? 'tab-btn active' : 'tab-btn';
-        
-        if(mode === 'POMODORO') { 
-            state.seconds = 25 * 60; 
-            state.pomoPhase = 'FOCUS'; 
-        } else { 
-            state.seconds = 0; 
-        }
-        updateDisplay(); 
-        saveData();
-    }
-
-    function startTimer() {
-        if (state.timerStatus === 'RUNNING') return;
-        state.timerStatus = 'RUNNING';
-        state.timerInterval = setInterval(() => {
-            if (state.mode === 'FLEXIBLE') state.seconds++;
-            else { state.seconds--; if (state.seconds <= 0) handlePomoFinish(); }
-            updateDisplay(); if(state.seconds % 30 === 0) saveData(); 
-        }, 1000);
-        updateDisplay();
-    }
-
-    function pauseTimer() { 
-        if (state.timerStatus !== 'RUNNING') return; 
-        clearInterval(state.timerInterval); 
-        state.timerStatus = 'PAUSED'; 
-        updateDisplay(); 
-        saveData(); 
-    }
-    
-    function stopTimer() { 
-        clearInterval(state.timerInterval); 
-        state.timerStatus = 'IDLE'; 
-        
-        if(state.mode === 'POMODORO') {
-            state.seconds = 25 * 60;
-            state.pomoPhase = 'FOCUS';
-        } else {
-            state.seconds = 0;
-        }
-        updateDisplay();
-        saveData();
-    }
-
-    function handlePomoFinish() { /* 簡化保留原始流程 */ }
-    
-    function formatTime(sec) {
-        let h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
-        return (h>0 ? `${h.toString().padStart(2,'0')}:` : '') + `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-    }
-
-    function updateDisplay() {
-        const display = document.getElementById('timeDisplay');
-        const gifBox = document.getElementById('gifContainer');
-        display.innerText = formatTime(state.seconds);
-        if (state.timerStatus === 'RUNNING') {
-            display.style.color = state.mode === 'POMODORO' && state.pomoPhase !== 'FOCUS' ? '#17a2b8' : '#28a745';
-            gifBox.innerHTML = `<img src="${GIF_URL}">`;
-            document.getElementById('statusText').innerText = state.mode === 'FLEXIBLE' ? "工作中" : `番茄 (${state.pomoPhase})`;
-        } else if (state.timerStatus === 'PAUSED') {
-            display.style.color = '#ffc107'; gifBox.innerHTML = `<span style="color:#aaa">暫停</span>`;
-            document.getElementById('statusText').innerText = "暫停中";
-        } else {
-            display.style.color = '#343a40'; gifBox.innerHTML = `<span style="color:#ccc">停止</span>`;
-            document.getElementById('statusText').innerText = "閒置";
-        }
-    }
-
-    function updateCountdown() {
-        const task = document.getElementById('deadlineTask').value, dateStr = document.getElementById('deadlineDate').value, box = document.getElementById('countdownDisplay');
-        saveData(); 
-        if (!dateStr) { box.style.display = 'none'; return; }
-        const target = new Date(dateStr), today = new Date();
-        today.setHours(0,0,0,0); target.setHours(0,0,0,0);
-        const diffDays = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
-        box.style.display = 'block';
-        if (diffDays > 0) { box.style.background = '#dc3545'; box.innerHTML = `🔥 ${task} 倒數：${diffDays} 天`; }
-        else if (diffDays === 0) { box.style.background = '#ffc107'; box.style.color = '#333'; box.innerHTML = `🔥 ${task} 今天截止！`; }
-        else { box.style.background = '#6c757d'; box.innerHTML = `🚨 ${task} 已過期 ${Math.abs(diffDays)} 天`; }
-    }
-
-    // --- Storage ---
-    function saveData() {
-        if(!currentUser) return;
-        const data = {
-            globalNote: state.globalNote, 
-            todos: state.todos,
-            activeTaskId: state.activeTaskId, 
-            timerMode: state.mode,
-            timerSeconds: state.seconds,
-            deadlineTask: document.getElementById('deadlineTask').value,
-            deadlineDate: document.getElementById('deadlineDate').value
-        };
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-        document.getElementById('saveStatus').innerText = "已儲存: " + new Date().toLocaleTimeString('zh-TW', {hour12:false});
-    }
-
-    function loadData() {
-        if(!currentUser) return;
-        const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    function loadSandboxState() {
+        const raw = localStorage.getItem(getSandboxKey());
         if (raw) {
             try {
                 const data = JSON.parse(raw);
-                state.globalNote = data.globalNote || data.notepad || ""; 
-                state.todos = data.todos || [];
-                state.activeTaskId = data.activeTaskId || null;
-                
-                if(data.timerMode) state.mode = data.timerMode;
-                if(data.timerSeconds) state.seconds = data.timerSeconds;
-                if(data.deadlineTask) document.getElementById('deadlineTask').value = data.deadlineTask;
-                if(data.deadlineDate) document.getElementById('deadlineDate').value = data.deadlineDate;
-                
-                setTimerMode(state.mode);
-            } catch(e) { console.error("資料讀取失敗", e); }
+                sandboxState.tasks = data.tasks || [];
+                sandboxState.activeId = data.activeId || null;
+                sandboxState.globalNote = data.globalNote || "";
+            } catch (e) {}
         }
+        renderSandboxTasks(); refreshSandboxNoteArea();
+    }
+
+    function saveSandboxState() {
+        if (!currentUser) return;
+        const noteArea = document.getElementById('sandbox-note-area');
+        if (sandboxState.activeId) {
+            const t = sandboxState.tasks.find(x => x.id === sandboxState.activeId);
+            if(t) t.note = noteArea.value;
+        } else { sandboxState.globalNote = noteArea.value; }
+
+        localStorage.setItem(getSandboxKey(), JSON.stringify({ tasks: sandboxState.tasks, activeId: sandboxState.activeId, globalNote: sandboxState.globalNote }));
+        document.getElementById('sandbox-save-status').innerText = `已儲存 ${new Date().toLocaleTimeString('zh-TW', {hour12:false})}`;
+    }
+
+    function importWhiteboardTasks() {
+        if(!currentUser) return;
+        const wbRaw = localStorage.getItem(`whiteboard_state_${currentUser.uid}`);
+        if(!wbRaw) return alert("找不到白板資料！");
+        
+        const wbData = JSON.parse(wbRaw);
+        let count = 0;
+        if (wbData.workspaces) {
+            Object.values(wbData.workspaces).forEach(cards => {
+                cards.forEach(c => {
+                    if (c.status === 2 || sandboxState.tasks.some(t => t.wbId === c.id)) return;
+                    sandboxState.tasks.push({ id: Date.now() + Math.random(), wbId: c.id, title: c.title || '未命名', note: c.content || '', completed: false });
+                    count++;
+                });
+            });
+        }
+        if(count > 0) { alert(`已安全複製 ${count} 筆任務進沙盒緩衝區。`); saveSandboxState(); renderSandboxTasks(); }
+    }
+
+    function renderSandboxTasks() {
+        const list = document.getElementById('sandbox-task-list');
+        list.innerHTML = "";
+        sandboxState.tasks.forEach(t => {
+            const div = document.createElement('div');
+            div.className = `task-item ${sandboxState.activeId === t.id ? 'active' : ''}`;
+            div.innerHTML = `
+                <div style="display:flex; align-items:center; gap:8px; width:100%;">
+                    <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleSandboxTask(${t.id}, event)">
+                    <div onclick="setSandboxActiveTask(${t.id})" style="flex-grow:1; font-weight:bold; ${t.completed?'text-decoration:line-through;opacity:0.5;':''}">${t.title}</div>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    function toggleSandboxTask(id, e) { e.stopPropagation(); const t = sandboxState.tasks.find(x => x.id === id); if(t) t.completed = !t.completed; saveSandboxState(); renderSandboxTasks(); }
+    function setSandboxActiveTask(id) { sandboxState.activeId = id; saveSandboxState(); renderSandboxTasks(); refreshSandboxNoteArea(); }
+
+    function refreshSandboxNoteArea() {
+        const titleEl = document.getElementById('sandbox-task-title');
+        const areaEl = document.getElementById('sandbox-note-area');
+        if (sandboxState.activeId) {
+            const t = sandboxState.tasks.find(x => x.id === sandboxState.activeId);
+            if(t) { titleEl.value = `🎯 ${t.title}`; areaEl.value = t.note || ""; return; }
+        }
+        titleEl.value = "全域發想草稿筆記"; areaEl.value = sandboxState.globalNote || "";
+    }
+
+    // Timer Engine
+    function setTimerMode(m) { stopTimer(); sandboxState.timer.mode = m; sandboxState.timer.seconds = m==='POMO'?25*60:0; updateTimerDisplay(); }
+    function startTimer() {
+        if(sandboxState.timer.status === 'RUNNING') return;
+        sandboxState.timer.status = 'RUNNING'; document.getElementById('timerStatus').innerText = '🔥 心流高能運算中';
+        sandboxState.timer.intervalId = setInterval(() => {
+            if(sandboxState.timer.mode === 'FLEX') sandboxState.timer.seconds++;
+            else { sandboxState.timer.seconds--; if(sandboxState.timer.seconds<=0) { stopTimer(); alert('🍅 番茄鐘時間到，請休息一下！'); } }
+            updateTimerDisplay();
+        }, 1000);
+    }
+    function pauseTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'PAUSED'; document.getElementById('timerStatus').innerText = '⏸️ 暫停'; }
+    function stopTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'IDLE'; document.getElementById('timerStatus').innerText = '閒置'; updateTimerDisplay(); }
+    function updateTimerDisplay() { const s = sandboxState.timer.seconds; document.getElementById('timeDisplay').innerText = `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
+
+    function clearSandbox() { if(confirm("確定清空沙盒緩衝區？此動作不會影響到雲端白板，但本地草稿將消失。")) { stopTimer(); localStorage.removeItem(getSandboxKey()); location.reload(); } }
+    function exportSandboxMarkdown() {
+        let text = `# 🌟 心流沙盒最終收割戰報\n\n`;
+        if (sandboxState.globalNote.trim()) text += `## 📝 全域沙盒靈感\n${sandboxState.globalNote}\n\n`;
+        sandboxState.tasks.forEach(t => { text += `### ${t.completed ? '[x]' : '[ ]'} ${t.title}\n${t.note}\n\n`; });
+        const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `OpsHub_Sandbox_${getLocalYMD()}.md`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
     }
 </script>
 </body>
