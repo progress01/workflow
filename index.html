@@ -1,679 +1,425 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人運營中心 Pro Max (Ops Hub)</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <style>
-        :root { 
-            --primary-color: #007bff; --success-color: #28a745; --warning-color: #ffc107; 
-            --danger-color: #dc3545; --dark-color: #343a40; --light-bg: #f8f9fa; --border-color: #ced4da; 
-            --heat-0: #ebedf0; --heat-1: #9be9a8; --heat-2: #40c463; --heat-3: #30a14e; --heat-4: #216e39;
-        }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; color: #333; }
-        
-        #login-screen { position: fixed; inset: 0; background: radial-gradient(circle at center, #343a40 0%, #1a1e21 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; color: white; }
-        .login-btn { background: var(--primary-color); color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
-        
-        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: none; flex-direction: column; overflow: hidden; }
-        .app-header { background: var(--dark-color); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .nav-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
-        .nav-tab-btn { background: #495057; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        .nav-tab-btn.active { background: var(--primary-color); }
-
-        .view-section { padding: 20px; display: none; }
-        .view-section.active { display: block; }
-
-        button { cursor: pointer; padding: 8px 15px; border: none; border-radius: 5px; font-weight: bold; color: white; transition: 0.2s; background: var(--primary-color); }
-        button:hover { opacity: 0.9; }
-        .btn-danger { background: var(--danger-color); }
-        .btn-success { background: var(--success-color); }
-        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--dark-color); }
-        .btn-secondary { background: #6c757d; }
-        .btn-warning { background: var(--warning-color); color: #333; }
-        
-        input[type="text"], input[type="number"], input[type="date"], select, textarea { padding: 8px; border: 1px solid #ced4da; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; }
-
-        /* GA Controls */
-        .ga-controls { background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 12px; }
-        .ga-row { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
-        .ga-label { font-weight: bold; color: #495057; min-width: 80px; }
-        .btn-group { display: flex; gap: 5px; flex-wrap: wrap; }
-        .btn-filter { background: #e9ecef; color: #495057; border: 1px solid #ced4da; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: bold;}
-        .btn-filter.active { background: #007bff; color: white; border-color: #007bff; }
-        
-        /* 本地設定面板 */
-        .config-panel { background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
-
-        /* KPI 卡片 */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); }
-        .stat-card h4 { margin: 0 0 5px 0; color: #6c757d; font-size: 0.85rem; }
-        .stat-card .val { font-size: 1.6rem; font-weight: bold; color: var(--dark-color); }
-        .stat-card .comparison { font-size: 0.75rem; font-weight: bold; margin-top: 5px; }
-        .comp-up { color: var(--danger-color); }
-        .comp-down { color: var(--success-color); }
-        .comp-neutral { color: #6c757d; }
-
-        /* 圖表與表格 */
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .chart-container { background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); height: 300px; position: relative; }
-        .table-wrapper { max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th, td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
-        th { background: var(--light-bg); position: sticky; top: 0; z-index: 10; }
-
-        /* 進階賽局分析專屬 (Sabermetrics) */
-        .saber-panel { border: 1px solid var(--border-color); background: white; border-radius: 8px; padding: 15px; margin-bottom: 20px; }
-        .saber-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 15px; color: #495057; border-bottom: 2px solid var(--light-bg); padding-bottom: 8px; }
-        
-        .progress-container { margin-bottom: 15px; }
-        .progress-label { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #6c757d; }
-        .progress-bar-bg { background: #e9ecef; height: 12px; border-radius: 6px; overflow: hidden; position: relative; }
-        .progress-bar-fill { height: 100%; transition: width 0.5s ease-in-out; }
-
-        .heatmap-scroll { overflow-x: auto; padding-bottom: 10px; }
-        .heatmap-grid { display: flex; gap: 4px; }
-        .heatmap-col { display: flex; flex-direction: column; gap: 4px; }
-        .heatmap-cell { width: 14px; height: 14px; border-radius: 3px; background: var(--heat-0); }
-        .heat-1 { background: var(--heat-1); } .heat-2 { background: var(--heat-2); } .heat-3 { background: var(--heat-3); } .heat-4 { background: var(--heat-4); }
-
-        /* 沙盒佈局 */
-        .sandbox-layout { display: flex; gap: 20px; align-items: stretch; }
-        .panel-left { flex: 1; min-width: 280px; display: flex; flex-direction: column; gap: 15px; }
-        .panel-right { flex: 2; min-width: 300px; display: flex; flex-direction: column; gap: 10px; }
-        .timer-box { background: var(--light-bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; }
-        .timer-display { font-size: 3rem; font-weight: bold; margin: 10px 0; font-variant-numeric: tabular-nums;}
-        .task-list { flex-grow: 1; max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; background: white; }
-        .task-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
-        .task-item.active { border-left: 4px solid var(--primary-color); background: #e9ecef; }
-        .task-item.completed { opacity: 0.6; text-decoration: line-through; }
-        textarea { flex-grow: 1; min-height: 300px; font-family: monospace; padding: 15px; resize: vertical; }
-        .sandbox-actions { display: flex; justify-content: space-between; align-items: center; background: #e9ecef; padding: 10px 15px; border-radius: 8px; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
-
-        @media (max-width: 768px) {
-            .app-header { flex-direction: column; align-items: stretch; }
-            .nav-tabs { justify-content: center; }
-            .sandbox-layout { flex-direction: column; }
-            .charts-grid { grid-template-columns: 1fr; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Lab｜專案規劃與 AI 推演</title>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  <style>
+    :root{
+      --bg:#f6f7fb;--panel:#fff;--text:#1f2937;--muted:#64748b;--line:#dbe2ea;
+      --primary:#4f46e5;--primary-soft:#eef2ff;--success:#059669;--warn:#b45309;--danger:#dc2626;
+      --shadow:0 8px 24px rgba(15,23,42,.08);--radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Microsoft JhengHei",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .hidden{display:none!important}
+    #login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#fff;z-index:50}
+    .login-card{width:min(440px,90vw);background:#111827;padding:28px;border-radius:18px;text-align:center;box-shadow:var(--shadow)}
+    .login-card h1{margin:0 0 8px}.login-card p{color:#cbd5e1;line-height:1.6}
+    .btn{border:1px solid var(--line);background:#fff;color:#334155;padding:8px 12px;border-radius:8px;font-weight:700}
+    .btn:hover{background:#f8fafc}.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+    .btn.success{background:#ecfdf5;border-color:#a7f3d0;color:#047857}.btn.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
+    .btn.danger{background:#fef2f2;border-color:#fecaca;color:#b91c1c}.btn.ghost{background:transparent}
+    .btn.small{padding:5px 8px;font-size:.82rem}
+    .app{min-height:100vh}
+    .topbar{position:sticky;top:0;z-index:20;background:#172033;color:#fff;padding:12px 18px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.16)}
+    .brand{font-weight:900;white-space:nowrap}.topbar select{min-width:240px;background:#fff;color:#111827;border:0;border-radius:8px;padding:8px}
+    .topbar .spacer{flex:1}.topbar .status{font-size:.8rem;color:#cbd5e1}
+    .shell{max-width:1600px;margin:0 auto;padding:18px}
+    .summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
+    .summary-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+    .summary-card .k{font-size:.76rem;color:var(--muted);font-weight:800}.summary-card .v{font-size:1.12rem;font-weight:900;margin-top:4px}
+    .layout{display:grid;grid-template-columns:minmax(270px,320px) minmax(0,1fr) minmax(320px,420px);gap:14px;align-items:start}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 3px 10px rgba(15,23,42,.05);overflow:hidden}
+    .panel h2,.panel h3{margin:0}.panel-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fbfcfe}
+    .panel-body{padding:14px}.muted{color:var(--muted);font-size:.86rem}.tiny{font-size:.75rem;color:#94a3b8}.stack{display:flex;flex-direction:column;gap:10px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    label.field{display:flex;flex-direction:column;gap:5px;font-size:.78rem;font-weight:800;color:#475569}
+    input[type="text"],input[type="date"],input[type="number"],select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;background:#fff;color:#1f2937;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#818cf8;box-shadow:0 0 0 2px rgba(99,102,241,.09)}
+    textarea{resize:vertical;min-height:90px;line-height:1.55}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.meta-grid .wide{grid-column:1/-1}
+    .milestone{display:grid;grid-template-columns:130px 1fr auto;gap:6px;margin-bottom:6px}
+    .nav-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.tab-btn{border:1px solid var(--line);background:#fff;padding:7px 10px;border-radius:8px;font-weight:800;color:#475569}.tab-btn.active{background:var(--primary-soft);border-color:#a5b4fc;color:#3730a3}
+    .view{display:none}.view.active{display:block}
+    .card-list{display:flex;flex-direction:column;gap:8px}.source-card,.snapshot-item,.review-item,.finding-item,.decision-item,.scenario-item{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff}
+    .source-card h4,.scenario-card h4{margin:0 0 6px;font-size:.98rem}.pill{display:inline-block;border-radius:999px;padding:2px 7px;font-size:.7rem;font-weight:800;background:#eef2ff;color:#4338ca;margin-right:4px}.pill.free{background:#f1f5f9;color:#475569}.pill.warn{background:#fffbeb;color:#92400e}.pill.ok{background:#ecfdf5;color:#047857}.pill.danger{background:#fef2f2;color:#b91c1c}
+    .source-card .meta,.scenario-card .meta{font-size:.76rem;color:#64748b;display:flex;gap:8px;flex-wrap:wrap}
+    .source-card .desc{font-size:.87rem;color:#475569;margin-top:6px;white-space:pre-wrap}
+    details{border-top:1px dashed #e2e8f0;margin-top:8px;padding-top:6px}summary{cursor:pointer;color:#475569;font-weight:800;font-size:.8rem}
+    .template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.template-btn{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:8px;text-align:left;color:#334155;font-weight:800}.template-btn.active{background:#eef2ff;border-color:#818cf8;color:#3730a3}
+    .codebox{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:12px;max-height:350px;overflow:auto;font-size:.8rem;line-height:1.45}
+    .notice{padding:9px 10px;border-radius:8px;font-size:.82rem;line-height:1.45}.notice.info{background:#eff6ff;color:#1e40af}.notice.warn{background:#fffbeb;color:#92400e}.notice.ok{background:#ecfdf5;color:#047857}.notice.bad{background:#fef2f2;color:#991b1b}
+    .scenario-card{border-left:4px solid #818cf8}.scenario-card.changed{border-left-color:#f59e0b}.scenario-card.added{border-left-color:#10b981}.scenario-card.removed{opacity:.55;border-left-color:#ef4444}
+    .scenario-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}.scenario-fields .wide{grid-column:1/-1}
+    .diff-group{margin-bottom:12px}.diff-row{border:1px solid var(--line);border-radius:8px;padding:9px;margin:6px 0;background:#fff}.diff-row code{font-family:ui-monospace,Consolas,monospace;font-size:.78rem}
+    .list-empty{padding:22px;text-align:center;color:#94a3b8;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc}
+    .section-title{font-weight:900;color:#334155;margin:14px 0 8px}.divider{height:1px;background:#e2e8f0;margin:12px 0}
+    .danger-text{color:#b91c1c}.readonly{background:#f8fafc!important;color:#64748b}
+    @media(max-width:1180px){.layout{grid-template-columns:280px minmax(0,1fr)}.right-panel{grid-column:1/-1}.summary-grid{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:760px){.topbar{flex-wrap:wrap}.topbar select{min-width:0;flex:1}.layout{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,1fr)}.meta-grid,.scenario-fields{grid-template-columns:1fr}.meta-grid .wide,.scenario-fields .wide{grid-column:auto}.template-grid{grid-template-columns:1fr}.milestone{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
-
 <div id="login-screen">
-    <h1 style="font-size: 2rem; margin-bottom: 10px;">🛡️ 個人運營中心 Pro Max</h1>
-    <button class="login-btn" onclick="loginFirebase()">連結資料庫</button>
+  <div class="login-card">
+    <h1>🔬 Project Lab</h1>
+    <p>讀取正式白板，建立 Snapshot、Review、Finding、Decision 與 Scenario。<br>這裡可以亂想，正式白板保持安靜。</p>
+    <button class="btn primary" onclick="lab.login()">使用 Google 登入</button>
+  </div>
 </div>
 
-<div class="container" id="app-container">
-    <div class="app-header">
-        <div style="font-size: 1.2rem; font-weight: bold;">🛡️ Ops Hub Pro Max</div>
-        <div class="nav-tabs">
-            <button class="nav-tab-btn active" onclick="switchView('dashboard')" id="btn-tab-dashboard">📊 基礎儀表板</button>
-            <button class="nav-tab-btn" onclick="switchView('sabermetrics')" id="btn-tab-sabermetrics">🔬 進階賽局分析</button>
-            <button class="nav-tab-btn" onclick="switchView('sandbox')" id="btn-tab-sandbox">🌟 心流沙盒</button>
+<div id="app" class="app hidden">
+  <div class="topbar">
+    <div class="brand">🔬 Project Lab</div>
+    <select id="project-select" onchange="lab.changeProject(this.value)"></select>
+    <button class="btn small" onclick="lab.reloadSource()">↻ 重新讀取白板</button>
+    <button class="btn small success" onclick="lab.createSnapshot()">📸 建立 Snapshot</button>
+    <div class="spacer"></div>
+    <div id="source-status" class="status"></div>
+    <button class="btn small" onclick="lab.logout()">登出</button>
+  </div>
+
+  <div class="shell">
+    <div id="summary-grid" class="summary-grid"></div>
+
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-head"><h3>🧭 Project</h3><span class="tiny">專案邊界與限制</span></div>
+        <div class="panel-body stack">
+          <div id="project-id-view" class="notice info"></div>
+          <div class="meta-grid">
+            <label class="field wide">專案名稱<input id="pm-name" type="text"></label>
+            <label class="field wide">專案目的<textarea id="pm-goal" placeholder="為什麼要做？"></textarea></label>
+            <label class="field">專案期限<input id="pm-deadline" type="date"></label>
+            <label class="field">期限性質<select id="pm-deadlineType"><option value="hard">硬性期限</option><option value="target">目標日期</option><option value="none">未設定</option></select></label>
+            <label class="field wide">完成定義 Definition of Done<textarea id="pm-dod" placeholder="做到什麼程度，這一階段可以算完成？"></textarea></label>
+            <label class="field wide">固定限制 Constraints<textarea id="pm-constraints" placeholder="不能改、不能犧牲、必須遵守的條件"></textarea></label>
+            <label class="field">下次規劃檢討日<input id="pm-reviewDate" type="date"></label>
+            <label class="field">近期詳細規劃視野（天）<input id="pm-horizon" type="number" min="1" step="1"></label>
+          </div>
+          <div>
+            <div class="section-title">里程碑</div>
+            <div id="milestone-list"></div>
+            <button class="btn small" onclick="lab.addMilestone()">＋ 新增里程碑</button>
+          </div>
+          <button class="btn primary" onclick="lab.saveProjectMeta()">儲存 Project 資料</button>
+          <div class="notice warn">Project Lab 的專案資料獨立保存，不會寫回正式白板。正式卡片仍以原白板為準。</div>
         </div>
-        <div style="display: flex; gap: 8px;">
-            <button class="btn-outline" style="color:white; border-color:white; padding: 4px 10px;" onclick="toggleConfigPanel()">⚙️ 本地配置</button>
-            <button class="btn-danger" style="padding: 4px 10px;" onclick="logoutFirebase()">登出</button>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h3>🧪 工作區</h3><span id="center-subtitle" class="tiny"></span></div>
+        <div class="panel-body">
+          <div class="nav-tabs" id="center-tabs">
+            <button class="tab-btn active" data-view="source" onclick="lab.showView('source')">正式資料</button>
+            <button class="tab-btn" data-view="snapshots" onclick="lab.showView('snapshots')">Snapshots</button>
+            <button class="tab-btn" data-view="reviews" onclick="lab.showView('reviews')">Reviews</button>
+            <button class="tab-btn" data-view="findings" onclick="lab.showView('findings')">Findings</button>
+            <button class="tab-btn" data-view="decisions" onclick="lab.showView('decisions')">Decisions</button>
+            <button class="tab-btn" data-view="scenarios" onclick="lab.showView('scenarios')">Scenarios</button>
+          </div>
+          <div id="view-source" class="view active"></div>
+          <div id="view-snapshots" class="view"></div>
+          <div id="view-reviews" class="view"></div>
+          <div id="view-findings" class="view"></div>
+          <div id="view-decisions" class="view"></div>
+          <div id="view-scenarios" class="view"></div>
         </div>
+      </section>
+
+      <section class="panel right-panel">
+        <div class="panel-head"><h3>🤖 AI 協作</h3><span class="tiny">先討論，再結構化</span></div>
+        <div class="panel-body stack">
+          <div>
+            <div class="section-title" style="margin-top:0">探索／討論模板</div>
+            <div id="review-template-grid" class="template-grid"></div>
+          </div>
+          <label class="field">這次我特別想問<textarea id="ai-custom-question" placeholder="例如：我不確定 02 要不要拆成兩張卡，但又怕切太細。"></textarea></label>
+          <div class="row">
+            <select id="ai-snapshot-select" style="flex:1"></select>
+            <button class="btn" onclick="lab.buildReviewPrompt()">產生提問</button>
+            <button class="btn" onclick="lab.copyPrompt()">複製完整提問</button>
+          </div>
+          <div id="prompt-preview" class="codebox">尚未產生提問。</div>
+          <div class="divider"></div>
+          <label class="field">貼上 AI 回覆<textarea id="ai-response" placeholder="可以貼一般文字。若是 Scenario JSON，也可以貼在這裡。"></textarea></label>
+          <div class="row">
+            <button class="btn success" onclick="lab.saveReview()">💬 儲存為 Review</button>
+            <button class="btn" onclick="lab.tryImportScenarioFromResponse()">🧩 解析為 Scenario</button>
+          </div>
+          <div id="import-status"></div>
+          <div class="divider"></div>
+          <div class="section-title" style="margin:0">Scenario 結構化</div>
+          <div class="notice info">當討論已經形成可試排方案時，再要求 AI 回傳完整 Scenario。不是每一輪對話都需要 JSON。</div>
+          <button class="btn primary" onclick="lab.buildScenarioPrompt()">產生「整理為 Scenario」提示詞</button>
+          <button class="btn" onclick="lab.copyScenarioSchema()">複製 Scenario JSON Schema 範例</button>
+        </div>
+      </section>
     </div>
-
-    <div id="local-config" class="config-panel">
-        <div>
-            <label style="font-weight:bold; display:block; margin-bottom:5px;">💰 每月基本預算 (薪水/資金池)</label>
-            <input type="number" id="cfg-salary" value="50000" onchange="saveLocalConfig()">
-        </div>
-        <div>
-            <label style="font-weight:bold; display:block; margin-bottom:5px;">🔄 月固定訂閱總額 (Netflix/房租等)</label>
-            <input type="number" id="cfg-subscriptions" value="1500" onchange="saveLocalConfig()">
-        </div>
-    </div>
-
-    <div class="view-section" style="display: block; padding-bottom: 0;" id="global-controls">
-        <div class="ga-controls">
-            <div class="ga-row">
-                <div class="ga-label">📅 分析區間</div>
-                <div class="btn-group" id="date-btn-group">
-                    <button class="btn-filter" onclick="setDateRange('7days', this)">近 7 天</button>
-                    <button class="btn-filter" onclick="setDateRange('30days', this)">近 30 天</button>
-                    <button class="btn-filter active" onclick="setDateRange('month', this)">本月</button>
-                    <button class="btn-filter" onclick="setDateRange('custom', this)">自訂</button>
-                </div>
-                <div id="custom-dates" style="display: none; gap: 5px; align-items: center;">
-                    <input type="date" id="custom-start"> <span>-</span> <input type="date" id="custom-end">
-                </div>
-                <button class="btn-success" style="margin-left: auto;" onclick="executeAnalysis()">🚀 執行全維度解析</button>
-            </div>
-            <div class="ga-row" id="dashboard-modes">
-                <div class="ga-label">👁️ 基礎模式</div>
-                <div class="btn-group" id="mode-btn-group">
-                    <button class="btn-filter active" onclick="setAnalysisMode('trend', this)">📈 趨勢分佈</button>
-                    <button class="btn-filter" onclick="setAnalysisMode('structure', this)">📊 結構佔比 (分類涵攝)</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="view-dashboard" class="view-section active" style="padding-top: 0;">
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h4>💸 區間開銷總計</h4>
-                <div class="val" id="stat-expense" style="color:var(--danger-color);">0</div>
-                <div class="comparison" id="cmp-expense">較上期 --</div>
-            </div>
-            <div class="stat-card">
-                <h4>💰 區間外部收入</h4>
-                <div class="val" id="stat-income" style="color:var(--success-color);">0</div>
-                <div class="comparison" id="cmp-income">較上期 --</div>
-            </div>
-            <div class="stat-card">
-                <h4>💳 可用預算真實結餘</h4>
-                <div class="val" id="stat-balance" style="color:var(--primary-color);">0</div>
-                <div class="comparison" id="cmp-balance" style="color:#6c757d;">基於本地薪水與訂閱參數計算</div>
-            </div>
-            <div class="stat-card">
-                <h4>📚 成長與習慣追蹤 (次)</h4>
-                <div class="val" id="stat-growth" style="color: #17a2b8;">0</div>
-                <div class="comparison" id="cmp-growth">較上期 --</div>
-            </div>
-        </div>
-
-        <div class="charts-grid">
-            <div class="chart-container"><canvas id="financeChart"></canvas></div>
-            <div class="chart-container"><canvas id="healthChart"></canvas></div>
-            <div class="chart-container"><canvas id="growthChart"></canvas></div>
-        </div>
-
-        <h4 style="margin: 0 0 10px 0; color: #495057;">📝 區間足跡快照明細</h4>
-        <div class="table-wrapper">
-            <table>
-                <thead><tr><th>日期</th><th>類型</th><th>分類定義</th><th>數值</th><th>備註快照</th></tr></thead>
-                <tbody id="table-body"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <div id="view-sabermetrics" class="view-section" style="padding-top: 0;">
-        
-        <div class="saber-panel">
-            <div class="saber-title">⏱️ 預算消耗 vs. 時間流逝 (Pacing Tracker)</div>
-            <div class="progress-container">
-                <div class="progress-label"><span>區間時間流逝比例</span> <span id="saber-time-pct">0%</span></div>
-                <div class="progress-bar-bg"><div id="saber-time-bar" class="progress-bar-fill" style="background:#007bff; width:0%;"></div></div>
-            </div>
-            <div class="progress-container">
-                <div class="progress-label"><span>可用預算消耗比例</span> <span id="saber-burn-pct">0%</span></div>
-                <div class="progress-bar-bg"><div id="saber-burn-bar" class="progress-bar-fill" style="background:#28a745; width:0%;"></div></div>
-            </div>
-            <div style="font-size: 0.85rem; color: #6c757d; margin-top: 10px;" id="saber-pacing-msg">分析中...</div>
-        </div>
-
-        <div class="saber-panel">
-            <div class="saber-title">📉 支出變異極端值與 7 日移動平均線 (MA)</div>
-            <div style="height: 300px; position: relative;">
-                <canvas id="saberOutlierChart"></canvas>
-            </div>
-            <div style="font-size: 0.85rem; color: #6c757d; margin-top: 10px;">
-                * 紅點標示為超過「平均值 + 1.5倍標準差 ($\mu + 1.5\sigma$)」的極端支出日。折線為平滑雜訊後的 7 日預期趨勢線。
-            </div>
-        </div>
-
-        <div class="saber-panel">
-            <div class="saber-title">🔥 過去 90 天習慣與學習一致性 (Consistency Matrix)</div>
-            <div class="heatmap-scroll">
-                <div class="heatmap-grid" id="saber-heatmap">
-                    </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="view-sandbox" class="view-section" style="padding-top: 0;">
-        <div class="sandbox-layout">
-            <div class="panel-left">
-                <div class="timer-box">
-                    <div style="display: flex; gap: 5px; margin-bottom: 10px;"><button class="btn-secondary" style="flex:1;" onclick="setTimerMode('FLEX')">彈性計時</button><button class="btn-danger" style="flex:1;" onclick="setTimerMode('POMO')">番茄鐘</button></div>
-                    <div class="timer-display" id="timeDisplay">00:00:00</div>
-                    <div style="color: #6c757d; font-size: 0.85rem; margin-bottom: 10px;" id="timerStatus">閒置中</div>
-                    <div style="display: flex; gap: 5px;"><button class="btn-success" style="flex:1;" onclick="startTimer()">▶</button><button class="btn-warning" style="flex:1;" onclick="pauseTimer()">⏸</button><button class="btn-secondary" style="flex:1;" onclick="stopTimer()">⏹</button></div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;"><h4 style="margin:0;">📋 本地複本</h4><button class="btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="importWhiteboardTasks()">📥 載入</button></div>
-                <div class="task-list" id="sandbox-task-list"></div>
-            </div>
-            <div class="panel-right">
-                <div style="display: flex; justify-content: space-between; align-items: flex-end;"><h4 style="margin:0;">📝 密閉式發想沙盒</h4><span style="font-size: 0.8rem; color: #adb5bd;" id="sandbox-save-status">自動儲存</span></div>
-                <input type="text" id="sandbox-task-title" placeholder="全域草稿" readonly style="font-weight:bold; color:var(--primary-color); border:none; border-bottom:1px dashed #ced4da; outline:none;">
-                <textarea id="sandbox-note-area" oninput="saveSandboxState()"></textarea>
-            </div>
-        </div>
-        <div class="sandbox-actions">
-            <div style="font-size: 0.85rem; color: #856404;"><strong>ℹ️ 物理隔離狀態：</strong> 變更僅存於瀏覽器暫存。</div>
-            <div style="display: flex; gap: 10px;"><button class="btn-success" onclick="exportSandboxMarkdown()">⬇️ 輸出 (.md)</button><button class="btn-danger" onclick="clearSandbox()">🧹 清空沙盒</button></div>
-        </div>
-    </div>
+  </div>
 </div>
 
 <script>
-    // ==========================================
-    // 1. Firebase 初始化
-    // ==========================================
-    const firebaseConfig = { apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU", authDomain: "maplestoryboss.firebaseapp.com", projectId: "maplestoryboss", storageBucket: "maplestoryboss.firebasestorage.app", messagingSenderId: "198034430854", appId: "1:198034430854:web:527ffcee039e223b972a07" };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-    const provider = new firebase.auth.GoogleAuthProvider();
+const firebaseConfig = {
+  apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
+  authDomain: "maplestoryboss.firebaseapp.com",
+  projectId: "maplestoryboss",
+  storageBucket: "maplestoryboss.firebasestorage.app",
+  messagingSenderId: "198034430854",
+  appId: "1:198034430854:web:527ffcee039e223b972a07"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
 
-    let currentUser = null;
-    let fullRecords = [];
-    let chartInstances = {};
-    let currentAnalysisMode = 'trend';
+const REVIEW_TEMPLATES = [
+  {id:'health', label:'專案健檢', text:'檢查目前專案規劃是否存在結構缺口、互相矛盾、粒度失衡或缺少必要前置資訊。不要急著修改，先指出問題與需要補充的資訊。'},
+  {id:'unknowns', label:'找未知與假設', text:'找出目前規劃中被當成事實但其實尚未驗證的假設、仍缺資料的未知、以及這些不確定性會影響哪些工項。'},
+  {id:'logic', label:'檢查規劃邏輯', text:'檢查工項的前後關係、依賴、產出與驗收是否合理。特別指出「其實不能直接排程」或「需要先探索」的部分。'},
+  {id:'deadline', label:'期限壓力分析', text:'以專案期限、里程碑、剩餘時間與目前工項為基礎，分析哪一些工作已經成為時間風險，哪些工作可以降規或延後，不直接替我做決定。'},
+  {id:'challenge', label:'挑戰目前想法', text:'刻意站在反方檢查目前規劃，指出我可能因為既有做法、沉沒成本或過度追求完整而忽略的替代方案。請具體說明理由。'},
+  {id:'premortem', label:'假設專案失敗', text:'假設到了專案期限時成果沒有達成。根據目前資料反推最可能的失敗原因，並區分：已知問題、風險、假設、未知。不要把所有小例外都列成重大風險。'},
+  {id:'custom', label:'自訂問題', text:'以我的額外問題為主，使用專案資料協助分析。資訊不足時明確指出，不要自行補成事實。'}
+];
 
-    auth.onAuthStateChanged((user) => {
-        if (user) {
-            currentUser = user;
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('app-container').style.display = 'flex';
-            loadLocalConfig();
-            initApp();
-        } else {
-            currentUser = null;
-            document.getElementById('login-screen').style.display = 'flex';
-            document.getElementById('app-container').style.display = 'none';
-        }
+const FINDING_TYPES = [
+  ['assumption','❓ 假設'],['risk','⚠ 風險'],['issue','🚧 已發生問題'],['dependency','🔗 依賴'],['decision_candidate','💡 待決策事項']
+];
+
+const lab = {
+  user:null,
+  source:{raw:null,cards:[],nodes:[],tabs:[],loadedAt:null},
+  state:{projects:{},projectNameMap:{},snapshots:[],reviews:[],findings:[],decisions:[],scenarios:[],activeProjectId:'',activeView:'source',activeTemplate:'health',lastPrompt:'',lastScenarioPrompt:''},
+
+  login(){ auth.signInWithPopup(provider).catch(e=>alert('登入失敗：'+e.message)); },
+  logout(){ auth.signOut(); },
+  key(){ return `project_lab_state_${this.user?.uid || 'anon'}`; },
+  now(){ return new Date().toISOString(); },
+  uid(prefix){ return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`; },
+  esc(v){ return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); },
+  fmt(iso){ if(!iso)return''; const d=new Date(iso); if(Number.isNaN(d.getTime()))return iso; return d.toLocaleString('zh-TW',{hour12:false}); },
+  daysUntil(dateStr){ if(!dateStr)return null; const t=new Date(); t.setHours(0,0,0,0); const d=new Date(dateStr+'T00:00:00'); return Math.ceil((d-t)/86400000); },
+  sourceProjectName(card){ return String(card?.project||'').trim() || '未分類'; },
+  plannedMinutes(card){ if(Number.isFinite(Number(card?.plannedMinutes))) return Math.max(0,Number(card.plannedMinutes)); if(Number.isFinite(Number(card?.plannedHours))) return Math.max(0,Number(card.plannedHours)*60); return 0; },
+  logMinutes(log){ if(Number.isFinite(Number(log?.minutes)))return Math.max(0,Number(log.minutes)); if(Number.isFinite(Number(log?.seconds)))return Math.max(0,Number(log.seconds)/60); if(Number.isFinite(Number(log?.hours)))return Math.max(0,Number(log.hours)*60); return 0; },
+  actualMinutes(card){ return (Array.isArray(card?.workLogs)?card.workLogs:[]).reduce((s,l)=>s+this.logMinutes(l),0); },
+  statusLabel(s){ return ['未開始','進行中','完成','阻塞'][Number(s)||0] || `狀態${s}`; },
+
+  loadState(){
+    try{ const raw=localStorage.getItem(this.key()); if(raw){ const d=JSON.parse(raw); this.state={...this.state,...d}; } }catch(e){console.warn(e)}
+  },
+  saveState(){ localStorage.setItem(this.key(),JSON.stringify(this.state)); },
+
+  init(){
+    this.loadState();
+    this.renderTemplateButtons();
+    this.reloadSource(false);
+  },
+
+  reloadSource(showAlert=true){
+    if(!this.user)return;
+    const raw=localStorage.getItem(`whiteboard_state_${this.user.uid}`);
+    if(!raw){
+      this.source={raw:null,cards:[],nodes:[],tabs:[],loadedAt:this.now()};
+      document.getElementById('source-status').innerText='找不到白板 localStorage';
+      if(showAlert) alert('找不到正式白板資料。請先在同一個網域、同一個瀏覽器登入並開啟白板。');
+      this.renderAll();
+      return;
+    }
+    try{
+      const wb=JSON.parse(raw);
+      const tabs=Array.isArray(wb.tabs)?wb.tabs:[];
+      const cards=[]; const nodes=[];
+      Object.entries(wb.workspaces||{}).forEach(([tabId,list])=>{
+        const tabName=tabs.find(t=>t.id===tabId)?.name||'未知';
+        (list||[]).forEach(card=>cards.push({card:structuredClone(card),tabId,tabName}));
+      });
+      Object.entries(wb.nodes||{}).forEach(([tabId,list])=>{
+        const tabName=tabs.find(t=>t.id===tabId)?.name||'未知';
+        (list||[]).forEach(node=>nodes.push({node:structuredClone(node),tabId,tabName}));
+      });
+      this.source={raw:wb,cards,nodes,tabs,loadedAt:this.now()};
+      this.syncProjectsFromSource();
+      document.getElementById('source-status').innerText=`已讀取 ${cards.length} 張卡片 · ${new Date().toLocaleTimeString('zh-TW',{hour12:false})}`;
+      if(showAlert) alert(`已重新讀取正式白板：${cards.length} 張卡片。`);
+    }catch(e){ alert('白板資料解析失敗：'+e.message); }
+    this.renderAll();
+  },
+
+  syncProjectsFromSource(){
+    const names=[...new Set(this.source.cards.map(({card})=>this.sourceProjectName(card)))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+    names.forEach(name=>{
+      let pid=this.state.projectNameMap[name];
+      if(!pid){
+        pid=this.uid('proj');
+        this.state.projectNameMap[name]=pid;
+        this.state.projects[pid]={id:pid,sourceName:name,name,goal:'',deadline:'',deadlineType:'none',definitionOfDone:'',constraints:'',nextReviewDate:'',planningHorizonDays:7,milestones:[],createdAt:this.now(),updatedAt:this.now()};
+      }
     });
-
-    function loginFirebase() { auth.signInWithPopup(provider).catch(e => console.error(e)); }
-    function logoutFirebase() { auth.signOut(); }
-    
-    function switchView(viewName) {
-        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
-        
-        // 全域控制列在沙盒模式隱藏
-        document.getElementById('global-controls').style.display = (viewName === 'sandbox') ? 'none' : 'block';
-        // 基礎模式切換按鈕僅在 dashboard 顯示
-        document.getElementById('dashboard-modes').style.display = (viewName === 'dashboard') ? 'flex' : 'none';
-
-        document.getElementById(`view-${viewName}`).classList.add('active');
-        document.getElementById(`btn-tab-${viewName}`).classList.add('active');
-        
-        // 切換時重繪對應圖表避免 Canvas 尺寸錯誤
-        if (fullRecords.length > 0) executeAnalysis();
+    if(!this.state.activeProjectId || !this.state.projects[this.state.activeProjectId]){
+      const firstName=names[0]; this.state.activeProjectId=firstName?this.state.projectNameMap[firstName]:'';
     }
-    
-    const getLocalYMD = (date = new Date()) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    this.saveState();
+  },
 
-    function initApp() {
-        setDateRange('month', document.querySelector('#date-btn-group .active'));
-        fetchDashboardData();
-        loadSandboxState();
-    }
+  activeProject(){ return this.state.projects[this.state.activeProjectId] || null; },
+  activeSourceName(){ return this.activeProject()?.sourceName || this.activeProject()?.name || ''; },
+  projectCards(){ const name=this.activeSourceName(); return this.source.cards.filter(({card})=>this.sourceProjectName(card)===name); },
+  projectNodes(){ const name=this.activeSourceName(); return this.source.nodes.filter(({node})=>(String(node.project||'').trim()||'未分類')===name); },
 
-    // ==========================================
-    // 2. 本地設定與 GA 時間控制
-    // ==========================================
-    function toggleConfigPanel() {
-        const p = document.getElementById('local-config');
-        p.style.display = (p.style.display === 'grid') ? 'none' : 'grid';
-    }
-    function saveLocalConfig() {
-        if(!currentUser) return;
-        localStorage.setItem(`local_hub_config_${currentUser.uid}`, JSON.stringify({
-            salary: parseFloat(document.getElementById('cfg-salary').value) || 0,
-            subs: parseFloat(document.getElementById('cfg-subscriptions').value) || 0
-        }));
-        executeAnalysis();
-    }
-    function loadLocalConfig() {
-        if(!currentUser) return;
-        const raw = localStorage.getItem(`local_hub_config_${currentUser.uid}`);
-        if(raw) {
-            try { const c = JSON.parse(raw); document.getElementById('cfg-salary').value = c.salary; document.getElementById('cfg-subscriptions').value = c.subs; } catch(e){}
-        }
-    }
+  changeProject(pid){ this.state.activeProjectId=pid; this.saveState(); this.renderAll(); },
+  showView(name){ this.state.activeView=name; this.saveState(); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===name)); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`)); },
 
-    function setDateRange(range, btnEl) {
-        document.querySelectorAll('#date-btn-group .btn-filter').forEach(b => b.classList.remove('active'));
-        btnEl.classList.add('active');
-        const now = new Date(), startInput = document.getElementById('custom-start'), endInput = document.getElementById('custom-end');
-        document.getElementById('custom-dates').style.display = 'none';
+  renderAll(){ this.renderProjectSelect(); this.renderSummary(); this.renderProjectMeta(); this.renderSource(); this.renderSnapshots(); this.renderReviews(); this.renderFindings(); this.renderDecisions(); this.renderScenarios(); this.renderSnapshotSelect(); this.showView(this.state.activeView||'source'); },
 
-        if (range === '7days') { endInput.value = getLocalYMD(now); startInput.value = getLocalYMD(new Date(now.setDate(now.getDate() - 6))); } 
-        else if (range === '30days') { endInput.value = getLocalYMD(now); startInput.value = getLocalYMD(new Date(now.setDate(now.getDate() - 29))); } 
-        else if (range === 'month') { startInput.value = getLocalYMD(now).substring(0, 7) + "-01"; endInput.value = getLocalYMD(new Date(now.getFullYear(), now.getMonth() + 1, 0)); } 
-        else if (range === 'custom') { document.getElementById('custom-dates').style.display = 'flex'; }
-    }
-    function setAnalysisMode(mode, btnEl) {
-        document.querySelectorAll('#mode-btn-group .btn-filter').forEach(b => b.classList.remove('active'));
-        btnEl.classList.add('active');
-        currentAnalysisMode = mode;
-        if(document.getElementById('view-dashboard').classList.contains('active')) executeAnalysis();
-    }
+  renderProjectSelect(){
+    const el=document.getElementById('project-select'); if(!el)return;
+    const list=Object.values(this.state.projects).filter(p=>this.source.cards.some(({card})=>this.sourceProjectName(card)===p.sourceName));
+    el.innerHTML=list.map(p=>`<option value="${this.esc(p.id)}" ${p.id===this.state.activeProjectId?'selected':''}>${this.esc(p.name||p.sourceName)}</option>`).join('') || '<option value="">尚無專案</option>';
+  },
 
-    // ==========================================
-    // 3. 資料擷取與主分析樞紐
-    // ==========================================
-    async function fetchDashboardData() {
-        try {
-            const uidParam = currentUser.uid + "_life";
-            const snap = await db.collection("LifeApp_Records").where("uid", "==", uidParam).get();
-            fullRecords = [];
-            snap.forEach(doc => fullRecords.push({ id: doc.id, ...doc.data() }));
-            fullRecords.sort((a, b) => new Date(a.date) - new Date(b.date));
-            executeAnalysis();
-        } catch (e) { console.error(e); }
-    }
+  renderSummary(){
+    const p=this.activeProject(); const cards=this.projectCards(); const sched=cards.filter(x=>!x.card.isMemo); const completed=cards.filter(x=>Number(x.card.status)===2).length;
+    const planned=sched.reduce((s,x)=>s+this.plannedMinutes(x.card),0); const actual=cards.reduce((s,x)=>s+this.actualMinutes(x.card),0); const days=this.daysUntil(p?.deadline);
+    const data=[['卡片',cards.length],['排程 / 自由',`${sched.length} / ${cards.length-sched.length}`],['完成',`${completed}/${cards.length}`],['預估 / 實際',`${(planned/60).toFixed(1)}h / ${(actual/60).toFixed(1)}h`],['距期限',days===null?'未設定':days<0?`逾期 ${Math.abs(days)} 天`:`${days} 天`]];
+    document.getElementById('summary-grid').innerHTML=data.map(([k,v])=>`<div class="summary-card"><div class="k">${k}</div><div class="v">${this.esc(v)}</div></div>`).join('');
+  },
 
-    function executeAnalysis() {
-        if (!fullRecords.length) return;
-        const startStr = document.getElementById('custom-start').value, endStr = document.getElementById('custom-end').value;
-        const cStart = new Date(startStr), cEnd = new Date(endStr);
-        const totalDays = Math.ceil((cEnd - cStart) / (1000 * 60 * 60 * 24)) + 1;
-        
-        // 環比時間切片
-        const pEnd = new Date(cStart.getTime() - (86400000));
-        const pStart = new Date(pEnd.getTime() - ((totalDays - 1) * 86400000));
-        const currSlice = fullRecords.filter(r => r.date >= startStr && r.date <= endStr);
-        const prevSlice = fullRecords.filter(r => r.date >= getLocalYMD(pStart) && r.date <= getLocalYMD(pEnd));
+  renderProjectMeta(){
+    const p=this.activeProject(); if(!p)return;
+    document.getElementById('project-id-view').innerHTML=`<strong>Project ID</strong><br><code>${this.esc(p.id)}</code><br><span class="tiny">來源名稱：${this.esc(p.sourceName)}</span>`;
+    ['name','goal','deadline','deadlineType','definitionOfDone','constraints','nextReviewDate','planningHorizonDays'].forEach(()=>{});
+    document.getElementById('pm-name').value=p.name||'';
+    document.getElementById('pm-goal').value=p.goal||'';
+    document.getElementById('pm-deadline').value=p.deadline||'';
+    document.getElementById('pm-deadlineType').value=p.deadlineType||'none';
+    document.getElementById('pm-dod').value=p.definitionOfDone||'';
+    document.getElementById('pm-constraints').value=p.constraints||'';
+    document.getElementById('pm-reviewDate').value=p.nextReviewDate||'';
+    document.getElementById('pm-horizon').value=p.planningHorizonDays||7;
+    this.renderMilestones();
+  },
 
-        // 基礎指標計算
-        let cm = { exp: 0, inc: 0, grw: 0, food: 0, burn: 0 }, pm = { exp: 0, inc: 0, grw: 0 };
-        const tbody = document.getElementById('table-body');
-        if(tbody) tbody.innerHTML = '';
+  saveProjectMeta(){
+    const p=this.activeProject(); if(!p)return;
+    p.name=document.getElementById('pm-name').value.trim()||p.sourceName;
+    p.goal=document.getElementById('pm-goal').value.trim();
+    p.deadline=document.getElementById('pm-deadline').value;
+    p.deadlineType=document.getElementById('pm-deadlineType').value;
+    p.definitionOfDone=document.getElementById('pm-dod').value.trim();
+    p.constraints=document.getElementById('pm-constraints').value.trim();
+    p.nextReviewDate=document.getElementById('pm-reviewDate').value;
+    p.planningHorizonDays=Math.max(1,Number(document.getElementById('pm-horizon').value)||7);
+    p.updatedAt=this.now(); this.saveState(); this.renderAll(); alert('Project 資料已儲存。');
+  },
+  addMilestone(){ const p=this.activeProject(); if(!p)return; p.milestones.push({id:this.uid('ms'),date:'',name:'',fixed:false}); this.saveState(); this.renderMilestones(); },
+  updateMilestone(id,field,value){ const p=this.activeProject(); const m=p?.milestones?.find(x=>x.id===id); if(!m)return; m[field]=field==='fixed'?!!value:value; p.updatedAt=this.now(); this.saveState(); },
+  deleteMilestone(id){ const p=this.activeProject(); if(!p)return; p.milestones=(p.milestones||[]).filter(x=>x.id!==id); this.saveState(); this.renderMilestones(); },
+  renderMilestones(){ const p=this.activeProject(); const root=document.getElementById('milestone-list'); if(!root||!p)return; root.innerHTML=(p.milestones||[]).map(m=>`<div class="milestone"><input type="date" value="${this.esc(m.date||'')}" onchange="lab.updateMilestone('${m.id}','date',this.value)"><input type="text" value="${this.esc(m.name||'')}" placeholder="里程碑名稱" onchange="lab.updateMilestone('${m.id}','name',this.value)"><button class="btn small danger" onclick="lab.deleteMilestone('${m.id}')">刪</button><label class="tiny" style="grid-column:2/-1"><input type="checkbox" ${m.fixed?'checked':''} onchange="lab.updateMilestone('${m.id}','fixed',this.checked)"> 固定不可移動</label></div>`).join('') || '<div class="tiny">尚未設定里程碑。</div>'; },
 
-        currSlice.forEach(r => {
-            if (r.type.includes('expense')) cm.exp += r.amount;
-            if (r.type.includes('income')) cm.inc += r.amount;
-            if (r.type === 'learning' || r.type === 'habit') cm.grw += r.amount;
-            if (r.type === 'food') cm.food += r.amount;
-            if (r.type === 'exercise') cm.burn += r.amount;
+  renderSource(){
+    const cards=this.projectCards(); const root=document.getElementById('view-source'); if(!root)return;
+    document.getElementById('center-subtitle').innerText=this.activeProject()?.name||'';
+    if(!cards.length){root.innerHTML='<div class="list-empty">目前專案沒有卡片。</div>';return;}
+    root.innerHTML=`<div class="notice info">此區為正式白板唯讀快照。Project Lab 不會修改這些資料。</div><div class="section-title">正式卡片</div><div class="card-list">${cards.map(x=>this.renderSourceCard(x)).join('')}</div>${this.projectNodes().length?`<div class="section-title">同專案發想節點</div><div class="card-list">${this.projectNodes().map(({node,tabName})=>`<div class="source-card"><span class="pill free">發想</span><strong>${this.esc(node.text||'未命名')}</strong><div class="meta"><span>${this.esc(tabName)}</span><span>${this.esc(node.tag||'')}</span></div></div>`).join('')}</div>`:''}`;
+  },
+  renderSourceCard({card,tabName}){
+    const planned=this.plannedMinutes(card), actual=this.actualMinutes(card); const type=card.isMemo?'自由卡':'排程卡';
+    const plan=card.isMemo?'':`${card.dateStart||card.dateSingle||''}${card.dateEnd?` → ${card.dateEnd}`:''}`;
+    return `<div class="source-card"><div><span class="pill ${card.isMemo?'free':''}">${type}</span><span class="pill">${this.esc(this.statusLabel(card.status))}</span>${card.category?`<span class="pill free">${this.esc(card.category)}</span>`:''}</div><h4>${this.esc(card.title||'未命名')}</h4><div class="meta"><span>${this.esc(tabName)}</span>${plan?`<span>${this.esc(plan)}</span>`:''}<span>預估 ${(planned/60).toFixed(1)}h</span><span>實際 ${(actual/60).toFixed(1)}h</span></div>${card.content?`<div class="desc">${this.esc(card.content)}</div>`:''}<details><summary>規劃 / 驗收 / 紀錄</summary><div class="desc"><strong>預期產出：</strong>${this.esc(card.deliverable||'')}<br><strong>驗收條件：</strong>${this.esc(card.acceptance||'')}<br><strong>工作紀錄：</strong>${(Array.isArray(card.entries)?card.entries:[]).length} 筆｜<strong>工時紀錄：</strong>${(Array.isArray(card.workLogs)?card.workLogs:[]).length} 筆</div></details></div>`;
+  },
 
-            if(tbody) {
-                const tr = document.createElement('tr');
-                let cat = r.categoryText || r.category || '未分類';
-                tr.innerHTML = `<td>${r.date.substring(5)}</td><td><span class="badge" style="background:${getTypeColor(r.type)}">${r.type}</span></td><td>${cat}</td><td style="font-weight:bold;">${r.amount.toLocaleString()}</td><td style="color:#666; font-size:0.8rem;">${r.note||''}</td>`;
-                tbody.insertBefore(tr, tbody.firstChild);
-            }
-        });
-        
-        prevSlice.forEach(r => {
-            if (r.type.includes('expense')) pm.exp += r.amount;
-            if (r.type.includes('income')) pm.inc += r.amount;
-            if (r.type === 'learning' || r.type === 'habit') pm.grw += r.amount;
-        });
+  snapshotPayload(){
+    const p=structuredClone(this.activeProject()); const cards=this.projectCards().map(({card,tabId,tabName})=>({card:structuredClone(card),tabId,tabName})); const nodes=this.projectNodes().map(x=>structuredClone(x));
+    return {project: p, cards, nodes, sourceLoadedAt:this.source.loadedAt};
+  },
+  createSnapshot(){
+    const p=this.activeProject(); if(!p)return;
+    const snap={id:this.uid('snap'),projectId:p.id,createdAt:this.now(),label:`${p.name} ${new Date().toLocaleString('zh-TW',{hour12:false})}`,payload:this.snapshotPayload()};
+    this.state.snapshots.push(snap); this.saveState(); this.renderAll(); this.showView('snapshots'); alert('Snapshot 已建立。');
+  },
+  projectSnapshots(){ return this.state.snapshots.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); },
+  renderSnapshots(){ const root=document.getElementById('view-snapshots'); const list=this.projectSnapshots(); if(!list.length){root.innerHTML='<div class="list-empty">還沒有 Snapshot。開始重要檢討前建立一份即可。</div>';return;} root.innerHTML=`<div class="card-list">${list.map(s=>`<div class="snapshot-item"><div class="row"><strong>${this.esc(s.label)}</strong><span class="pill free">${this.esc(s.id)}</span></div><div class="meta">${this.fmt(s.createdAt)}｜${s.payload.cards.length} 張卡片</div><div class="row" style="margin-top:8px"><button class="btn small" onclick="lab.createScenarioFromSnapshot('${s.id}')">從此 Snapshot 建 Scenario</button><button class="btn small" onclick="lab.useSnapshotForAI('${s.id}')">用於 AI</button><button class="btn small danger" onclick="lab.deleteSnapshot('${s.id}')">刪除</button></div></div>`).join('')}</div>`; },
+  deleteSnapshot(id){ if(!confirm('刪除這份 Snapshot？相關 Review / Scenario 不會自動刪除。'))return; this.state.snapshots=this.state.snapshots.filter(x=>x.id!==id); this.saveState(); this.renderAll(); },
+  useSnapshotForAI(id){ document.getElementById('ai-snapshot-select').value=id; this.buildReviewPrompt(); },
 
-        // KPI 卡片更新
-        const baseSal = parseFloat(document.getElementById('cfg-salary').value) || 0;
-        const baseSub = parseFloat(document.getElementById('cfg-subscriptions').value) || 0;
-        
-        if(document.getElementById('stat-expense')) {
-            document.getElementById('stat-expense').innerText = cm.exp.toLocaleString();
-            document.getElementById('stat-income').innerText = cm.inc.toLocaleString();
-            document.getElementById('stat-balance').innerText = ((baseSal + cm.inc) - cm.exp - baseSub).toLocaleString();
-            document.getElementById('stat-growth').innerText = cm.grw;
-            renderComparisonBadge('cmp-expense', cm.exp, pm.exp, true);
-            renderComparisonBadge('cmp-income', cm.inc, pm.inc, false);
-            renderComparisonBadge('cmp-growth', cm.grw, pm.grw, false);
-        }
+  renderTemplateButtons(){ const root=document.getElementById('review-template-grid'); root.innerHTML=REVIEW_TEMPLATES.map(t=>`<button class="template-btn ${this.state.activeTemplate===t.id?'active':''}" data-id="${t.id}" onclick="lab.selectTemplate('${t.id}')">${t.label}</button>`).join(''); },
+  selectTemplate(id){ this.state.activeTemplate=id; this.saveState(); this.renderTemplateButtons(); },
+  renderSnapshotSelect(){ const el=document.getElementById('ai-snapshot-select'); if(!el)return; const snaps=this.projectSnapshots(); el.innerHTML=`<option value="current">目前正式資料（即時讀取）</option>`+snaps.map(s=>`<option value="${s.id}">${this.esc(s.label)}</option>`).join(''); },
+  selectedContext(){ const val=document.getElementById('ai-snapshot-select').value; if(val==='current')return {id:'current',payload:this.snapshotPayload(),label:'目前正式資料'}; const s=this.state.snapshots.find(x=>x.id===val); return s?{id:s.id,payload:s.payload,label:s.label}:{id:'current',payload:this.snapshotPayload(),label:'目前正式資料'}; },
 
-        // 依據目前顯示的 View 分派渲染
-        if (document.getElementById('view-dashboard').classList.contains('active')) {
-            if (currentAnalysisMode === 'trend') renderTrendCharts(currSlice);
-            else renderStructureCharts(currSlice);
-        } else if (document.getElementById('view-sabermetrics').classList.contains('active')) {
-            renderSabermetrics(currSlice, fullRecords, totalDays, baseSal, baseSub, cm.exp);
-        }
-    }
+  compactContext(payload){
+    const p=payload.project||{}; const cards=(payload.cards||[]).map(({card,tabName})=>({id:card.id||'',type:card.isMemo?'free':'scheduled',workspace:tabName,title:card.title||'',content:card.content||'',category:card.category||'',status:this.statusLabel(card.status),progress:card.progress??null,plannedStart:card.dateStart||card.dateSingle||'',plannedEnd:card.dateEnd||'',plannedMinutes:this.plannedMinutes(card),deliverable:card.deliverable||'',acceptanceCriteria:card.acceptance||'',actualMinutes:this.actualMinutes(card),workNotes:(Array.isArray(card.entries)?card.entries:[]).map(e=>({title:e.title||'',content:e.content||'',createdAt:e.createdAt||''}))}));
+    return {project:{id:p.id,name:p.name,goal:p.goal,deadline:p.deadline,deadlineType:p.deadlineType,definitionOfDone:p.definitionOfDone,constraints:p.constraints,nextReviewDate:p.nextReviewDate,planningHorizonDays:p.planningHorizonDays,milestones:p.milestones||[]},cards};
+  },
 
-    function renderComparisonBadge(id, c, p, isExp) {
-        const el = document.getElementById(id);
-        if(!el) return;
-        if(p===0) { el.innerText="較上期 --"; el.className="comparison comp-neutral"; return; }
-        const pct = ((c-p)/p*100).toFixed(1);
-        if(c>p) { el.innerText=`較上期 +${pct}% ▲`; el.className=`comparison ${isExp?'comp-up':'comp-down'}`; }
-        else if(c<p) { el.innerText=`較上期 ${pct}% ▼`; el.className=`comparison ${isExp?'comp-down':'comp-up'}`; }
-        else { el.innerText="持平"; el.className="comparison comp-neutral"; }
-    }
+  buildReviewPrompt(){
+    const ctx=this.selectedContext(); const t=REVIEW_TEMPLATES.find(x=>x.id===this.state.activeTemplate)||REVIEW_TEMPLATES[0]; const q=document.getElementById('ai-custom-question').value.trim();
+    const prompt=`你正在協助我檢討一個進行中的專案。\n\n【本次分析任務】\n${t.text}\n\n【我的額外問題】\n${q||'無。請依本次分析任務進行。'}\n\n【討論規則】\n1. 先分析，不要因為看到問題就直接改寫整份計畫。\n2. 明確區分：事實、假設、風險、已發生問題、依賴、待決策事項。\n3. 若資訊不足，請指出需要補充什麼，不要自行補成事實。\n4. 請特別考慮專案期限、完成定義、固定限制與里程碑。\n5. 不要把所有長尾例外都當成重大風險，請說明哪些真的可能影響成果或期限。\n6. 可以提出不同方向與取捨，但不要假裝已經替我定案。\n7. 這一輪可以用正常文字回答，不需要 JSON。\n\n【資料基準】\n${ctx.label} (${ctx.id})\n\n【專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}`;
+    this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt;
+  },
+  async copyText(text,msg='已複製'){ try{await navigator.clipboard.writeText(text); alert(msg);}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(msg);} },
+  copyPrompt(){ const p=this.state.lastPrompt||this.buildReviewPrompt(); this.copyText(p,'已複製完整 AI 提問。'); },
 
-    // ==========================================
-    // 4A. 基礎儀表板繪製 (Trend & Structure)
-    // ==========================================
-    function renderTrendCharts(records) {
-        let dates = new Set(), dData = {};
-        records.forEach(r => { dates.add(r.date); 
-            if(!dData[r.date]) dData[r.date] = {fin:0, hlth:0, grw:0};
-            if(r.type.includes('income')) dData[r.date].fin += r.amount;
-            if(r.type.includes('expense')) dData[r.date].fin -= r.amount;
-            if(r.type === 'exercise') dData[r.date].hlth += r.amount;
-            if(r.type === 'food') dData[r.date].hlth -= r.amount;
-            if(r.type === 'learning' || r.type === 'habit') dData[r.date].grw += r.amount;
-        });
-        const arr = Array.from(dates).sort();
-        drawChart('financeChart', 'line', '單日淨現金流', arr, arr.map(d=>dData[d].fin), '#007bff');
-        drawChart('healthChart', 'line', '單日熱量盈虧', arr, arr.map(d=>dData[d].hlth), '#28a745');
-        let acc = 0; drawChart('growthChart', 'line', '成長累積曲線', arr, arr.map(d=> { acc += dData[d].grw; return acc; }), '#17a2b8');
-    }
+  saveReview(){
+    const response=document.getElementById('ai-response').value.trim(); if(!response)return alert('請先貼上 AI 回覆。'); const ctx=this.selectedContext(); const t=REVIEW_TEMPLATES.find(x=>x.id===this.state.activeTemplate)||REVIEW_TEMPLATES[0];
+    const review={id:this.uid('review'),projectId:this.state.activeProjectId,snapshotId:ctx.id==='current'?'':ctx.id,contextLabel:ctx.label,templateId:t.id,templateLabel:t.label,customQuestion:document.getElementById('ai-custom-question').value.trim(),prompt:this.state.lastPrompt||this.buildReviewPrompt(),response,userReflection:'',createdAt:this.now()};
+    this.state.reviews.push(review); this.saveState(); document.getElementById('ai-response').value=''; this.renderReviews(); this.showView('reviews'); alert('已儲存為 Review。');
+  },
+  projectReviews(){ return this.state.reviews.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); },
+  updateReviewReflection(id,value){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; r.userReflection=value; this.saveState(); },
+  reviewToFinding(id){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; this.addFinding({sourceReviewId:id,title:`來自 ${r.templateLabel} 的發現`,detail:'',type:'decision_candidate'}); this.showView('findings'); },
+  renderReviews(){ const root=document.getElementById('view-reviews'); const list=this.projectReviews(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 Review。右側可以產生提問並保存 AI 討論原文。</div>';return;} root.innerHTML=list.map(r=>`<div class="review-item"><div class="row"><strong>${this.esc(r.templateLabel)}</strong><span class="pill free">${this.esc(r.contextLabel||'')}</span><span class="tiny">${this.fmt(r.createdAt)}</span></div>${r.customQuestion?`<div class="desc"><strong>我的問題：</strong>${this.esc(r.customQuestion)}</div>`:''}<details><summary>AI 回覆原文</summary><div class="desc">${this.esc(r.response).replace(/\n/g,'<br>')}</div></details><label class="field" style="margin-top:8px">我的後續想法<textarea onchange="lab.updateReviewReflection('${r.id}',this.value)">${this.esc(r.userReflection||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉為 Finding</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`).join(''); },
 
-    function renderStructureCharts(records) {
-        let fCats = {}, hCats = {'總攝取 (Food)':0, '活動消耗 (Exercise)':0}, gCats = {};
-        records.forEach(r => {
-            const cat = r.categoryText || r.category || '未分類';
-            if (r.type.includes('expense')) fCats[cat] = (fCats[cat]||0) + r.amount;
-            if (r.type === 'food') hCats['總攝取 (Food)'] += r.amount;
-            if (r.type === 'exercise') hCats['活動消耗 (Exercise)'] += r.amount;
-            if (r.type === 'learning' || r.type === 'habit') gCats[cat] = (gCats[cat]||0) + r.amount;
-        });
-        const sortObj = (o) => { const s = Object.entries(o).sort((a,b)=>b[1]-a[1]); return {l: s.map(x=>x[0]), d: s.map(x=>x[1])}; };
-        const f = sortObj(fCats), g = sortObj(gCats);
-        
-        drawChart('financeChart', 'doughnut', '支出結構佔比', f.l, f.d, ['#dc3545', '#ffc107', '#fd7e14', '#e83e8c', '#6f42c1', '#6c757d']);
-        drawChart('healthChart', 'doughnut', '熱量收支二元對比', Object.keys(hCats), Object.values(hCats), ['#fd7e14', '#20c997']);
-        drawChart('growthChart', 'bar', '學習習慣分佈', g.l, g.d, '#17a2b8');
-    }
+  addFinding(seed={}){ const f={id:this.uid('find'),projectId:this.state.activeProjectId,type:seed.type||'risk',title:seed.title||'',detail:seed.detail||'',impact:'',validation:'',status:'open',sourceReviewId:seed.sourceReviewId||'',createdAt:this.now(),updatedAt:this.now()}; this.state.findings.push(f); this.saveState(); this.renderFindings(); },
+  updateFinding(id,field,value){ const f=this.state.findings.find(x=>x.id===id); if(!f)return; f[field]=value; f.updatedAt=this.now(); this.saveState(); },
+  projectFindings(){return this.state.findings.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));},
+  renderFindings(){ const root=document.getElementById('view-findings'); const list=this.projectFindings(); const add=`<button class="btn primary" onclick="lab.addFinding()">＋ 新增 Finding</button>`; if(!list.length){root.innerHTML=`${add}<div style="height:10px"></div><div class="list-empty">沒有 Finding。只把值得持續追蹤的未知、風險、問題、依賴或待決策事項放進來。</div>`;return;} root.innerHTML=`${add}<div style="height:10px"></div>`+list.map(f=>`<div class="finding-item"><div class="row"><select style="max-width:170px" onchange="lab.updateFinding('${f.id}','type',this.value)">${FINDING_TYPES.map(([v,l])=>`<option value="${v}" ${v===f.type?'selected':''}>${l}</option>`).join('')}</select><select style="max-width:120px" onchange="lab.updateFinding('${f.id}','status',this.value)"><option value="open" ${f.status==='open'?'selected':''}>待處理</option><option value="validated" ${f.status==='validated'?'selected':''}>已確認</option><option value="closed" ${f.status==='closed'?'selected':''}>已關閉</option><option value="ignored" ${f.status==='ignored'?'selected':''}>不處理</option></select></div><input type="text" value="${this.esc(f.title)}" placeholder="一句話描述" onchange="lab.updateFinding('${f.id}','title',this.value)" style="margin-top:8px"><label class="field" style="margin-top:8px">內容<textarea onchange="lab.updateFinding('${f.id}','detail',this.value)">${this.esc(f.detail)}</textarea></label><label class="field">影響<textarea onchange="lab.updateFinding('${f.id}','impact',this.value)">${this.esc(f.impact)}</textarea></label><label class="field">驗證 / 處理方式<textarea onchange="lab.updateFinding('${f.id}','validation',this.value)">${this.esc(f.validation)}</textarea></label><div class="row"><button class="btn small" onclick="lab.findingToDecision('${f.id}')">形成 Decision</button><button class="btn small danger" onclick="lab.deleteEntity('findings','${f.id}')">刪除</button></div></div>`).join(''); },
 
-    function drawChart(id, type, label, labels, data, colors) {
-        const ctx = document.getElementById(id);
-        if(!ctx) return;
-        if (chartInstances[id]) chartInstances[id].destroy();
-        const isD = type === 'doughnut';
-        chartInstances[id] = new Chart(ctx.getContext('2d'), {
-            type: type,
-            data: { labels: labels.length?labels:['無'], datasets: [{ label: label, data: data.length?data:[0], backgroundColor: isD?colors:(Array.isArray(colors)?colors[0]:colors+'33'), borderColor: isD?'#fff':colors, borderWidth: 1.5, fill: type==='line', tension:0.2 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { title: {display:true, text:label}, legend: {display:isD, position:'right'} } }
-        });
-    }
+  findingToDecision(id){ const f=this.state.findings.find(x=>x.id===id); if(!f)return; const d={id:this.uid('decision'),projectId:f.projectId,question:f.title,context:f.detail,options:'',decision:'',reason:'',tradeoffs:'',confidence:'medium',status:'proposed',sourceFindingId:f.id,createdAt:this.now(),updatedAt:this.now()}; this.state.decisions.push(d); this.saveState(); this.renderDecisions(); this.showView('decisions'); },
+  updateDecision(id,field,value){ const d=this.state.decisions.find(x=>x.id===id); if(!d)return; d[field]=value; d.updatedAt=this.now(); this.saveState(); },
+  projectDecisions(){return this.state.decisions.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));},
+  renderDecisions(){ const root=document.getElementById('view-decisions'); const list=this.projectDecisions(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 Decision。只有真正形成選擇時才留下決策紀錄。</div>';return;} root.innerHTML=list.map(d=>`<div class="decision-item"><div class="row"><span class="pill">Decision</span><select style="max-width:140px" onchange="lab.updateDecision('${d.id}','status',this.value)"><option value="proposed" ${d.status==='proposed'?'selected':''}>Proposed</option><option value="accepted" ${d.status==='accepted'?'selected':''}>Accepted</option><option value="superseded" ${d.status==='superseded'?'selected':''}>Superseded</option><option value="rejected" ${d.status==='rejected'?'selected':''}>Rejected</option></select><select style="max-width:120px" onchange="lab.updateDecision('${d.id}','confidence',this.value)"><option value="low" ${d.confidence==='low'?'selected':''}>低信心</option><option value="medium" ${d.confidence==='medium'?'selected':''}>中信心</option><option value="high" ${d.confidence==='high'?'selected':''}>高信心</option></select></div><label class="field">問題<input type="text" value="${this.esc(d.question)}" onchange="lab.updateDecision('${d.id}','question',this.value)"></label><label class="field">背景<textarea onchange="lab.updateDecision('${d.id}','context',this.value)">${this.esc(d.context)}</textarea></label><label class="field">考慮過的選項<textarea onchange="lab.updateDecision('${d.id}','options',this.value)">${this.esc(d.options)}</textarea></label><label class="field">決定<textarea onchange="lab.updateDecision('${d.id}','decision',this.value)">${this.esc(d.decision)}</textarea></label><label class="field">理由<textarea onchange="lab.updateDecision('${d.id}','reason',this.value)">${this.esc(d.reason)}</textarea></label><label class="field">代價 / 取捨<textarea onchange="lab.updateDecision('${d.id}','tradeoffs',this.value)">${this.esc(d.tradeoffs)}</textarea></label><button class="btn small danger" onclick="lab.deleteEntity('decisions','${d.id}')">刪除</button></div>`).join(''); },
 
-    function getTypeColor(t) { return t.includes('expense')?'#dc3545':t.includes('income')?'#28a745':t==='food'?'#fd7e14':t==='exercise'?'#20c997':'#17a2b8'; }
+  createScenarioFromSnapshot(snapshotId){ const s=this.state.snapshots.find(x=>x.id===snapshotId); if(!s)return; const scenario={id:this.uid('scenario'),projectId:s.projectId,baseSnapshotId:s.id,name:`Scenario ${this.projectScenarios().length+1}`,status:'draft',createdAt:this.now(),updatedAt:this.now(),cards:s.payload.cards.map(({card,tabId,tabName})=>({id:card.id||this.uid('temp'),originId:card.id||'',isNew:false,isDeleted:false,tabId,tabName,...structuredClone(card)})),notes:''}; this.state.scenarios.push(scenario); this.saveState(); this.renderScenarios(); this.showView('scenarios'); },
+  projectScenarios(){return this.state.scenarios.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));},
+  updateScenario(id,field,value){const s=this.state.scenarios.find(x=>x.id===id);if(!s)return;s[field]=value;s.updatedAt=this.now();this.saveState();},
+  updateScenarioCard(sid,cid,field,value){const s=this.state.scenarios.find(x=>x.id===sid);const c=s?.cards.find(x=>x.id===cid);if(!c)return; if(['plannedMinutes','progress','status'].includes(field) && value!=='') value=Number(value); c[field]=value; if(field==='dateStart'||field==='dateEnd') c.dateMode='range'; s.updatedAt=this.now();this.saveState();},
+  addScenarioCard(sid){const s=this.state.scenarios.find(x=>x.id===sid);if(!s)return; s.cards.push({id:this.uid('temp'),originId:'',isNew:true,isDeleted:false,title:'',content:'',project:this.activeSourceName(),category:'',status:0,progress:'',isMemo:false,dateMode:'range',dateStart:'',dateEnd:'',plannedMinutes:0,deliverable:'',acceptance:'',workLogs:[],entries:[]}); s.updatedAt=this.now();this.saveState();this.renderScenarios();},
+  toggleDeleteScenarioCard(sid,cid){const s=this.state.scenarios.find(x=>x.id===sid);const c=s?.cards.find(x=>x.id===cid);if(!c)return;if(c.isNew)s.cards=s.cards.filter(x=>x.id!==cid);else c.isDeleted=!c.isDeleted;s.updatedAt=this.now();this.saveState();this.renderScenarios();},
+  baseSnapshot(s){return this.state.snapshots.find(x=>x.id===s.baseSnapshotId)||null;},
+  scenarioDiff(s){
+    const base=this.baseSnapshot(s); const baseCards=new Map((base?.payload?.cards||[]).map(x=>[x.card.id,x.card])); const current=new Map(s.cards.map(c=>[c.originId||c.id,c])); const added=[],removed=[],modified=[];
+    s.cards.forEach(c=>{ if(c.isDeleted)return; if(c.isNew||!c.originId||!baseCards.has(c.originId)){added.push(c);return;} const b=baseCards.get(c.originId); const fields=['title','content','category','status','progress','dateStart','dateEnd','plannedMinutes','deliverable','acceptance','isMemo']; const changes={}; fields.forEach(f=>{const bv=f==='plannedMinutes'?this.plannedMinutes(b):(b[f]??'');const cv=f==='plannedMinutes'?this.plannedMinutes(c):(c[f]??'');if(JSON.stringify(bv)!==JSON.stringify(cv))changes[f]={from:bv,to:cv};}); if(Object.keys(changes).length)modified.push({card:c,changes}); });
+    (base?.payload?.cards||[]).forEach(x=>{const c=s.cards.find(sc=>sc.originId===x.card.id);if(!c||c.isDeleted)removed.push(x.card);}); return {added,removed,modified};
+  },
+  renderScenarios(){ const root=document.getElementById('view-scenarios'); const list=this.projectScenarios(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 Scenario。先從 Snapshot 建立一份完整候選規劃，再自由調整。</div>';return;} root.innerHTML=list.map(s=>this.renderScenario(s)).join(''); },
+  renderScenario(s){ const diff=this.scenarioDiff(s); const cards=s.cards.filter(c=>!c.isDeleted); return `<div class="scenario-item"><div class="row"><input type="text" style="flex:1;font-weight:900" value="${this.esc(s.name)}" onchange="lab.updateScenario('${s.id}','name',this.value)"><select style="max-width:150px" onchange="lab.updateScenario('${s.id}','status',this.value)"><option value="draft" ${s.status==='draft'?'selected':''}>草稿</option><option value="candidate" ${s.status==='candidate'?'selected':''}>候選</option><option value="adopted" ${s.status==='adopted'?'selected':''}>決定採用</option><option value="rejected" ${s.status==='rejected'?'selected':''}>不採用</option></select></div><div class="tiny">Base: ${this.esc(s.baseSnapshotId)}｜${this.fmt(s.createdAt)}</div><label class="field" style="margin-top:8px">Scenario 說明<textarea onchange="lab.updateScenario('${s.id}','notes',this.value)">${this.esc(s.notes||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.addScenarioCard('${s.id}')">＋ 新增卡片</button><button class="btn small" onclick="lab.toggleDiff('${s.id}')">比較 Snapshot</button><button class="btn small" onclick="lab.exportScenario('${s.id}')">匯出 JSON</button><button class="btn small danger" onclick="lab.deleteEntity('scenarios','${s.id}')">刪除 Scenario</button></div><div id="diff-${s.id}" class="hidden" style="margin-top:10px">${this.renderDiff(diff)}</div><div class="section-title">候選規劃（${cards.length} 張）</div><div class="card-list">${cards.map(c=>this.renderScenarioCard(s,c,diff)).join('')}</div></div>`; },
+  renderScenarioCard(s,c,diff){ const isMod=diff.modified.some(x=>x.card.id===c.id), isAdd=diff.added.some(x=>x.id===c.id); return `<div class="scenario-card ${isAdd?'added':isMod?'changed':''}"><div class="row"><span class="pill ${isAdd?'ok':'free'}">${isAdd?'新增':c.isMemo?'自由卡':'排程卡'}</span><button class="btn small danger" onclick="lab.toggleDeleteScenarioCard('${s.id}','${c.id}')">${c.isNew?'移除':'標記刪除'}</button></div><div class="scenario-fields"><label class="field wide">標題<input type="text" value="${this.esc(c.title||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','title',this.value)"></label><label class="field wide">內容<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','content',this.value)">${this.esc(c.content||'')}</textarea></label><label class="field">分類<input type="text" value="${this.esc(c.category||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','category',this.value)"></label><label class="field">型態<select onchange="lab.updateScenarioCard('${s.id}','${c.id}','isMemo',this.value==='true')"><option value="false" ${!c.isMemo?'selected':''}>排程卡</option><option value="true" ${c.isMemo?'selected':''}>自由卡</option></select></label><label class="field">預計開始<input type="date" value="${this.esc(c.dateStart||c.dateSingle||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','dateStart',this.value)"></label><label class="field">預計完成<input type="date" value="${this.esc(c.dateEnd||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','dateEnd',this.value)"></label><label class="field">預估工時（分鐘）<input type="number" min="0" value="${this.plannedMinutes(c)}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','plannedMinutes',this.value)"></label><label class="field">狀態<select onchange="lab.updateScenarioCard('${s.id}','${c.id}','status',this.value)">${[0,1,2,3].map(v=>`<option value="${v}" ${Number(c.status)===v?'selected':''}>${this.statusLabel(v)}</option>`).join('')}</select></label><label class="field wide">預期產出<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','deliverable',this.value)">${this.esc(c.deliverable||'')}</textarea></label><label class="field wide">驗收條件<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','acceptance',this.value)">${this.esc(c.acceptance||'')}</textarea></label></div><details><summary>歷史事實（唯讀）</summary><div class="desc">實際工時：${(this.actualMinutes(c)/60).toFixed(2)}h｜工作紀錄：${(Array.isArray(c.entries)?c.entries:[]).length} 筆。Scenario 不修改歷史事實。</div></details></div>`; },
+  renderDiff(diff){ const fld={title:'標題',content:'內容',category:'分類',status:'狀態',progress:'進度',dateStart:'預計開始',dateEnd:'預計完成',plannedMinutes:'預估工時(分鐘)',deliverable:'預期產出',acceptance:'驗收條件',isMemo:'卡片型態'}; return `<div class="diff-group"><strong>＋ 新增 ${diff.added.length}</strong>${diff.added.map(c=>`<div class="diff-row">${this.esc(c.title||'未命名')}</div>`).join('')}</div><div class="diff-group"><strong>－ 移除 ${diff.removed.length}</strong>${diff.removed.map(c=>`<div class="diff-row">${this.esc(c.title||'未命名')}</div>`).join('')}</div><div class="diff-group"><strong>✏️ 修改 ${diff.modified.length}</strong>${diff.modified.map(m=>`<div class="diff-row"><strong>${this.esc(m.card.title||'未命名')}</strong>${Object.entries(m.changes).map(([k,v])=>`<div><code>${this.esc(fld[k]||k)}</code>：${this.esc(v.from)} → ${this.esc(v.to)}</div>`).join('')}</div>`).join('')}</div>`; },
+  toggleDiff(id){document.getElementById(`diff-${id}`)?.classList.toggle('hidden');},
 
-    // ==========================================
-    // 4B. 進階賽局分析 (Sabermetrics Modules)
-    // ==========================================
-    function renderSabermetrics(currSlice, allData, totalDays, baseSalary, baseSubs, totalExpense) {
-        // --- 模組 B: Pacing 預算 vs 時間 ---
-        const now = new Date(), startD = new Date(document.getElementById('custom-start').value), endD = new Date(document.getElementById('custom-end').value);
-        let timePct = 100;
-        if (now >= startD && now <= endD) {
-            const passed = Math.ceil((now - startD) / (1000 * 60 * 60 * 24));
-            timePct = Math.min(100, Math.round((passed / totalDays) * 100));
-        } else if (now < startD) { timePct = 0; }
-        
-        const availableBudget = baseSalary - baseSubs;
-        const burnPct = availableBudget > 0 ? Math.min(100, Math.round((totalExpense / availableBudget) * 100)) : 0;
-        
-        document.getElementById('saber-time-pct').innerText = timePct + '%';
-        document.getElementById('saber-time-bar').style.width = timePct + '%';
-        document.getElementById('saber-burn-pct').innerText = burnPct + '%';
-        document.getElementById('saber-burn-bar').style.width = burnPct + '%';
-        document.getElementById('saber-burn-bar').style.background = burnPct > timePct ? '#dc3545' : '#28a745';
-        
-        const msgEl = document.getElementById('saber-pacing-msg');
-        if(burnPct > timePct + 5) msgEl.innerHTML = `🚨 <strong>超支警戒：</strong> 資金消耗速度超越時間流逝，建議降低近期花費。`;
-        else msgEl.innerHTML = `✅ <strong>步調穩健：</strong> 花費控制在預期期望值內。`;
+  scenarioSchemaExample(){ return {schemaVersion:'1.0',type:'project_lab_scenario',projectId:this.state.activeProjectId,baseSnapshotId:'請填入提示詞提供的 Snapshot ID',scenario:{name:'方案名稱',notes:'此方案的核心取捨',cards:[{id:'既有卡片請保留原 card id；新增卡片用 temp_001',originId:'既有卡片填原 card id；新增卡片留空',isNew:false,isDeleted:false,title:'',content:'',category:'',status:0,progress:null,isMemo:false,dateMode:'range',dateStart:'YYYY-MM-DD',dateEnd:'YYYY-MM-DD',plannedMinutes:120,deliverable:'',acceptance:'',workLogs:[],entries:[]}]}}; },
+  buildScenarioPrompt(){ const ctx=this.selectedContext(); const findings=this.projectFindings().filter(x=>x.status!=='closed'&&x.status!=='ignored'); const decisions=this.projectDecisions().filter(x=>x.status==='accepted'||x.status==='proposed'); const reviews=this.projectReviews().slice(0,5).map(r=>({template:r.templateLabel,question:r.customQuestion,response:r.response,userReflection:r.userReflection})); const prompt=`請把目前已形成的討論共識整理成一份「完整可推演 Scenario」。\n\n重要：這不是要求你重新分析，而是把已有討論轉成一個可實際試排的完整候選專案版本。若仍存在未解決且會影響結構的未知，請不要硬做 Scenario，改以文字列出還缺什麼。\n\n【規則】\n1. 回傳完整 Scenario，不只回傳變動 Delta。\n2. 既有卡片保留原 card id 與 originId。新增卡片使用 temp_001、temp_002...，originId 留空，isNew=true。\n3. 若某既有卡片要移除，保留卡片並設 isDeleted=true。\n4. 不得改寫 workLogs、entries 等歷史事實；它們請原樣保留。\n5. 只能使用以下 JSON 結構。請只輸出 JSON，不要 Markdown code fence。\n6. projectId 必須為 ${this.state.activeProjectId}。\n7. baseSnapshotId 必須為 ${ctx.id}。\n\n【JSON Schema 範例】\n${JSON.stringify(this.scenarioSchemaExample(),null,2)}\n\n【目前專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}\n\n【目前 Findings】\n${JSON.stringify(findings,null,2)}\n\n【目前 Decisions】\n${JSON.stringify(decisions,null,2)}\n\n【近期 Reviews】\n${JSON.stringify(reviews,null,2)}`; this.state.lastScenarioPrompt=prompt; this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt; },
+  copyScenarioSchema(){ this.copyText(JSON.stringify(this.scenarioSchemaExample(),null,2),'已複製 Scenario JSON 範例。'); },
 
-        // --- 模組 C: 變異數極端值與 7 日 MA ---
-        let dailyMap = {};
-        currSlice.forEach(r => { if(r.type.includes('expense')) dailyMap[r.date] = (dailyMap[r.date]||0) + r.amount; });
-        const datesArr = Object.keys(dailyMap).sort();
-        const expArr = datesArr.map(d => dailyMap[d]);
-        
-        let pointColors = [];
-        let ma7Arr = [];
-        
-        if (expArr.length > 0) {
-            const mean = expArr.reduce((a,b)=>a+b, 0) / expArr.length;
-            const variance = expArr.reduce((a,b)=>a+Math.pow(b-mean, 2), 0) / expArr.length;
-            const stdDev = Math.sqrt(variance);
-            const threshold = mean + 1.5 * stdDev;
+  extractJson(text){ const t=String(text||'').trim(); if(!t)throw new Error('內容是空的'); const fenced=t.match(/```(?:json)?\s*([\s\S]*?)```/i); return JSON.parse(fenced?fenced[1].trim():t); },
+  validateScenarioImport(obj){ const errs=[]; if(obj?.schemaVersion!=='1.0')errs.push('schemaVersion 必須是 1.0'); if(obj?.type!=='project_lab_scenario')errs.push('type 必須是 project_lab_scenario'); if(obj?.projectId!==this.state.activeProjectId)errs.push('projectId 與目前專案不一致'); if(!obj?.baseSnapshotId)errs.push('缺少 baseSnapshotId'); if(!obj?.scenario||!Array.isArray(obj.scenario.cards))errs.push('缺少 scenario.cards'); const base=obj?.baseSnapshotId==='current'?null:this.state.snapshots.find(x=>x.id===obj?.baseSnapshotId); if(obj?.baseSnapshotId!=='current'&&!base)errs.push('找不到 baseSnapshotId 對應的 Snapshot'); const baseIds=new Set((base?.payload?.cards||[]).map(x=>x.card.id)); (obj?.scenario?.cards||[]).forEach((c,i)=>{ if(!c.id)errs.push(`cards[${i}] 缺少 id`); if(c.isNew){if(!String(c.id).startsWith('temp_'))errs.push(`cards[${i}] 新卡 id 應使用 temp_ 前綴`);} else if(c.originId && base && !baseIds.has(c.originId))errs.push(`cards[${i}] originId 不存在於基準 Snapshot`); }); return errs; },
+  tryImportScenarioFromResponse(){ const box=document.getElementById('import-status'); try{ const obj=this.extractJson(document.getElementById('ai-response').value); const errs=this.validateScenarioImport(obj); if(errs.length){ box.innerHTML=`<div class="notice bad"><strong>格式尚不能匯入：</strong><br>${errs.map(e=>'• '+this.esc(e)).join('<br>')}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyRepairPrompt()">複製修復提示詞</button></div>`; return; } const s={id:this.uid('scenario'),projectId:obj.projectId,baseSnapshotId:obj.baseSnapshotId,name:obj.scenario.name||'AI Scenario',status:'candidate',createdAt:this.now(),updatedAt:this.now(),cards:obj.scenario.cards.map(c=>structuredClone(c)),notes:obj.scenario.notes||''}; this.state.scenarios.push(s); this.saveState(); box.innerHTML='<div class="notice ok">Scenario JSON 驗證通過並已匯入。</div>'; this.renderScenarios(); this.showView('scenarios'); }catch(e){ box.innerHTML=`<div class="notice bad"><strong>JSON 解析失敗：</strong>${this.esc(e.message)}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyRepairPrompt()">複製修復提示詞</button></div>`; } },
+  copyRepairPrompt(){ const example=JSON.stringify(this.scenarioSchemaExample(),null,2); const txt=`你剛才回傳的內容無法被我的 Project Lab 匯入。請不要改變方案內容，只修復格式，並只回傳合法 JSON，不要加 Markdown code fence 或說明文字。\n\n必須符合以下範例結構：\n${example}`; this.copyText(txt,'已複製修復提示詞。'); },
+  exportScenario(id){ const s=this.state.scenarios.find(x=>x.id===id); if(!s)return; const obj={schemaVersion:'1.0',type:'project_lab_scenario',projectId:s.projectId,baseSnapshotId:s.baseSnapshotId,scenario:{name:s.name,notes:s.notes,cards:s.cards}}; const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json;charset=utf-8'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${(s.name||'scenario').replace(/[\\/:*?"<>|]/g,'_')}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href); },
 
-            expArr.forEach((val, i) => {
-                pointColors.push(val > threshold ? '#dc3545' : '#007bff');
-                // 計算 7MA (過去包含自己共7天)
-                let sliceStr = Math.max(0, i - 6);
-                let sliceArr = expArr.slice(sliceStr, i + 1);
-                ma7Arr.push(sliceArr.reduce((a,b)=>a+b,0) / sliceArr.length);
-            });
-        }
+  deleteEntity(key,id){ if(!confirm('確定刪除？'))return; this.state[key]=this.state[key].filter(x=>x.id!==id); this.saveState(); this.renderAll(); }
+};
 
-        const ctxOutlier = document.getElementById('saberOutlierChart').getContext('2d');
-        if (chartInstances['saberOutlierChart']) chartInstances['saberOutlierChart'].destroy();
-        chartInstances['saberOutlierChart'] = new Chart(ctxOutlier, {
-            type: 'bar',
-            data: {
-                labels: datesArr.length ? datesArr : ['無'],
-                datasets: [
-                    { label: '7日移動平均線 (7MA)', type: 'line', data: ma7Arr, borderColor: '#ffc107', borderWidth: 2, pointRadius: 0, fill: false, tension: 0.3 },
-                    { label: '單日花費 (紅點為極端值)', data: expArr, backgroundColor: pointColors, borderRadius: 4 }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
-        });
-
-        // --- 模組 D: 90 天連勝熱力圖 ---
-        const heatGrid = document.getElementById('saber-heatmap');
-        heatGrid.innerHTML = '';
-        
-        // 建立過去 90 天的資料字典
-        let heatData = {};
-        const today = new Date();
-        for(let i=89; i>=0; i--) {
-            let d = new Date(); d.setDate(today.getDate() - i);
-            heatData[getLocalYMD(d)] = 0;
-        }
-        
-        allData.forEach(r => {
-            if((r.type === 'learning' || r.type === 'habit') && heatData[r.date] !== undefined) {
-                heatData[r.date] += r.amount;
-            }
-        });
-
-        // 繪製 7xN 矩陣 (每一直排為一週)
-        const heatDates = Object.keys(heatData);
-        let colDiv = null;
-        heatDates.forEach((d, idx) => {
-            if (idx % 7 === 0) {
-                colDiv = document.createElement('div');
-                colDiv.className = 'heatmap-col';
-                heatGrid.appendChild(colDiv);
-            }
-            const cell = document.createElement('div');
-            const count = heatData[d];
-            cell.className = `heatmap-cell ${count >= 4 ? 'heat-4' : count >= 3 ? 'heat-3' : count >= 2 ? 'heat-2' : count === 1 ? 'heat-1' : ''}`;
-            cell.title = `${d}: 執行 ${count} 次`;
-            colDiv.appendChild(cell);
-        });
-        
-        // 自動捲動到最右側 (最新日期)
-        setTimeout(() => { const scrollCont = document.querySelector('.heatmap-scroll'); if(scrollCont) scrollCont.scrollLeft = scrollCont.scrollWidth; }, 100);
-    }
-
-    // ==========================================
-    // 5. 心流沙盒 (Flow Sandbox)
-    // ==========================================
-    let sandboxState = { tasks: [], activeId: null, globalNote: "", timer: { mode: 'FLEX', seconds: 0, status: 'IDLE', intervalId: null } };
-    function getSandboxKey() { return currentUser ? `flow_sandbox_pro_${currentUser.uid}` : 'flow_sandbox_temp'; }
-
-    function loadSandboxState() {
-        const raw = localStorage.getItem(getSandboxKey());
-        if (raw) { try { const d = JSON.parse(raw); sandboxState.tasks=d.tasks||[]; sandboxState.activeId=d.activeId||null; sandboxState.globalNote=d.globalNote||""; } catch(e){} }
-        renderSandboxTasks(); refreshSandboxNoteArea();
-    }
-
-    function saveSandboxState() {
-        if (!currentUser) return;
-        const area = document.getElementById('sandbox-note-area');
-        if (sandboxState.activeId) { const t = sandboxState.tasks.find(x=>x.id===sandboxState.activeId); if(t) t.note = area.value; } 
-        else { sandboxState.globalNote = area.value; }
-        localStorage.setItem(getSandboxKey(), JSON.stringify({ tasks: sandboxState.tasks, activeId: sandboxState.activeId, globalNote: sandboxState.globalNote }));
-        document.getElementById('sandbox-save-status').innerText = `已儲存 ${new Date().toLocaleTimeString('zh-TW', {hour12:false})}`;
-    }
-
-    function importWhiteboardTasks() {
-        if(!currentUser) return;
-        const raw = localStorage.getItem(`whiteboard_state_${currentUser.uid}`);
-        if(!raw) return alert("找不到白板資料！");
-        try {
-            let count = 0, wb = JSON.parse(raw);
-            if(wb.workspaces) {
-                Object.values(wb.workspaces).forEach(cards => {
-                    cards.forEach(c => {
-                        if(c.status === 2 || sandboxState.tasks.some(t=>t.wbId===c.id)) return;
-                        sandboxState.tasks.push({ id:Date.now()+Math.random(), wbId:c.id, title:c.title||'未命名', note:c.content||'', completed:false });
-                        count++;
-                    });
-                });
-            }
-            if(count>0) { alert(`已載入 ${count} 筆複本任務。`); saveSandboxState(); renderSandboxTasks(); } else alert("無未完成任務。");
-        } catch(e){}
-    }
-
-    function renderSandboxTasks() {
-        const list = document.getElementById('sandbox-task-list'); list.innerHTML = "";
-        sandboxState.tasks.forEach(t => {
-            const div = document.createElement('div');
-            div.className = `task-item ${sandboxState.activeId === t.id ? 'active' : ''}`;
-            div.innerHTML = `<div style="display:flex; align-items:center; gap:8px; width:100%;"><input type="checkbox" ${t.completed?'checked':''} onchange="toggleSandboxTask(${t.id}, event)"><div onclick="setSandboxActiveTask(${t.id})" style="flex-grow:1; font-weight:bold; ${t.completed?'text-decoration:line-through;opacity:0.5;':''}">${t.title}</div></div>`;
-            list.appendChild(div);
-        });
-    }
-
-    function toggleSandboxTask(id, e) { e.stopPropagation(); const t = sandboxState.tasks.find(x=>x.id===id); if(t) t.completed = !t.completed; saveSandboxState(); renderSandboxTasks(); }
-    function setSandboxActiveTask(id) { sandboxState.activeId = id; saveSandboxState(); renderSandboxTasks(); refreshSandboxNoteArea(); }
-    function refreshSandboxNoteArea() {
-        const titleEl = document.getElementById('sandbox-task-title'), areaEl = document.getElementById('sandbox-note-area');
-        if (sandboxState.activeId) { const t = sandboxState.tasks.find(x=>x.id===sandboxState.activeId); if(t) { titleEl.value = `🎯 ${t.title}`; areaEl.value = t.note || ""; return; } }
-        titleEl.value = "全域發想草稿"; areaEl.value = sandboxState.globalNote || "";
-    }
-
-    // Timer
-    function setTimerMode(m) { stopTimer(); sandboxState.timer.mode = m; sandboxState.timer.seconds = m==='POMO'?25*60:0; updateTimerDisplay(); }
-    function startTimer() {
-        if(sandboxState.timer.status === 'RUNNING') return;
-        sandboxState.timer.status = 'RUNNING'; document.getElementById('timerStatus').innerText = '🔥 運算中';
-        sandboxState.timer.intervalId = setInterval(() => {
-            if(sandboxState.timer.mode === 'FLEX') sandboxState.timer.seconds++;
-            else { sandboxState.timer.seconds--; if(sandboxState.timer.seconds<=0) { stopTimer(); alert('🍅 番茄鐘時間到！'); } }
-            updateTimerDisplay();
-        }, 1000);
-    }
-    function pauseTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'PAUSED'; document.getElementById('timerStatus').innerText = '⏸️ 暫停'; }
-    function stopTimer() { clearInterval(sandboxState.timer.intervalId); sandboxState.timer.status = 'IDLE'; document.getElementById('timerStatus').innerText = '閒置'; updateTimerDisplay(); }
-    function updateTimerDisplay() { const s = sandboxState.timer.seconds; document.getElementById('timeDisplay').innerText = `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; }
-
-    function clearSandbox() { if(confirm("確定清空沙盒？本地草稿將消失！")) { stopTimer(); localStorage.removeItem(getSandboxKey()); location.reload(); } }
-    function exportSandboxMarkdown() {
-        let text = `# 心流沙盒匯出\n\n`;
-        if (sandboxState.globalNote.trim()) text += `## 全域筆記\n${sandboxState.globalNote}\n\n`;
-        sandboxState.tasks.forEach(t => { text += `### ${t.completed ? '[x]' : '[ ]'} ${t.title}\n${t.note}\n\n`; });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type:'text/markdown;charset=utf-8'})); a.download = `OpsHub_Sandbox.md`;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    }
+auth.onAuthStateChanged(user=>{
+  if(user){ lab.user=user; document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); lab.init(); }
+  else{ lab.user=null; document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('app').classList.add('hidden'); }
+});
 </script>
 </body>
 </html>
