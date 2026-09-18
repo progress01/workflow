@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Lab｜專案規劃與 AI 推演</title>
+  <title>Project Lab｜專案規劃與 AI 推演（手動模式）</title>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
   <style>
@@ -30,7 +30,7 @@
     .brand{font-weight:900;white-space:nowrap}.topbar select{min-width:240px;background:#fff;color:#111827;border:0;border-radius:8px;padding:8px}
     .topbar .spacer{flex:1}.topbar .status{font-size:.8rem;color:#cbd5e1}
     .shell{max-width:1600px;margin:0 auto;padding:18px}
-    .summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
+    .summary-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
     .summary-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
     .summary-card .k{font-size:.76rem;color:var(--muted);font-weight:800}.summary-card .v{font-size:1.12rem;font-weight:900;margin-top:4px}
     .layout{display:grid;grid-template-columns:minmax(270px,320px) minmax(0,1fr) minmax(320px,420px);gap:14px;align-items:start}
@@ -59,8 +59,22 @@
     .list-empty{padding:22px;text-align:center;color:#94a3b8;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc}
     .section-title{font-weight:900;color:#334155;margin:14px 0 8px}.divider{height:1px;background:#e2e8f0;margin:12px 0}
     .danger-text{color:#b91c1c}.readonly{background:#f8fafc!important;color:#64748b}
+    .time-compare{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:8px 0}
+    .time-box{border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:#f8fafc}
+    .time-box .k{font-size:.68rem;color:#64748b;font-weight:800}.time-box .v{font-size:.92rem;color:#1f2937;font-weight:900;margin-top:2px}
+    .time-box.over{background:#fef2f2;border-color:#fecaca}.time-box.over .v{color:#b91c1c}
+    .time-box.ok{background:#ecfdf5;border-color:#a7f3d0}.time-box.ok .v{color:#047857}
+    .worklog-wrap{overflow-x:auto;margin-top:8px}
+    .worklog-table,.time-overview-table{width:100%;border-collapse:collapse;font-size:.75rem}
+    .worklog-table th,.worklog-table td,.time-overview-table th,.time-overview-table td{border-bottom:1px solid #e2e8f0;padding:6px 7px;text-align:left;vertical-align:top}
+    .worklog-table th,.time-overview-table th{background:#f8fafc;color:#475569;white-space:nowrap}
+    .worklog-table td.num,.time-overview-table td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .worklog-note{white-space:pre-wrap;min-width:180px}
+    .time-bar{height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:5px}
+    .time-bar > span{display:block;height:100%;background:#6366f1}
+    .time-bar > span.over{background:#dc2626}
     @media(max-width:1180px){.layout{grid-template-columns:280px minmax(0,1fr)}.right-panel{grid-column:1/-1}.summary-grid{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:760px){.topbar{flex-wrap:wrap}.topbar select{min-width:0;flex:1}.layout{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,1fr)}.meta-grid,.scenario-fields{grid-template-columns:1fr}.meta-grid .wide,.scenario-fields .wide{grid-column:auto}.template-grid{grid-template-columns:1fr}.milestone{grid-template-columns:1fr}}
+    @media(max-width:760px){.time-compare{grid-template-columns:1fr 1fr}.topbar{flex-wrap:wrap}.topbar select{min-width:0;flex:1}.layout{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,1fr)}.meta-grid,.scenario-fields{grid-template-columns:1fr}.meta-grid .wide,.scenario-fields .wide{grid-column:auto}.template-grid{grid-template-columns:1fr}.milestone{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -132,7 +146,7 @@
       </section>
 
       <section class="panel right-panel">
-        <div class="panel-head"><h3>🤖 AI 協作</h3><span class="tiny">先討論，再結構化</span></div>
+        <div class="panel-head"><h3>🤖 AI 協作</h3><span class="tiny">手動複製 / 貼上｜先討論，再結構化</span></div>
         <div class="panel-body stack">
           <div>
             <div class="section-title" style="margin-top:0">探索／討論模板</div>
@@ -144,7 +158,7 @@
             <button class="btn" onclick="lab.buildReviewPrompt()">產生提問</button>
             <button class="btn" onclick="lab.copyPrompt()">複製完整提問</button>
           </div>
-          <div id="prompt-preview" class="codebox">尚未產生提問。</div>
+          <div class="notice info"><strong>手動 AI 模式：</strong>Project Lab 不直接呼叫任何生成式 AI API。請複製 Prompt 到你使用的 AI，再把回答貼回。AI Context 會帶入每張卡片的預估工時、實際工時、實際日期與工時明細；Scenario 可以改「規劃」，不能改「已發生事實」。</div><div id="prompt-preview" class="codebox">尚未產生提問。</div>
           <div class="divider"></div>
           <label class="field">貼上 AI 回覆<textarea id="ai-response" placeholder="可以貼一般文字。若是 Scenario JSON，也可以貼在這裡。"></textarea></label>
           <div class="row">
@@ -164,6 +178,7 @@
 </div>
 
 <script>
+// Firebase Web 設定只用於既有登入 / 使用者識別；本頁不含、也不呼叫任何生成式 AI API Key。
 const firebaseConfig = {
   apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
   authDomain: "maplestoryboss.firebaseapp.com",
@@ -207,6 +222,27 @@ const lab = {
   plannedMinutes(card){ if(Number.isFinite(Number(card?.plannedMinutes))) return Math.max(0,Number(card.plannedMinutes)); if(Number.isFinite(Number(card?.plannedHours))) return Math.max(0,Number(card.plannedHours)*60); return 0; },
   logMinutes(log){ if(Number.isFinite(Number(log?.minutes)))return Math.max(0,Number(log.minutes)); if(Number.isFinite(Number(log?.seconds)))return Math.max(0,Number(log.seconds)/60); if(Number.isFinite(Number(log?.hours)))return Math.max(0,Number(log.hours)*60); return 0; },
   actualMinutes(card){ return (Array.isArray(card?.workLogs)?card.workLogs:[]).reduce((s,l)=>s+this.logMinutes(l),0); },
+  formatMinutes(mins){
+    const n=Math.max(0,Math.round(Number(mins)||0)), h=Math.floor(n/60), m=n%60;
+    if(h&&m)return `${h}h ${m}m`; if(h)return `${h}h`; return `${m}m`;
+  },
+  actualStart(card){
+    const dates=(Array.isArray(card?.workLogs)?card.workLogs:[]).filter(l=>this.logMinutes(l)>0&&l.workDate).map(l=>String(l.workDate)).sort();
+    return dates[0]||'';
+  },
+  actualEnd(card){
+    const dates=(Array.isArray(card?.workLogs)?card.workLogs:[]).filter(l=>this.logMinutes(l)>0&&l.workDate).map(l=>String(l.workDate)).sort();
+    return dates.length?dates[dates.length-1]:'';
+  },
+  timeUsagePercent(card){
+    const p=this.plannedMinutes(card); return p>0?Math.round((this.actualMinutes(card)/p)*100):null;
+  },
+  timeVariance(card){
+    const p=this.plannedMinutes(card); return p>0?Math.round(this.actualMinutes(card)-p):null;
+  },
+  remainingPlanned(card){
+    const p=this.plannedMinutes(card); return p>0?Math.round(p-this.actualMinutes(card)):null;
+  },
   statusLabel(s){ return ['未開始','進行中','完成','阻塞'][Number(s)||0] || `狀態${s}`; },
 
   loadState(){
@@ -284,8 +320,20 @@ const lab = {
 
   renderSummary(){
     const p=this.activeProject(); const cards=this.projectCards(); const sched=cards.filter(x=>!x.card.isMemo); const completed=cards.filter(x=>Number(x.card.status)===2).length;
-    const planned=sched.reduce((s,x)=>s+this.plannedMinutes(x.card),0); const actual=cards.reduce((s,x)=>s+this.actualMinutes(x.card),0); const days=this.daysUntil(p?.deadline);
-    const data=[['卡片',cards.length],['排程 / 自由',`${sched.length} / ${cards.length-sched.length}`],['完成',`${completed}/${cards.length}`],['預估 / 實際',`${(planned/60).toFixed(1)}h / ${(actual/60).toFixed(1)}h`],['距期限',days===null?'未設定':days<0?`逾期 ${Math.abs(days)} 天`:`${days} 天`]];
+    const planned=sched.reduce((s,x)=>s+this.plannedMinutes(x.card),0);
+    const scheduledActual=sched.reduce((s,x)=>s+this.actualMinutes(x.card),0);
+    const totalActual=cards.reduce((s,x)=>s+this.actualMinutes(x.card),0);
+    const unplannedActual=cards.filter(x=>this.plannedMinutes(x.card)<=0).reduce((s,x)=>s+this.actualMinutes(x.card),0);
+    const days=this.daysUntil(p?.deadline);
+    const usage=planned>0?Math.round((scheduledActual/planned)*100):null;
+    const data=[
+      ['卡片',cards.length],
+      ['排程 / 自由',`${sched.length} / ${cards.length-sched.length}`],
+      ['完成',`${completed}/${cards.length}`],
+      ['排程預估 / 實際',`${this.formatMinutes(planned)} / ${this.formatMinutes(scheduledActual)}`],
+      ['工時使用率',usage===null?'未設定預估':`${usage}%${unplannedActual>0?`（另未規劃 ${this.formatMinutes(unplannedActual)}）`:''}`],
+      ['距期限',days===null?'未設定':days<0?`逾期 ${Math.abs(days)} 天`:`${days} 天`]
+    ];
     document.getElementById('summary-grid').innerHTML=data.map(([k,v])=>`<div class="summary-card"><div class="k">${k}</div><div class="v">${this.esc(v)}</div></div>`).join('');
   },
 
@@ -325,12 +373,68 @@ const lab = {
     const cards=this.projectCards(); const root=document.getElementById('view-source'); if(!root)return;
     document.getElementById('center-subtitle').innerText=this.activeProject()?.name||'';
     if(!cards.length){root.innerHTML='<div class="list-empty">目前專案沒有卡片。</div>';return;}
-    root.innerHTML=`<div class="notice info">此區為正式白板唯讀快照。Project Lab 不會修改這些資料。</div><div class="section-title">正式卡片</div><div class="card-list">${cards.map(x=>this.renderSourceCard(x)).join('')}</div>${this.projectNodes().length?`<div class="section-title">同專案發想節點</div><div class="card-list">${this.projectNodes().map(({node,tabName})=>`<div class="source-card"><span class="pill free">發想</span><strong>${this.esc(node.text||'未命名')}</strong><div class="meta"><span>${this.esc(tabName)}</span><span>${this.esc(node.tag||'')}</span></div></div>`).join('')}</div>`:''}`;
+    root.innerHTML=`<div class="notice info">此區為正式白板唯讀資料。工時明細同樣視為歷史事實，會進入 Snapshot 與 AI Context，但 Scenario 不可改寫。</div>
+      <div class="section-title">規劃 vs 實際工時總覽</div>
+      ${this.renderProjectTimeOverview(cards)}
+      <div class="section-title">正式卡片</div>
+      <div class="card-list">${cards.map(x=>this.renderSourceCard(x)).join('')}</div>
+      ${this.projectNodes().length?`<div class="section-title">同專案發想節點</div><div class="card-list">${this.projectNodes().map(({node,tabName})=>`<div class="source-card"><span class="pill free">發想</span><strong>${this.esc(node.text||'未命名')}</strong><div class="meta"><span>${this.esc(tabName)}</span><span>${this.esc(node.tag||'')}</span></div></div>`).join('')}</div>`:''}`;
+  },
+  renderProjectTimeOverview(cards){
+    const rows=cards.map(({card})=>{
+      const p=this.plannedMinutes(card), a=this.actualMinutes(card), usage=p>0?Math.round(a/p*100):null;
+      const remain=p>0?p-a:null;
+      return `<tr>
+        <td>${this.esc(card.title||'未命名')}</td>
+        <td>${this.esc(this.statusLabel(card.status))}</td>
+        <td class="num">${p>0?this.formatMinutes(p):'—'}</td>
+        <td class="num">${this.formatMinutes(a)}</td>
+        <td class="num">${usage===null?'—':usage+'%'}</td>
+        <td class="num">${remain===null?(a>0?'未規劃':'—'):(remain>=0?'尚餘 '+this.formatMinutes(remain):'超出 '+this.formatMinutes(Math.abs(remain)))}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="worklog-wrap"><table class="time-overview-table"><thead><tr><th>工項</th><th>狀態</th><th>預估</th><th>實際</th><th>使用率</th><th>差異 / 剩餘</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  },
+  renderTimeCompare(card){
+    const p=this.plannedMinutes(card), a=this.actualMinutes(card), usage=p>0?Math.round(a/p*100):null, variance=p>0?Math.round(a-p):null;
+    const isDone=Number(card.status)===2;
+    const remain=p>0?p-a:null;
+    const fourth = p<=0
+      ? (a>0?`未規劃 ${this.formatMinutes(a)}`:'尚無工時')
+      : isDone
+        ? (variance===0?'估算吻合':variance>0?`超估 ${this.formatMinutes(variance)}`:`少於預估 ${this.formatMinutes(Math.abs(variance))}`)
+        : (remain>=0?`預估尚餘 ${this.formatMinutes(remain)}`:`已超出 ${this.formatMinutes(Math.abs(remain))}`);
+    const cls=(p>0&&a>p)?'over':(isDone&&p>0&&a<=p)?'ok':'';
+    const width=usage===null?0:Math.min(100,Math.max(0,usage));
+    return `<div class="time-compare">
+      <div class="time-box"><div class="k">預估工時</div><div class="v">${p>0?this.formatMinutes(p):'未設定'}</div></div>
+      <div class="time-box"><div class="k">實際工時</div><div class="v">${this.formatMinutes(a)}</div></div>
+      <div class="time-box ${cls}"><div class="k">工時使用率</div><div class="v">${usage===null?'—':usage+'%'}</div><div class="time-bar"><span class="${usage>100?'over':''}" style="width:${width}%"></span></div></div>
+      <div class="time-box ${cls}"><div class="k">${isDone?'估算結果':'目前差異'}</div><div class="v">${this.esc(fourth)}</div></div>
+    </div>`;
+  },
+  renderWorkLogs(card){
+    const logs=(Array.isArray(card?.workLogs)?card.workLogs:[]).slice().sort((a,b)=>String(a.workDate||'').localeCompare(String(b.workDate||'')));
+    if(!logs.length)return '<div class="tiny">尚無工時明細。</div>';
+    return `<div class="worklog-wrap"><table class="worklog-table"><thead><tr><th>日期</th><th>工時</th><th>來源</th><th>內容</th></tr></thead><tbody>${logs.map(log=>`<tr>
+      <td>${this.esc(log.workDate||'')}</td>
+      <td class="num">${this.formatMinutes(this.logMinutes(log))}</td>
+      <td>${this.esc(log.source==='timer'?'心流計時':'手動補登')}</td>
+      <td class="worklog-note">${this.esc(log.note||'')}</td>
+    </tr>`).join('')}</tbody></table></div>`;
   },
   renderSourceCard({card,tabName}){
-    const planned=this.plannedMinutes(card), actual=this.actualMinutes(card); const type=card.isMemo?'自由卡':'排程卡';
+    const type=card.isMemo?'自由卡':'排程卡';
     const plan=card.isMemo?'':`${card.dateStart||card.dateSingle||''}${card.dateEnd?` → ${card.dateEnd}`:''}`;
-    return `<div class="source-card"><div><span class="pill ${card.isMemo?'free':''}">${type}</span><span class="pill">${this.esc(this.statusLabel(card.status))}</span>${card.category?`<span class="pill free">${this.esc(card.category)}</span>`:''}</div><h4>${this.esc(card.title||'未命名')}</h4><div class="meta"><span>${this.esc(tabName)}</span>${plan?`<span>${this.esc(plan)}</span>`:''}<span>預估 ${(planned/60).toFixed(1)}h</span><span>實際 ${(actual/60).toFixed(1)}h</span></div>${card.content?`<div class="desc">${this.esc(card.content)}</div>`:''}<details><summary>規劃 / 驗收 / 紀錄</summary><div class="desc"><strong>預期產出：</strong>${this.esc(card.deliverable||'')}<br><strong>驗收條件：</strong>${this.esc(card.acceptance||'')}<br><strong>工作紀錄：</strong>${(Array.isArray(card.entries)?card.entries:[]).length} 筆｜<strong>工時紀錄：</strong>${(Array.isArray(card.workLogs)?card.workLogs:[]).length} 筆</div></details></div>`;
+    return `<div class="source-card">
+      <div><span class="pill ${card.isMemo?'free':''}">${type}</span><span class="pill">${this.esc(this.statusLabel(card.status))}</span>${card.category?`<span class="pill free">${this.esc(card.category)}</span>`:''}</div>
+      <h4>${this.esc(card.title||'未命名')}</h4>
+      <div class="meta"><span>${this.esc(tabName)}</span>${plan?`<span>${this.esc(plan)}</span>`:''}${this.actualStart(card)?`<span>實際 ${this.esc(this.actualStart(card))}${this.actualEnd(card)&&this.actualEnd(card)!==this.actualStart(card)?` → ${this.esc(this.actualEnd(card))}`:''}</span>`:''}</div>
+      ${this.renderTimeCompare(card)}
+      ${card.content?`<div class="desc">${this.esc(card.content)}</div>`:''}
+      <details><summary>規劃 / 驗收 / 工作紀錄</summary><div class="desc"><strong>預期產出：</strong>${this.esc(card.deliverable||'')}<br><strong>驗收條件：</strong>${this.esc(card.acceptance||'')}<br><strong>工作紀錄：</strong>${(Array.isArray(card.entries)?card.entries:[]).length} 筆</div></details>
+      <details><summary>⏱️ 工時明細（${(Array.isArray(card.workLogs)?card.workLogs:[]).length}）</summary>${this.renderWorkLogs(card)}</details>
+    </div>`;
   },
 
   snapshotPayload(){
@@ -353,13 +457,63 @@ const lab = {
   selectedContext(){ const val=document.getElementById('ai-snapshot-select').value; if(val==='current')return {id:'current',payload:this.snapshotPayload(),label:'目前正式資料'}; const s=this.state.snapshots.find(x=>x.id===val); return s?{id:s.id,payload:s.payload,label:s.label}:{id:'current',payload:this.snapshotPayload(),label:'目前正式資料'}; },
 
   compactContext(payload){
-    const p=payload.project||{}; const cards=(payload.cards||[]).map(({card,tabName})=>({id:card.id||'',type:card.isMemo?'free':'scheduled',workspace:tabName,title:card.title||'',content:card.content||'',category:card.category||'',status:this.statusLabel(card.status),progress:card.progress??null,plannedStart:card.dateStart||card.dateSingle||'',plannedEnd:card.dateEnd||'',plannedMinutes:this.plannedMinutes(card),deliverable:card.deliverable||'',acceptanceCriteria:card.acceptance||'',actualMinutes:this.actualMinutes(card),workNotes:(Array.isArray(card.entries)?card.entries:[]).map(e=>({title:e.title||'',content:e.content||'',createdAt:e.createdAt||''}))}));
-    return {project:{id:p.id,name:p.name,goal:p.goal,deadline:p.deadline,deadlineType:p.deadlineType,definitionOfDone:p.definitionOfDone,constraints:p.constraints,nextReviewDate:p.nextReviewDate,planningHorizonDays:p.planningHorizonDays,milestones:p.milestones||[]},cards};
+    const p=payload.project||{};
+    const cards=(payload.cards||[]).map(({card,tabName})=>{
+      const planned=this.plannedMinutes(card), actual=this.actualMinutes(card);
+      return {
+        id:card.id||'',
+        type:card.isMemo?'free':'scheduled',
+        workspace:tabName,
+        title:card.title||'',
+        content:card.content||'',
+        category:card.category||'',
+        status:this.statusLabel(card.status),
+        statusCode:Number(card.status||0),
+        progress:card.progress??null,
+        plannedStart:card.dateStart||card.dateSingle||'',
+        plannedEnd:card.dateEnd||'',
+        plannedMinutes:planned,
+        deliverable:card.deliverable||'',
+        acceptanceCriteria:card.acceptance||'',
+        actual:{
+          start:this.actualStart(card),
+          end:this.actualEnd(card),
+          totalMinutes:actual,
+          usagePercent:planned>0?Math.round(actual/planned*100):null,
+          varianceMinutes:planned>0?Math.round(actual-planned):null,
+          workLogs:(Array.isArray(card.workLogs)?card.workLogs:[]).map(l=>({
+            date:l.workDate||'',
+            minutes:Math.round(this.logMinutes(l)*100)/100,
+            source:l.source==='timer'?'timer':'manual',
+            note:l.note||''
+          }))
+        },
+        workNotes:(Array.isArray(card.entries)?card.entries:[]).map(e=>({title:e.title||'',content:e.content||'',createdAt:e.createdAt||''}))
+      };
+    });
+    const scheduled=cards.filter(c=>c.type==='scheduled');
+    const plannedTotal=scheduled.reduce((s,c)=>s+(Number(c.plannedMinutes)||0),0);
+    const scheduledActual=scheduled.reduce((s,c)=>s+(Number(c.actual?.totalMinutes)||0),0);
+    const allActual=cards.reduce((s,c)=>s+(Number(c.actual?.totalMinutes)||0),0);
+    return {
+      project:{
+        id:p.id,name:p.name,goal:p.goal,deadline:p.deadline,deadlineType:p.deadlineType,
+        definitionOfDone:p.definitionOfDone,constraints:p.constraints,nextReviewDate:p.nextReviewDate,
+        planningHorizonDays:p.planningHorizonDays,milestones:p.milestones||[],
+        timeSummary:{
+          plannedMinutes:plannedTotal,
+          scheduledActualMinutes:scheduledActual,
+          allActualMinutes:allActual,
+          scheduledUsagePercent:plannedTotal>0?Math.round(scheduledActual/plannedTotal*100):null
+        }
+      },
+      cards
+    };
   },
 
   buildReviewPrompt(){
     const ctx=this.selectedContext(); const t=REVIEW_TEMPLATES.find(x=>x.id===this.state.activeTemplate)||REVIEW_TEMPLATES[0]; const q=document.getElementById('ai-custom-question').value.trim();
-    const prompt=`你正在協助我檢討一個進行中的專案。\n\n【本次分析任務】\n${t.text}\n\n【我的額外問題】\n${q||'無。請依本次分析任務進行。'}\n\n【討論規則】\n1. 先分析，不要因為看到問題就直接改寫整份計畫。\n2. 明確區分：事實、假設、風險、已發生問題、依賴、待決策事項。\n3. 若資訊不足，請指出需要補充什麼，不要自行補成事實。\n4. 請特別考慮專案期限、完成定義、固定限制與里程碑。\n5. 不要把所有長尾例外都當成重大風險，請說明哪些真的可能影響成果或期限。\n6. 可以提出不同方向與取捨，但不要假裝已經替我定案。\n7. 這一輪可以用正常文字回答，不需要 JSON。\n\n【資料基準】\n${ctx.label} (${ctx.id})\n\n【專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}`;
+    const prompt=`你正在協助我檢討一個進行中的專案。\n\n【本次分析任務】\n${t.text}\n\n【我的額外問題】\n${q||'無。請依本次分析任務進行。'}\n\n【討論規則】\n1. 先分析，不要因為看到問題就直接改寫整份計畫。\n2. 明確區分：事實、假設、風險、已發生問題、依賴、待決策事項。\n3. 若資訊不足，請指出需要補充什麼，不要自行補成事實。\n4. 請特別考慮專案期限、完成定義、固定限制與里程碑。\n5. 請把「原本怎麼估」和「實際怎麼花時間」放在一起分析。工時明細屬於歷史事實；若有偏差，請區分：估算錯誤、範圍變動、額外未規劃工作，或工作尚未完成，不要只用工時使用率直接下結論。\n6. 不要把所有長尾例外都當成重大風險，請說明哪些真的可能影響成果或期限。\n7. 可以提出不同方向與取捨，但不要假裝已經替我定案。\n8. 這一輪可以用正常文字回答，不需要 JSON。\n\n【資料基準】\n${ctx.label} (${ctx.id})\n\n【專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}`;
     this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt;
   },
   async copyText(text,msg='已複製'){ try{await navigator.clipboard.writeText(text); alert(msg);}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(msg);} },
@@ -399,17 +553,98 @@ const lab = {
   },
   renderScenarios(){ const root=document.getElementById('view-scenarios'); const list=this.projectScenarios(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 Scenario。先從 Snapshot 建立一份完整候選規劃，再自由調整。</div>';return;} root.innerHTML=list.map(s=>this.renderScenario(s)).join(''); },
   renderScenario(s){ const diff=this.scenarioDiff(s); const cards=s.cards.filter(c=>!c.isDeleted); return `<div class="scenario-item"><div class="row"><input type="text" style="flex:1;font-weight:900" value="${this.esc(s.name)}" onchange="lab.updateScenario('${s.id}','name',this.value)"><select style="max-width:150px" onchange="lab.updateScenario('${s.id}','status',this.value)"><option value="draft" ${s.status==='draft'?'selected':''}>草稿</option><option value="candidate" ${s.status==='candidate'?'selected':''}>候選</option><option value="adopted" ${s.status==='adopted'?'selected':''}>決定採用</option><option value="rejected" ${s.status==='rejected'?'selected':''}>不採用</option></select></div><div class="tiny">Base: ${this.esc(s.baseSnapshotId)}｜${this.fmt(s.createdAt)}</div><label class="field" style="margin-top:8px">Scenario 說明<textarea onchange="lab.updateScenario('${s.id}','notes',this.value)">${this.esc(s.notes||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.addScenarioCard('${s.id}')">＋ 新增卡片</button><button class="btn small" onclick="lab.toggleDiff('${s.id}')">比較 Snapshot</button><button class="btn small" onclick="lab.exportScenario('${s.id}')">匯出 JSON</button><button class="btn small danger" onclick="lab.deleteEntity('scenarios','${s.id}')">刪除 Scenario</button></div><div id="diff-${s.id}" class="hidden" style="margin-top:10px">${this.renderDiff(diff)}</div><div class="section-title">候選規劃（${cards.length} 張）</div><div class="card-list">${cards.map(c=>this.renderScenarioCard(s,c,diff)).join('')}</div></div>`; },
-  renderScenarioCard(s,c,diff){ const isMod=diff.modified.some(x=>x.card.id===c.id), isAdd=diff.added.some(x=>x.id===c.id); return `<div class="scenario-card ${isAdd?'added':isMod?'changed':''}"><div class="row"><span class="pill ${isAdd?'ok':'free'}">${isAdd?'新增':c.isMemo?'自由卡':'排程卡'}</span><button class="btn small danger" onclick="lab.toggleDeleteScenarioCard('${s.id}','${c.id}')">${c.isNew?'移除':'標記刪除'}</button></div><div class="scenario-fields"><label class="field wide">標題<input type="text" value="${this.esc(c.title||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','title',this.value)"></label><label class="field wide">內容<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','content',this.value)">${this.esc(c.content||'')}</textarea></label><label class="field">分類<input type="text" value="${this.esc(c.category||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','category',this.value)"></label><label class="field">型態<select onchange="lab.updateScenarioCard('${s.id}','${c.id}','isMemo',this.value==='true')"><option value="false" ${!c.isMemo?'selected':''}>排程卡</option><option value="true" ${c.isMemo?'selected':''}>自由卡</option></select></label><label class="field">預計開始<input type="date" value="${this.esc(c.dateStart||c.dateSingle||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','dateStart',this.value)"></label><label class="field">預計完成<input type="date" value="${this.esc(c.dateEnd||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','dateEnd',this.value)"></label><label class="field">預估工時（分鐘）<input type="number" min="0" value="${this.plannedMinutes(c)}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','plannedMinutes',this.value)"></label><label class="field">狀態<select onchange="lab.updateScenarioCard('${s.id}','${c.id}','status',this.value)">${[0,1,2,3].map(v=>`<option value="${v}" ${Number(c.status)===v?'selected':''}>${this.statusLabel(v)}</option>`).join('')}</select></label><label class="field wide">預期產出<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','deliverable',this.value)">${this.esc(c.deliverable||'')}</textarea></label><label class="field wide">驗收條件<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','acceptance',this.value)">${this.esc(c.acceptance||'')}</textarea></label></div><details><summary>歷史事實（唯讀）</summary><div class="desc">實際工時：${(this.actualMinutes(c)/60).toFixed(2)}h｜工作紀錄：${(Array.isArray(c.entries)?c.entries:[]).length} 筆。Scenario 不修改歷史事實。</div></details></div>`; },
+  renderScenarioCard(s,c,diff){
+    const isMod=diff.modified.some(x=>x.card.id===c.id), isAdd=diff.added.some(x=>x.id===c.id);
+    const factStatus = c.isNew
+      ? `<select onchange="lab.updateScenarioCard('${s.id}','${c.id}','status',this.value)">${[0,1,2,3].map(v=>`<option value="${v}" ${Number(c.status)===v?'selected':''}>${this.statusLabel(v)}</option>`).join('')}</select>`
+      : `<input class="readonly" type="text" readonly value="${this.esc(this.statusLabel(c.status))}">`;
+    return `<div class="scenario-card ${isAdd?'added':isMod?'changed':''}">
+      <div class="row"><span class="pill ${isAdd?'ok':'free'}">${isAdd?'新增':c.isMemo?'自由卡':'排程卡'}</span><button class="btn small danger" onclick="lab.toggleDeleteScenarioCard('${s.id}','${c.id}')">${c.isNew?'移除':'標記刪除'}</button></div>
+      ${!c.isNew?this.renderTimeCompare(c):'<div class="notice info" style="margin-top:8px">新卡尚無歷史工時；只有規劃資料可調整。</div>'}
+      <div class="scenario-fields">
+        <label class="field wide">標題<input type="text" value="${this.esc(c.title||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','title',this.value)"></label>
+        <label class="field wide">內容<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','content',this.value)">${this.esc(c.content||'')}</textarea></label>
+        <label class="field">分類<input type="text" value="${this.esc(c.category||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','category',this.value)"></label>
+        <label class="field">型態<select onchange="lab.updateScenarioCard('${s.id}','${c.id}','isMemo',this.value==='true')"><option value="false" ${!c.isMemo?'selected':''}>排程卡</option><option value="true" ${c.isMemo?'selected':''}>自由卡</option></select></label>
+        <label class="field">預計開始<input type="date" value="${this.esc(c.dateStart||c.dateSingle||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','dateStart',this.value)"></label>
+        <label class="field">預計完成<input type="date" value="${this.esc(c.dateEnd||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','dateEnd',this.value)"></label>
+        <label class="field">預估工時（分鐘）<input type="number" min="0" value="${this.plannedMinutes(c)}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','plannedMinutes',this.value)"></label>
+        <label class="field">${c.isNew?'初始狀態':'目前狀態（事實）'}${factStatus}</label>
+        <label class="field wide">預期產出<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','deliverable',this.value)">${this.esc(c.deliverable||'')}</textarea></label>
+        <label class="field wide">驗收條件<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','acceptance',this.value)">${this.esc(c.acceptance||'')}</textarea></label>
+      </div>
+      <details><summary>歷史事實（唯讀）</summary><div class="desc">實際開始：${this.esc(this.actualStart(c)||'—')}｜實際最後紀錄：${this.esc(this.actualEnd(c)||'—')}｜工作紀錄：${(Array.isArray(c.entries)?c.entries:[]).length} 筆。Scenario 不修改歷史事實。</div>${this.renderWorkLogs(c)}</details>
+    </div>`;
+  },
   renderDiff(diff){ const fld={title:'標題',content:'內容',category:'分類',status:'狀態',progress:'進度',dateStart:'預計開始',dateEnd:'預計完成',plannedMinutes:'預估工時(分鐘)',deliverable:'預期產出',acceptance:'驗收條件',isMemo:'卡片型態'}; return `<div class="diff-group"><strong>＋ 新增 ${diff.added.length}</strong>${diff.added.map(c=>`<div class="diff-row">${this.esc(c.title||'未命名')}</div>`).join('')}</div><div class="diff-group"><strong>－ 移除 ${diff.removed.length}</strong>${diff.removed.map(c=>`<div class="diff-row">${this.esc(c.title||'未命名')}</div>`).join('')}</div><div class="diff-group"><strong>✏️ 修改 ${diff.modified.length}</strong>${diff.modified.map(m=>`<div class="diff-row"><strong>${this.esc(m.card.title||'未命名')}</strong>${Object.entries(m.changes).map(([k,v])=>`<div><code>${this.esc(fld[k]||k)}</code>：${this.esc(v.from)} → ${this.esc(v.to)}</div>`).join('')}</div>`).join('')}</div>`; },
   toggleDiff(id){document.getElementById(`diff-${id}`)?.classList.toggle('hidden');},
 
-  scenarioSchemaExample(){ return {schemaVersion:'1.0',type:'project_lab_scenario',projectId:this.state.activeProjectId,baseSnapshotId:'請填入提示詞提供的 Snapshot ID',scenario:{name:'方案名稱',notes:'此方案的核心取捨',cards:[{id:'既有卡片請保留原 card id；新增卡片用 temp_001',originId:'既有卡片填原 card id；新增卡片留空',isNew:false,isDeleted:false,title:'',content:'',category:'',status:0,progress:null,isMemo:false,dateMode:'range',dateStart:'YYYY-MM-DD',dateEnd:'YYYY-MM-DD',plannedMinutes:120,deliverable:'',acceptance:'',workLogs:[],entries:[]}]}}; },
-  buildScenarioPrompt(){ const ctx=this.selectedContext(); const findings=this.projectFindings().filter(x=>x.status!=='closed'&&x.status!=='ignored'); const decisions=this.projectDecisions().filter(x=>x.status==='accepted'||x.status==='proposed'); const reviews=this.projectReviews().slice(0,5).map(r=>({template:r.templateLabel,question:r.customQuestion,response:r.response,userReflection:r.userReflection})); const prompt=`請把目前已形成的討論共識整理成一份「完整可推演 Scenario」。\n\n重要：這不是要求你重新分析，而是把已有討論轉成一個可實際試排的完整候選專案版本。若仍存在未解決且會影響結構的未知，請不要硬做 Scenario，改以文字列出還缺什麼。\n\n【規則】\n1. 回傳完整 Scenario，不只回傳變動 Delta。\n2. 既有卡片保留原 card id 與 originId。新增卡片使用 temp_001、temp_002...，originId 留空，isNew=true。\n3. 若某既有卡片要移除，保留卡片並設 isDeleted=true。\n4. 不得改寫 workLogs、entries 等歷史事實；它們請原樣保留。\n5. 只能使用以下 JSON 結構。請只輸出 JSON，不要 Markdown code fence。\n6. projectId 必須為 ${this.state.activeProjectId}。\n7. baseSnapshotId 必須為 ${ctx.id}。\n\n【JSON Schema 範例】\n${JSON.stringify(this.scenarioSchemaExample(),null,2)}\n\n【目前專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}\n\n【目前 Findings】\n${JSON.stringify(findings,null,2)}\n\n【目前 Decisions】\n${JSON.stringify(decisions,null,2)}\n\n【近期 Reviews】\n${JSON.stringify(reviews,null,2)}`; this.state.lastScenarioPrompt=prompt; this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt; },
+  scenarioSchemaExample(){ return {schemaVersion:'1.1',type:'project_lab_scenario',projectId:this.state.activeProjectId,baseSnapshotId:'請填入提示詞提供的 Snapshot ID',scenario:{name:'方案名稱',notes:'此方案的核心取捨',cards:[{id:'既有卡片請保留原 card id；新增卡片用 temp_001',originId:'既有卡片填原 card id；新增卡片留空',isNew:false,isDeleted:false,title:'',content:'',category:'',isMemo:false,dateMode:'range',dateStart:'YYYY-MM-DD',dateEnd:'YYYY-MM-DD',plannedMinutes:120,deliverable:'',acceptance:''}]}}; },
+  buildScenarioPrompt(){ const ctx=this.selectedContext(); const findings=this.projectFindings().filter(x=>x.status!=='closed'&&x.status!=='ignored'); const decisions=this.projectDecisions().filter(x=>x.status==='accepted'||x.status==='proposed'); const reviews=this.projectReviews().slice(0,5).map(r=>({template:r.templateLabel,question:r.customQuestion,response:r.response,userReflection:r.userReflection})); const prompt=`請把目前已形成的討論共識整理成一份「完整可推演 Scenario」。\n\n重要：這不是要求你重新分析，而是把已有討論轉成一個可實際試排的完整候選專案版本。若仍存在未解決且會影響結構的未知，請不要硬做 Scenario，改以文字列出還缺什麼。\n\n【規則】\n1. 回傳完整 Scenario，不只回傳變動 Delta。\n2. 既有卡片保留原 card id 與 originId。新增卡片使用 temp_001、temp_002...，originId 留空，isNew=true。\n3. 若某既有卡片要移除，保留卡片並設 isDeleted=true。\n4. 不要在回傳 JSON 中放入 workLogs、entries，既有卡片的目前狀態與進度也不要自行改寫；這些歷史事實會由 Project Lab 依 baseSnapshotId 自動補回。\n5. 規劃時必須參考專案資料中的實際工時、工時明細、使用率與估算偏差，說明為什麼調整預估或排程。\n6. 只能使用以下 JSON 結構。請只輸出 JSON，不要 Markdown code fence。\n7. projectId 必須為 ${this.state.activeProjectId}。\n8. baseSnapshotId 必須為 ${ctx.id}。\n\n【JSON Schema 範例】\n${JSON.stringify(this.scenarioSchemaExample(),null,2)}\n\n【目前專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}\n\n【目前 Findings】\n${JSON.stringify(findings,null,2)}\n\n【目前 Decisions】\n${JSON.stringify(decisions,null,2)}\n\n【近期 Reviews】\n${JSON.stringify(reviews,null,2)}`; this.state.lastScenarioPrompt=prompt; this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt; },
   copyScenarioSchema(){ this.copyText(JSON.stringify(this.scenarioSchemaExample(),null,2),'已複製 Scenario JSON 範例。'); },
 
   extractJson(text){ const t=String(text||'').trim(); if(!t)throw new Error('內容是空的'); const fenced=t.match(/```(?:json)?\s*([\s\S]*?)```/i); return JSON.parse(fenced?fenced[1].trim():t); },
-  validateScenarioImport(obj){ const errs=[]; if(obj?.schemaVersion!=='1.0')errs.push('schemaVersion 必須是 1.0'); if(obj?.type!=='project_lab_scenario')errs.push('type 必須是 project_lab_scenario'); if(obj?.projectId!==this.state.activeProjectId)errs.push('projectId 與目前專案不一致'); if(!obj?.baseSnapshotId)errs.push('缺少 baseSnapshotId'); if(!obj?.scenario||!Array.isArray(obj.scenario.cards))errs.push('缺少 scenario.cards'); const base=obj?.baseSnapshotId==='current'?null:this.state.snapshots.find(x=>x.id===obj?.baseSnapshotId); if(obj?.baseSnapshotId!=='current'&&!base)errs.push('找不到 baseSnapshotId 對應的 Snapshot'); const baseIds=new Set((base?.payload?.cards||[]).map(x=>x.card.id)); (obj?.scenario?.cards||[]).forEach((c,i)=>{ if(!c.id)errs.push(`cards[${i}] 缺少 id`); if(c.isNew){if(!String(c.id).startsWith('temp_'))errs.push(`cards[${i}] 新卡 id 應使用 temp_ 前綴`);} else if(c.originId && base && !baseIds.has(c.originId))errs.push(`cards[${i}] originId 不存在於基準 Snapshot`); }); return errs; },
-  tryImportScenarioFromResponse(){ const box=document.getElementById('import-status'); try{ const obj=this.extractJson(document.getElementById('ai-response').value); const errs=this.validateScenarioImport(obj); if(errs.length){ box.innerHTML=`<div class="notice bad"><strong>格式尚不能匯入：</strong><br>${errs.map(e=>'• '+this.esc(e)).join('<br>')}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyRepairPrompt()">複製修復提示詞</button></div>`; return; } const s={id:this.uid('scenario'),projectId:obj.projectId,baseSnapshotId:obj.baseSnapshotId,name:obj.scenario.name||'AI Scenario',status:'candidate',createdAt:this.now(),updatedAt:this.now(),cards:obj.scenario.cards.map(c=>structuredClone(c)),notes:obj.scenario.notes||''}; this.state.scenarios.push(s); this.saveState(); box.innerHTML='<div class="notice ok">Scenario JSON 驗證通過並已匯入。</div>'; this.renderScenarios(); this.showView('scenarios'); }catch(e){ box.innerHTML=`<div class="notice bad"><strong>JSON 解析失敗：</strong>${this.esc(e.message)}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyRepairPrompt()">複製修復提示詞</button></div>`; } },
+  basePayloadForScenario(baseSnapshotId){
+    if(baseSnapshotId==='current') return this.snapshotPayload();
+    return this.state.snapshots.find(x=>x.id===baseSnapshotId)?.payload || null;
+  },
+  validateScenarioImport(obj){
+    const errs=[];
+    if(obj?.schemaVersion!=='1.1')errs.push('schemaVersion 必須是 1.1');
+    if(obj?.type!=='project_lab_scenario')errs.push('type 必須是 project_lab_scenario');
+    if(obj?.projectId!==this.state.activeProjectId)errs.push('projectId 與目前專案不一致');
+    if(!obj?.baseSnapshotId)errs.push('缺少 baseSnapshotId');
+    if(!obj?.scenario||!Array.isArray(obj.scenario.cards))errs.push('缺少 scenario.cards');
+    const payload=this.basePayloadForScenario(obj?.baseSnapshotId);
+    if(!payload)errs.push('找不到 baseSnapshotId 對應的基準資料');
+    const baseIds=new Set((payload?.cards||[]).map(x=>x.card.id));
+    (obj?.scenario?.cards||[]).forEach((c,i)=>{
+      if(!c.id)errs.push(`cards[${i}] 缺少 id`);
+      if(c.isNew){
+        if(!String(c.id).startsWith('temp_'))errs.push(`cards[${i}] 新卡 id 應使用 temp_ 前綴`);
+      }else{
+        const origin=c.originId||c.id;
+        if(payload&&!baseIds.has(origin))errs.push(`cards[${i}] 找不到對應既有卡片 ${origin}`);
+      }
+      if('workLogs' in c || 'entries' in c) errs.push(`cards[${i}] 不應包含 workLogs / entries；歷史事實由 Project Lab 自動補回`);
+    });
+    return errs;
+  },
+  tryImportScenarioFromResponse(){
+    const box=document.getElementById('import-status');
+    try{
+      const obj=this.extractJson(document.getElementById('ai-response').value);
+      const errs=this.validateScenarioImport(obj);
+      if(errs.length){
+        box.innerHTML=`<div class="notice bad"><strong>格式尚不能匯入：</strong><br>${errs.map(e=>'• '+this.esc(e)).join('<br>')}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyRepairPrompt()">複製修復提示詞</button></div>`;
+        return;
+      }
+      const payload=this.basePayloadForScenario(obj.baseSnapshotId);
+      const baseMap=new Map((payload?.cards||[]).map(x=>[x.card.id,x.card]));
+      const cards=obj.scenario.cards.map(raw=>{
+        const c=structuredClone(raw);
+        if(c.isNew){
+          return {...c,status:Number(c.status||0),progress:c.progress??null,workLogs:[],entries:[]};
+        }
+        const origin=c.originId||c.id;
+        const baseCard=baseMap.get(origin);
+        return {
+          ...c,
+          originId:origin,
+          status:Number(baseCard?.status||0),
+          progress:baseCard?.progress??null,
+          workLogs:structuredClone(baseCard?.workLogs||[]),
+          entries:structuredClone(baseCard?.entries||[])
+        };
+      });
+      const s={id:this.uid('scenario'),projectId:obj.projectId,baseSnapshotId:obj.baseSnapshotId,name:obj.scenario.name||'AI Scenario',status:'candidate',createdAt:this.now(),updatedAt:this.now(),cards,notes:obj.scenario.notes||''};
+      this.state.scenarios.push(s); this.saveState();
+      box.innerHTML='<div class="notice ok">Scenario JSON 驗證通過並已匯入。既有卡片的實際工時與工作紀錄已由基準 Snapshot 自動補回，AI 無法改寫。</div>';
+      this.renderScenarios(); this.showView('scenarios');
+    }catch(e){
+      box.innerHTML=`<div class="notice bad"><strong>JSON 解析失敗：</strong>${this.esc(e.message)}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyRepairPrompt()">複製修復提示詞</button></div>`;
+    }
+  },
   copyRepairPrompt(){ const example=JSON.stringify(this.scenarioSchemaExample(),null,2); const txt=`你剛才回傳的內容無法被我的 Project Lab 匯入。請不要改變方案內容，只修復格式，並只回傳合法 JSON，不要加 Markdown code fence 或說明文字。\n\n必須符合以下範例結構：\n${example}`; this.copyText(txt,'已複製修復提示詞。'); },
   exportScenario(id){ const s=this.state.scenarios.find(x=>x.id===id); if(!s)return; const obj={schemaVersion:'1.0',type:'project_lab_scenario',projectId:s.projectId,baseSnapshotId:s.baseSnapshotId,scenario:{name:s.name,notes:s.notes,cards:s.cards}}; const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json;charset=utf-8'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${(s.name||'scenario').replace(/[\\/:*?"<>|]/g,'_')}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href); },
 
