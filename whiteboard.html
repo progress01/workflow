@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>白板 & 心流沙盒 v1.4</title>
+    
+    <!-- Firebase Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <!-- ExcelJS：在瀏覽器直接產生 .xlsx；不改動 Firebase 設定 -->
+    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+
+    <style>
+        /* === 全域變數與重置 === */
+        :root { --primary: #4f46e5; --bg: #f8fafc; --text: #1f2937; --font-stack: "Microsoft JhengHei", sans-serif; --danger: #ef4444; --warning: #f59e0b; --success: #10b981; }
+        * { box-sizing: border-box; font-family: var(--font-stack); }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; padding-top: 60px; overflow-x: hidden; padding-bottom: env(safe-area-inset-bottom); }
+        
+        #login-screen { position: fixed; top:0; left:0; right:0; bottom:0; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; color: white; padding: 20px; text-align: center; }
+        
+        /* === 頂部工具列 === */
+        .toolbar { position: fixed; top: 0; left: 0; right: 0; background: #1e293b; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; z-index: 2000; height: 60px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .tool-left, .tool-right { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
+        .tool-title { font-weight: bold; font-size: 1.2rem; margin-right: 15px; white-space: nowrap; }
+        .btn { background: transparent; border: 1px solid #475569; color: #e2e8f0; padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; white-space: nowrap; font-size: 0.95rem; display: flex; align-items: center; gap: 4px; }
+        .btn:hover { background: rgba(255,255,255,0.1); border-color: white; color: white; }
+        .btn.active { background: var(--primary); border-color: var(--primary); color: white; }
+        .btn-danger { border-color: #f87171; color: #f87171; }
+        .btn-danger:hover { background: #f87171; color: white; }
+        
+        .btn-cloud-save { background: #10b981; border-color: #059669; color: white; font-weight: bold; transition: box-shadow 0.3s ease; }
+        .btn-cloud-save:hover { background: #059669; }
+        .btn-cloud-load { background: #f59e0b; border-color: #d97706; color: white; font-weight: bold; }
+        .btn-cloud-load:hover { background: #d97706; }
+
+        /* === 專案與分頁列 === */
+        #project-bar { position: fixed; top: 60px; left: 50px; right: 0; background: white; border-bottom: 1px solid #e2e8f0; padding: 10px 20px; z-index: 1800; display: flex; gap: 10px; overflow-x: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.3s; }
+        #project-bar::-webkit-scrollbar, .toolbar::-webkit-scrollbar { display: none; }
+        .proj-badge { padding: 6px 14px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; color: #64748b; font-size: 0.9rem; cursor: pointer; white-space: nowrap; transition: 0.2s; }
+        .proj-badge.active { background: #dbeafe; border-color: #3b82f6; color: #2563eb; font-weight: bold; }
+        
+        #tab-bar { position: fixed; top: 60px; left: 0; bottom: 0; width: 50px; background: #e2e8f0; z-index: 1900; display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 8px; overflow-y: auto; overflow-x: hidden; transition: 0.3s; }
+        .tab-item { width: 100%; display: flex; flex-direction: column; align-items: center; padding: 15px 0; background: #cbd5e1; color: #64748b; cursor: pointer; border-radius: 0 8px 8px 0; border-left: 3px solid transparent; transition: 0.2s; user-select: none; }
+        .tab-item.active { background: var(--bg); color: var(--primary); border-left: 3px solid var(--primary); }
+        .tab-name { writing-mode: vertical-lr; text-orientation: upright; letter-spacing: 2px; font-weight: bold; font-size: 0.95rem; }
+        .tab-add { font-size: 1.5rem; color: #64748b; cursor: pointer; padding: 10px; font-weight: bold; }
+        
+        .main-area { margin-left: 50px; padding: 20px; width: calc(100% - 50px); transition: margin-top 0.3s; }
+        body.has-project-bar .main-area { margin-top: 50px; }
+        .view-container { display: none; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0; margin-bottom: 40px; width: 100%; overflow-x: hidden; }
+        .view-container.active { display: block; }
+        
+        /* === 白板視圖 (發想/時間軸/大事記/詰棋等) === */
+        /* 發想矩陣 */
+        .matrix-input-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .matrix-input { flex: 1; min-width: 200px; padding: 12px 15px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; outline: none; }
+        .matrix-select { padding: 12px; border: 2px solid #cbd5e1; border-radius: 8px; font-weight: bold; color: #475569; outline: none; }
+        .go-board-surface { background-color: #e5cc98; border: 6px solid #5a3d2b; border-radius: 6px; box-shadow: inset 0 0 20px rgba(0,0,0,0.15), 0 10px 20px rgba(0,0,0,0.2); position: relative; aspect-ratio: 1 / 1; margin: 0 auto; width: 100%; max-width: 800px; touch-action: none; }
+        .go-grid-lines { position: absolute; top: 4%; left: 4%; right: 4%; bottom: 4%; border-right: 1px solid #333; border-bottom: 1px solid #333; background-image: linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px); background-size: calc(100% / 18) calc(100% / 18); }
+        .star-point { position: absolute; width: clamp(4px, 1.5vw, 8px); height: clamp(4px, 1.5vw, 8px); background: #222; border-radius: 50%; transform: translate(-50%, -50%); }
+        .matrix-node { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -12px); touch-action: none; }
+        .matrix-node:active { z-index: 100 !important; }
+        .node-stone { width: clamp(20px, 4vw, 24px); height: clamp(20px, 4vw, 24px); border-radius: 50%; box-shadow: 2px 4px 6px rgba(0,0,0,0.4); cursor: grab; position: relative; z-index: 2; }
+        .stone-white .node-stone { background: radial-gradient(circle at 30% 30%, #ffffff, #d1d5db); border: 1px solid #94a3b8; }
+        .stone-black .node-stone { background: radial-gradient(circle at 30% 30%, #64748b, #0f172a); border: 1px solid #020617; }
+        .node-paper { background: #fffdf0; padding: 6px 10px; border-radius: 4px; box-shadow: 1px 3px 6px rgba(0,0,0,0.2); margin-top: -6px; position: relative; z-index: 1; min-width: 100px; max-width: 180px; display: flex; flex-direction: column; gap: 4px; opacity: 0.95; }
+        .matrix-node:hover .node-paper { opacity: 1; box-shadow: 0 6px 12px rgba(0,0,0,0.15); z-index: 101; }
+        .node-tag { font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 12px; align-self: center; white-space: nowrap; }
+        .tag-q1 { background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; } .tag-q2 { background: #dbeafe; color: #3b82f6; border: 1px solid #93c5fd; } .tag-q3 { background: #fef3c7; color: #f59e0b; border: 1px solid #fcd34d; } .tag-q4 { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
+        .matrix-node-text { font-size: 0.9rem; font-weight: bold; color: #334155; text-align: center; word-break: break-word; line-height: 1.4; }
+        .node-action-group { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
+        .node-action-btn { background: rgba(0,0,0,0.05); border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer; color: #475569; font-weight: bold; }
+
+        /* 卡片與時間軸 */
+        .timeline { position: relative; padding: 20px 0; max-width: 1200px; margin: 0 auto; }
+        .timeline::before { content: ''; position: absolute; top: 0; bottom: 0; left: 20px; width: 4px; background: #e5e7eb; border-radius: 2px; }
+        .card-wrapper { display: flex; margin-bottom: 30px; position: relative; padding-left: 45px; }
+        .card-dot { position: absolute; left: 16px; top: 20px; width: 12px; height: 12px; background: white; border: 4px solid var(--primary); border-radius: 50%; z-index: 2; }
+        .card { flex: 1; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-top: 5px solid var(--primary); transition: 0.2s; width: 100%; overflow: hidden; }
+        .card[data-color="green"] { border-top-color: #10b981; background: #f0fdf4; } .card[data-color="red"] { border-top-color: #ef4444; background: #fef2f2; } .card[data-color="yellow"] { border-top-color: #f59e0b; background: #fffbeb; }
+        .card-header { padding: 12px 15px; border-bottom: 1px dashed #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .status-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+        .status-0 { background: #9ca3af; } .status-1 { background: #f59e0b; } .status-2 { background: #10b981; } .status-3 { background: #ef4444; }
+        .card-body { padding: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .input-title { font-size: 1.25rem; font-weight: bold; color: var(--primary); border: none; border-bottom: 1px dashed #cbd5e1; outline: none; background: transparent; width: 100%; padding-bottom: 8px; }
+        .input-content { padding: 10px; border: 1px solid transparent; border-radius: 6px; font-size: 1.05rem; line-height: 1.6; resize: none; outline: none; background: transparent; color: #334155; overflow: hidden; min-height: 80px; }
+        .card-footer { background: #cbd5e1; padding: 10px 15px; display: flex; justify-content: flex-end; border-radius: 0 0 12px 12px; }
+        .input-project { background: transparent; border: none; color: white; font-weight: bold; text-align: right; outline: none; font-size: 1rem; width: 100%; max-width: 200px; }
+        .icon-btn { background: white; border: 1px solid #cbd5e1; border-radius: 6px; width: 34px; height: 34px; display: inline-flex; justify-content: center; align-items: center; cursor: pointer; color: #64748b; font-size: 16px; }
+        .add-main-btn { display: block; width: 100%; max-width: 500px; margin: 40px auto; padding: 18px; background: white; border: 2px dashed #cbd5e1; border-radius: 12px; text-align: center; color: #64748b; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
+
+        /* === 卡片工作紀錄：標題索引 / 單筆閱讀 === */
+        .worklog-panel { margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: rgba(248,250,252,0.92); overflow: hidden; }
+        .worklog-panel.worklog-compact { margin-top: 8px; }
+        .worklog-header { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#f8fafc; }
+        .worklog-heading { font-size:0.86rem; font-weight:bold; color:#475569; display:flex; align-items:center; gap:6px; min-width:0; }
+        .worklog-count { font-size:0.72rem; color:#64748b; background:#e2e8f0; padding:1px 7px; border-radius:999px; }
+        .worklog-add-btn, .worklog-back-btn, .worklog-action-btn { border:1px solid #cbd5e1; background:white; color:#475569; border-radius:6px; cursor:pointer; padding:5px 8px; font-size:0.8rem; }
+        .worklog-add-btn:hover, .worklog-back-btn:hover, .worklog-action-btn:hover { background:#f1f5f9; }
+        .worklog-action-btn.danger { color:#dc2626; border-color:#fecaca; }
+        .worklog-list { max-height:180px; overflow-y:auto; padding:4px 0; }
+        .worklog-compact .worklog-list { max-height:145px; }
+        .worklog-list-row { width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; border:0; border-bottom:1px solid #f1f5f9; background:transparent; padding:8px 10px; cursor:pointer; text-align:left; }
+        .worklog-list-row:last-child { border-bottom:0; }
+        .worklog-list-row:hover { background:#eef2ff; }
+        .worklog-list-title { flex:1; min-width:0; color:#334155; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .worklog-list-date { flex-shrink:0; color:#94a3b8; font-size:0.72rem; }
+        .worklog-empty { padding:12px 10px; color:#94a3b8; font-size:0.82rem; text-align:center; }
+        .worklog-detail { padding:10px; max-height:260px; overflow-y:auto; }
+        .worklog-detail-title { font-weight:bold; color:#334155; font-size:1rem; margin:2px 0 8px; word-break:break-word; }
+        .worklog-detail-content { color:#475569; font-size:0.9rem; line-height:1.6; white-space:normal; word-break:break-word; }
+        .worklog-detail-meta { color:#94a3b8; font-size:0.72rem; margin-top:10px; }
+        .worklog-actions { display:flex; justify-content:flex-end; gap:6px; padding:8px 10px; border-top:1px solid #e2e8f0; background:#f8fafc; }
+        .worklog-form { padding:10px; display:flex; flex-direction:column; gap:8px; }
+        .worklog-title-input, .worklog-content-input { width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; color:#334155; background:white; outline:none; }
+        .worklog-title-input:focus, .worklog-content-input:focus { border-color:#818cf8; box-shadow:0 0 0 2px rgba(99,102,241,0.1); }
+        .worklog-content-input { min-height:120px; resize:vertical; line-height:1.55; }
+        .worklog-collapsed { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; cursor:pointer; background:#f8fafc; }
+        .worklog-collapsed:hover { background:#eef2ff; }
+        .worklog-collapsed-main { min-width:0; display:flex; align-items:center; gap:8px; }
+        .worklog-collapsed-latest { min-width:0; color:#64748b; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+        /* === 工項規劃 / 工時紀錄（向下相容：舊卡片沒有欄位也可正常顯示） === */
+        .task-meta-panel, .worktime-panel { border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; overflow:hidden; }
+        .task-meta-panel { padding:10px; display:flex; flex-direction:column; gap:8px; }
+        .task-meta-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+        .task-meta-field { display:flex; flex-direction:column; gap:4px; min-width:0; }
+        .task-meta-label { font-size:0.72rem; color:#64748b; font-weight:bold; }
+        .task-meta-input, .task-meta-textarea, .worktime-input { width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:7px 8px; background:white; color:#334155; outline:none; }
+        .task-meta-textarea { min-height:52px; resize:vertical; line-height:1.4; }
+        .task-meta-input:focus, .task-meta-textarea:focus, .worktime-input:focus { border-color:#818cf8; box-shadow:0 0 0 2px rgba(99,102,241,.1); }
+        .gantt-visibility-toggle { margin-top:8px; display:flex; align-items:flex-start; gap:8px; padding:8px 10px; background:white; border:1px solid #e2e8f0; border-radius:7px; cursor:pointer; }
+        .gantt-visibility-toggle input { margin-top:3px; transform:scale(1.1); accent-color:#4f46e5; }
+        .gantt-visibility-toggle span { display:flex; flex-direction:column; gap:2px; color:#334155; font-size:.82rem; }
+        .gantt-visibility-toggle small { color:#64748b; font-size:.72rem; line-height:1.45; font-weight:normal; }
+        .schedule-conflict-panel { margin-top:8px; border-radius:7px; padding:8px 10px; font-size:.78rem; line-height:1.45; }
+        .schedule-conflict-panel.has-conflict { border:1px solid #fcd34d; background:#fffbeb; color:#92400e; }
+        .schedule-conflict-panel.no-conflict { border:1px solid #bbf7d0; background:#f0fdf4; color:#047857; }
+        .schedule-conflict-head { font-weight:bold; margin-bottom:6px; }
+        .schedule-conflict-list { display:flex; flex-direction:column; gap:5px; }
+        .schedule-conflict-item { width:100%; display:grid; grid-template-columns:145px minmax(0,1fr) auto; gap:8px; align-items:center; text-align:left; border:1px solid #fde68a; background:white; color:#475569; border-radius:6px; padding:6px 8px; cursor:pointer; }
+        .schedule-conflict-item:hover { background:#fef3c7; }
+        .schedule-conflict-date { color:#b45309; font-weight:bold; white-space:nowrap; }
+        .schedule-conflict-title { color:#334155; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .schedule-conflict-meta { color:#94a3b8; font-size:.7rem; white-space:nowrap; }
+        .schedule-conflict-help, .schedule-conflict-more { margin-top:6px; color:#78716c; font-size:.7rem; }
+        .worktime-header { padding:8px 10px; background:#eef2ff; display:flex; justify-content:space-between; align-items:center; gap:8px; border-bottom:1px solid #e2e8f0; }
+        .worktime-total { font-size:.82rem; color:#4338ca; font-weight:bold; }
+        .worktime-form { padding:9px 10px; display:grid; grid-template-columns:120px 90px minmax(150px,1fr) auto; gap:6px; align-items:end; }
+        .worktime-list { max-height:145px; overflow-y:auto; background:white; }
+        .worktime-row { display:grid; grid-template-columns:85px 70px minmax(0,1fr) auto; gap:8px; align-items:center; padding:7px 10px; border-top:1px solid #f1f5f9; font-size:.82rem; }
+        .worktime-row-note { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#475569; }
+        .worktime-source { color:#94a3b8; font-size:.72rem; }
+        .worktime-empty { padding:10px; color:#94a3b8; text-align:center; font-size:.8rem; background:white; }
+        .worktime-delete { border:0; background:transparent; color:#dc2626; cursor:pointer; padding:2px 5px; }
+        .excel-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
+        .excel-copy-btn { border:1px solid #c7d2fe; background:#eef2ff; color:#4338ca; border-radius:6px; padding:8px 12px; cursor:pointer; font-weight:bold; }
+        .excel-copy-btn:hover { background:#e0e7ff; }
+        .timer-target { margin:8px 0; padding:8px 10px; border-radius:6px; background:#f1f5f9; color:#475569; font-size:.82rem; line-height:1.45; }
+
+        @media (max-width: 768px) {
+            .task-meta-grid { grid-template-columns:1fr; }
+            .worktime-form { grid-template-columns:1fr 1fr; }
+            .worktime-form .worktime-note-field { grid-column:1 / -1; }
+            .worktime-form button { grid-column:1 / -1; }
+            .worktime-row { grid-template-columns:78px 62px minmax(0,1fr) auto; }
+        }
+
+        #sb-entry-context { margin-bottom:10px; }
+        #sb-entry-context .worklog-panel { margin-top:0; border-color:#dbeafe; background:#fff; }
+        #sb-entry-context .worklog-header { background:#eff6ff; }
+
+        .chronicle-pin-btn.active { background:#fef3c7; border-color:#f59e0b; color:#92400e; }
+        .chronicle-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; }
+        .chronicle-scope-group { display:flex; gap:4px; }
+        .chronicle-filter-btn { border:1px solid #cbd5e1; background:white; color:#475569; padding:7px 11px; border-radius:7px; cursor:pointer; font-weight:bold; }
+        .chronicle-filter-btn.active { background:#eef2ff; border-color:#818cf8; color:#4338ca; }
+        .chronicle-project-filter { display:flex; align-items:center; gap:7px; color:#64748b; font-size:.85rem; }
+        .chronicle-project-filter select { min-width:150px; border:1px solid #cbd5e1; border-radius:7px; padding:7px 9px; background:white; color:#334155; }
+        .chronicle-count { margin-left:auto; color:#94a3b8; font-size:.8rem; }
+        .chronicle-month-group { margin:20px 0 28px; }
+        .chronicle-month-group > h4 { margin:0 0 10px; color:#475569; font-size:1rem; border-bottom:1px solid #e2e8f0; padding-bottom:7px; }
+        .chronicle-card { --chronicle-accent:#4f46e5; display:grid; grid-template-columns:128px minmax(0,1fr); gap:14px; margin-bottom:12px; padding:14px; border:1px solid #e2e8f0; border-left:5px solid var(--chronicle-accent); border-radius:10px; background:white; box-shadow:0 1px 2px rgba(15,23,42,.04); }
+        .chronicle-card-date input { width:100%; border:1px solid #cbd5e1; border-radius:7px; padding:7px 8px; color:#475569; background:#f8fafc; }
+        .chronicle-card-main { min-width:0; }
+        .chronicle-card-topline { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+        .chronicle-card-title-wrap { min-width:0; display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+        .chronicle-project-tag { background:#e2e8f0; color:#475569; padding:2px 7px; border-radius:999px; font-size:.75rem; }
+        .chronicle-tab-tag { color:#94a3b8; font-size:.75rem; }
+        .chronicle-card-title { color:#1f2937; font-size:1rem; word-break:break-word; }
+        .chronicle-card-actions { display:flex; gap:6px; flex-shrink:0; }
+        .chronicle-summary-label { display:block; margin-top:10px; }
+        .chronicle-summary-label > span { display:block; color:#64748b; font-size:.78rem; font-weight:bold; margin-bottom:5px; }
+        .chronicle-summary-input { width:100%; min-height:66px; resize:vertical; border:1px solid #cbd5e1; border-radius:7px; padding:9px 10px; line-height:1.55; color:#334155; background:#fff; }
+        .chronicle-summary-input:focus { outline:none; border-color:#818cf8; box-shadow:0 0 0 2px rgba(99,102,241,.1); }
+        .chronicle-empty { padding:44px 20px; text-align:center; color:#64748b; border:2px dashed #cbd5e1; border-radius:12px; background:#f8fafc; }
+        .chronicle-empty p { max-width:620px; margin:8px auto 0; line-height:1.6; }
+        .chronicle-empty-icon { font-size:2rem; margin-bottom:8px; color:#f59e0b; }
+
+        @media (max-width: 768px) {
+            .chronicle-card { grid-template-columns:1fr; gap:8px; }
+            .chronicle-card-date input { max-width:170px; }
+            .chronicle-card-topline { flex-direction:column; }
+            .chronicle-card-actions { width:100%; flex-wrap:wrap; }
+            .chronicle-project-filter { width:100%; }
+            .chronicle-project-filter select { flex:1; min-width:0; }
+            .chronicle-count { margin-left:0; }
+        }
+
+        /* 詰棋與筆記本 modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9000; align-items: center; justify-content: center; padding: 15px; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
+        .nb-textarea { width: 100%; height: 400px; resize: vertical; padding: 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-size: 1.05rem; }
+        
+        #tsumego-widget-btn { position: fixed; bottom: 30px; right: 30px; z-index: 8500; width: 60px; height: 60px; border-radius: 30px; background: #1e293b; color: white; font-size: 2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.3); border: 2px solid #cbd5e1; transition: 0.2s; }
+        .tsumego-panel { position: fixed; top: 10vh; left: 10vw; width: 90vw; max-width: 550px; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #cbd5e1; overflow: hidden; display: none; z-index: 9500; }
+        .tsumego-header { background: #f8fafc; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; cursor: move; }
+        .tsumego-board-container { padding: 15px; background: #334155; display: flex; justify-content: center; align-items: center; }
+        .tsumego-controls { padding: 10px 15px; display: flex; gap: 5px; flex-wrap: wrap; }
+        .tsumego-tool-btn { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; cursor: pointer; font-weight: bold; color: #475569; }
+        .tsumego-tool-btn.active { background: #e0e7ff; border-color: #4f46e5; color: #4338ca; }
+        .pure-stone { position: absolute; width: clamp(14px, 4vw, 22px); height: clamp(14px, 4vw, 22px); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 2px 4px 6px rgba(0,0,0,0.4); pointer-events: none; }
+        .pure-stone.black { background: radial-gradient(circle at 30% 30%, #475569, #0f172a); border: 1px solid #020617; }
+        .pure-stone.white { background: radial-gradient(circle at 30% 30%, #ffffff, #cbd5e1); border: 1px solid #94a3b8; }
+
+
+        /* ==========================================
+           🌟 心流沙盒 (Sandbox) 專屬樣式 🌟
+           ========================================== */
+        #view-sandbox { background: #f0f2f5; border: none; box-shadow: none; padding: 0; }
+        .sb-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .sb-layout { display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch; }
+        .sb-left { flex: 1; min-width: 320px; max-width: 450px; border: 2px solid var(--primary); border-radius: 8px; padding: 15px; background: #fff; display: flex; flex-direction: column; }
+        .sb-right { flex: 2; min-width: 300px; display: flex; flex-direction: column; background: #fff; border: 1px solid #ced4da; border-radius: 8px; padding: 15px;}
+        
+        .sb-tabs { display: flex; gap: 5px; margin-bottom: 10px; justify-content: center; }
+        .sb-tab-btn { background: #e9ecef; color: #495057; flex: 1; padding: 10px; border: none; cursor: pointer; font-weight: bold; border-radius: 4px;}
+        .sb-tab-btn.active { background: #17a2b8; color: white; }
+
+        .sb-timer-display { font-size: 3.5rem; font-weight: bold; text-align: center; margin: 10px 0; color: #343a40; border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f8f9fa; }
+        .sb-gif-container { width: 120px; height: 120px; margin: 0 auto; display: flex; align-items: center; justify-content: center; border: 2px dashed #ccc; border-radius: 8px; overflow: hidden; background: white; }
+        .sb-gif-container img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .sb-btn { cursor: pointer; padding: 8px 12px; border: none; border-radius: 5px; font-weight: bold; color: white; transition: 0.2s; font-size: 0.9rem;}
+        .sb-btn:hover { opacity: 0.9; }
+        .sb-btn-success { background: var(--success); }
+        .sb-btn-warning { background: var(--warning); color: #333; }
+        .sb-btn-danger { background: var(--danger); }
+        .sb-btn-primary { background: var(--primary); }
+        .sb-btn-outline { background: transparent; border: 1px solid #ced4da; color: #343a40; padding: 5px 8px; font-size: 0.85rem;}
+        .sb-btn-outline:hover { background: #f8f9fa; }
+        .sb-btn-md { background: #e9ecef; border: 1px solid #ced4da; color: #495057; font-family: monospace; padding: 4px 8px;}
+
+        /* Todo List & Sub-tasks */
+        .sb-todo-card { display: flex; flex-direction: column; background: #fff; border-bottom: 2px solid #e2e8f0; padding: 12px 10px; transition: 0.2s; position: relative;}
+        .sb-todo-card:hover { background: #f8fafc; }
+        .sb-todo-card.active-card { background: #eff6ff; border-left: 4px solid #3b82f6; }
+        .sb-badge { padding: 3px 6px; border-radius: 4px; font-size: 0.75em; color: white; }
+        
+        .sb-subtasks-container { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; margin-left: 28px; padding-left: 10px; border-left: 2px dashed #cbd5e1; }
+        .sb-subtask-item { display: flex; align-items: flex-start; gap: 8px; font-size: 0.9rem; color: #334155; }
+        .sb-subtask-item input[type="checkbox"] { transform: scale(1.2); cursor: pointer; margin-top: 3px; }
+        .sb-subtask-item.completed { text-decoration: line-through; color: #94a3b8; }
+        
+        .sb-note-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 10px; border-bottom: 2px solid #f8f9fa; margin-bottom: 10px; }
+        .sb-template-bar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; background: #f8f9fa; padding: 8px; border-radius: 6px; align-items: center;}
+        
+        #sb-activeNoteArea { flex: 1; min-height: 350px; font-family: 'Courier New', Courier, monospace; resize: vertical; background: #fdfdfd; line-height: 1.6; font-size: 1rem; border: 2px solid #e9ecef; width: 100%; padding: 10px; border-radius: 6px;}
+        #sb-activeNoteArea:focus { outline: none; border-color: #17a2b8; box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.1); }
+
+
+
+        /* === v2.2.1：安全版任務導覽（不改主內容版型） === */
+        :root { --task-nav-width: 270px; }
+        #task-nav-panel {
+            position: fixed; top: 68px; left: 58px; bottom: 16px;
+            width: var(--task-nav-width); max-width: calc(100vw - 90px);
+            background: rgba(255,255,255,.98); border: 1px solid #dbe3ee;
+            border-radius: 10px; box-shadow: 0 10px 28px rgba(15,23,42,.13);
+            z-index: 1750; display: flex; flex-direction: column;
+            transform: translateX(calc(-100% - 75px)); opacity: 0; pointer-events: none;
+            transition: transform .2s ease, opacity .2s ease;
+        }
+        body.task-nav-open #task-nav-panel { transform: translateX(0); opacity: 1; pointer-events: auto; }
+        #task-nav-overlay { display: none; }
+        .task-nav-header { padding: 11px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px 10px 0 0; display: flex; flex-direction: column; gap: 8px; }
+        .task-nav-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .task-nav-title { font-weight: bold; color: #1e293b; }
+        .task-nav-close { border: 1px solid #cbd5e1; background: white; color: #64748b; border-radius: 6px; width: 30px; height: 30px; cursor: pointer; }
+        .task-nav-controls { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; }
+        .task-nav-search { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 7px; padding: 8px 9px; outline: none; color: #334155; background: white; }
+        .task-nav-search:focus { border-color: #818cf8; box-shadow: 0 0 0 2px rgba(99,102,241,.1); }
+        .task-nav-scope { border: 1px solid #cbd5e1; border-radius: 7px; background: white; color: #475569; padding: 7px 6px; max-width: 92px; }
+        .task-nav-current-hint { color: #94a3b8; font-size: .7rem; line-height: 1.35; }
+        #task-nav-list { flex: 1; overflow: auto; padding: 8px 7px 14px; overscroll-behavior: contain; }
+        .task-nav-empty { color: #94a3b8; font-size: .82rem; text-align: center; padding: 24px 10px; line-height: 1.6; }
+        .task-nav-workspace { margin-bottom: 10px; }
+        .task-nav-workspace-title { padding: 6px 7px; color: #64748b; font-size: .74rem; font-weight: bold; border-bottom: 1px solid #f1f5f9; }
+        .task-nav-project { margin-top: 4px; border-radius: 7px; overflow: hidden; }
+        .task-nav-project-head { width: 100%; border: 0; background: #f1f5f9; color: #334155; display: grid; grid-template-columns: 24px minmax(0,1fr) auto; align-items: center; gap: 4px; padding: 7px; cursor: pointer; text-align: left; }
+        .task-nav-project-head:hover { background: #e9eef6; }
+        .task-nav-project-arrow { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; color: #64748b; }
+        .task-nav-project-arrow:hover { background: #dde5ef; }
+        .task-nav-project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; font-size: .84rem; }
+        .task-nav-project-count { color: #94a3b8; font-size: .7rem; }
+        .task-nav-card-list { padding: 3px 0 4px 12px; border-left: 2px solid #e2e8f0; margin-left: 11px; }
+        .task-nav-project.collapsed .task-nav-card-list { display: none; }
+        .task-nav-card { width: 100%; border: 0; background: transparent; display: grid; grid-template-columns: 10px minmax(0,1fr) auto; align-items: center; gap: 7px; text-align: left; padding: 7px 6px; border-radius: 6px; color: #475569; cursor: pointer; font-size: .82rem; }
+        .task-nav-card:hover { background: #eef2ff; color: #3730a3; }
+        .task-nav-card.active { background: #e0e7ff; color: #3730a3; font-weight: bold; box-shadow: inset 3px 0 #4f46e5; }
+        .task-nav-card-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+        .task-nav-card.status-1 .task-nav-card-dot { background: #f59e0b; }
+        .task-nav-card.status-2 .task-nav-card-dot { background: #10b981; }
+        .task-nav-card.status-3 .task-nav-card-dot { background: #ef4444; }
+        .task-nav-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .task-nav-card-kind { color: #94a3b8; font-size: .68rem; }
+        .task-nav-flash { animation: taskNavFlash 1.35s ease; }
+        @keyframes taskNavFlash { 0%,100% { outline: 0 solid transparent; } 35% { outline: 4px solid rgba(79,70,229,.28); outline-offset: 3px; } }
+
+        /* RWD */
+        @media (max-width: 768px) {
+            .tool-title, .mobile-hidden { display: none !important; }
+            .toolbar { display: flex; overflow-x: auto; flex-wrap: nowrap; padding: 8px 10px; align-items: center; gap: 10px; justify-content: flex-start; }
+            #tab-bar { position: fixed; top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: 60px; flex-direction: row; justify-content: space-around; padding: 0; background: white; border-top: 1px solid #cbd5e1; z-index: 8000; padding-bottom: env(safe-area-inset-bottom); }
+            .tab-item { border-radius: 0; border-left: none; border-top: 3px solid transparent; flex: 1; padding: 5px; justify-content: center; background: white; }
+            .tab-item.active { border-top: 3px solid var(--primary); background: #f8fafc; }
+            .tab-name { writing-mode: horizontal-tb; text-orientation: mixed; font-size: 0.85rem; margin-top: 4px; }
+            #project-bar { top: 60px; left: 0; }
+            .main-area { margin-left: 0; padding: 15px 10px; width: 100%; padding-bottom: 80px; }
+            
+            .sb-layout { flex-direction: column; }
+            .sb-timer-display { font-size: 2.5rem; }
+        }
+
+
+        @media (max-width: 768px) {
+            .nav-btn-label { display: none !important; }
+            #task-nav-panel {
+                top: 60px; left: 0; bottom: calc(60px + env(safe-area-inset-bottom));
+                width: min(88vw, 350px); max-width: none; border-radius: 0 12px 12px 0;
+                z-index: 8600; transform: translateX(-105%); box-shadow: 8px 0 24px rgba(15,23,42,.24);
+            }
+            #task-nav-overlay {
+                position: fixed; top: 60px; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom));
+                background: rgba(15,23,42,.42); z-index: 8550; display: block;
+                opacity: 0; pointer-events: none; transition: opacity .2s ease;
+            }
+            body.task-nav-open #task-nav-overlay { opacity: 1; pointer-events: auto; }
+            .task-nav-search { font-size: 16px; }
+            .task-nav-project-head, .task-nav-card { min-height: 44px; }
+            .task-nav-card { padding: 10px 7px; font-size: .9rem; }
+            #tsumego-widget-btn { bottom: 82px; }
+        }
+
+        @media (min-width: 769px) and (max-width: 1200px) {
+            #task-nav-panel { top: 68px; left: 58px; width: 250px; }
+        }
+
+        /* === v2：規劃 / 實際、共用日期軸甘特、Excel 匯出 === */
+        .pm-collapse-toggle { width:100%; border:0; background:#f8fafc; color:#334155; padding:8px 10px; border-radius:7px; cursor:pointer; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; text-align:left; }
+        .pm-collapse-toggle:hover { background:#f1f5f9; }
+        .pm-collapse-toggle-open { margin-bottom:2px; border-bottom:1px dashed #cbd5e1; border-radius:7px 7px 4px 4px; }
+        .focus-planner { background:#fff; border-color:#c7d2fe; padding:0; }
+        .focus-planner-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:#eef2ff; border-bottom:1px solid #c7d2fe; }
+        .focus-planner-head > div:first-child { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .focus-current { font-size:.72rem; color:#4338ca; background:#fff; border:1px solid #c7d2fe; padding:3px 7px; border-radius:999px; font-weight:bold; }
+        .focus-head-actions { display:flex; gap:6px; flex-wrap:wrap; }
+        .focus-link-btn { border:1px solid #cbd5e1; background:#fff; color:#475569; border-radius:7px; padding:5px 8px; cursor:pointer; font-size:.75rem; font-weight:700; }
+        .focus-link-btn:hover { background:#f8fafc; }
+        .focus-maturity-row { display:grid; grid-template-columns:auto 140px minmax(0,1fr); align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid #eef2f7; font-size:.76rem; color:#64748b; }
+        .focus-next-preview { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+        .focus-mode-tabs { display:flex; gap:6px; flex-wrap:wrap; padding:10px 12px 4px; }
+        .focus-mode-btn { border:1px solid #dbe2ea; background:#f8fafc; color:#475569; border-radius:999px; padding:6px 9px; cursor:pointer; font-size:.74rem; font-weight:800; }
+        .focus-mode-btn.active { background:#4f46e5; border-color:#4f46e5; color:#fff; }
+        .focus-body { padding:8px 12px 12px; display:flex; flex-direction:column; gap:9px; }
+        .focus-question { display:grid; grid-template-columns:28px minmax(0,1fr); gap:8px; align-items:start; }
+        .focus-question > span { width:24px; height:24px; border-radius:50%; background:#eef2ff; color:#4338ca; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:.72rem; margin-top:18px; }
+        .focus-question label { font-size:.77rem; font-weight:800; color:#475569; display:flex; flex-direction:column; gap:5px; }
+        .focus-important { border-color:#818cf8 !important; background:#fafaff !important; }
+        .focus-inline { display:grid; grid-template-columns:1fr auto 1fr; gap:6px; align-items:center; }
+        .focus-hint { font-size:.74rem; color:#64748b; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:7px; padding:8px 10px; line-height:1.45; }
+        .focus-hint.warning { background:#fff7ed; border-color:#fdba74; color:#9a3412; }
+        .focus-review-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
+        .focus-review-metrics > div { background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; padding:8px; }
+        .focus-review-metrics small { display:block; color:#64748b; font-size:.68rem; }
+        .focus-review-metrics strong { display:block; margin-top:3px; color:#1f2937; font-size:.84rem; }
+        .focus-full-back { padding:4px 0 2px; }
+        @media(max-width:768px){ .focus-maturity-row{grid-template-columns:1fr 120px}.focus-next-preview{grid-column:1/-1}.focus-review-metrics{grid-template-columns:1fr 1fr}.focus-inline{grid-template-columns:1fr}.focus-inline span{display:none} }
+        .pm-collapse-title { font-weight:bold; white-space:nowrap; }
+        .pm-collapse-summary { color:#64748b; font-size:.76rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .pm-collapse-icon { color:#64748b; font-size:.76rem; white-space:nowrap; }
+        .task-meta-collapsed { padding:6px; }
+        .pm-section { border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; background:#fff; }
+        .pm-section + .pm-section { margin-top:8px; }
+        .pm-section-title { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 10px; font-size:.82rem; font-weight:bold; }
+        .pm-section-plan .pm-section-title { background:#eef2ff; color:#4338ca; }
+        .pm-section-actual .pm-section-title { background:#ecfdf5; color:#047857; }
+        .pm-section-body { padding:9px 10px; }
+        .pm-summary { font-size:.76rem; color:#64748b; font-weight:normal; }
+        .duration-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px; }
+        .actual-metric { padding:8px 10px; border:1px solid #d1fae5; background:#f0fdf4; border-radius:6px; min-height:58px; }
+        .actual-metric strong { display:block; margin-top:3px; color:#065f46; font-size:1rem; }
+        .variance-positive { color:#b91c1c !important; }
+        .variance-negative { color:#047857 !important; }
+        .color-select-wrap { display:flex; align-items:center; gap:6px; }
+        .color-chip { width:13px; height:13px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:0 0 auto; }
+        .worktime-form { grid-template-columns:118px 82px 82px minmax(150px,1fr) auto; }
+        .worktime-row { grid-template-columns:88px 78px minmax(0,1fr) auto auto; }
+        .worktime-edit { border:0; background:transparent; color:#4338ca; cursor:pointer; padding:2px 5px; }
+        .gantt-filter-bar { margin:0 auto 10px; max-width:980px; display:flex; align-items:flex-end; justify-content:center; gap:10px; flex-wrap:wrap; padding:10px 12px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; }
+        .gantt-filter-field { display:flex; flex-direction:column; gap:4px; min-width:180px; }
+        .gantt-filter-field span { font-size:.72rem; font-weight:bold; color:#64748b; }
+        .gantt-filter-select { border:1px solid #cbd5e1; border-radius:6px; background:white; color:#334155; padding:7px 9px; min-height:34px; }
+        .gantt-filter-reset { border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; color:#475569; padding:7px 11px; cursor:pointer; min-height:34px; }
+        .gantt-filter-reset:hover { background:#f1f5f9; }
+        .gantt-mode-switch { display:flex; gap:4px; align-items:center; background:#f1f5f9; border:1px solid #cbd5e1; padding:3px; border-radius:8px; min-height:34px; }
+        .gantt-mode-btn { border:0; background:transparent; color:#64748b; border-radius:6px; padding:6px 11px; cursor:pointer; font-weight:bold; font-size:.8rem; }
+        .gantt-mode-btn.active { background:white; color:#4338ca; box-shadow:0 1px 3px rgba(15,23,42,.12); }
+        .gantt-scale-switch { display:flex; gap:4px; align-items:center; background:#f1f5f9; border:1px solid #cbd5e1; padding:3px; border-radius:8px; min-height:34px; }
+        .gantt-scale-btn { border:0; background:transparent; color:#64748b; border-radius:6px; padding:6px 11px; cursor:pointer; font-weight:bold; font-size:.8rem; min-width:42px; }
+        .gantt-scale-btn.active { background:white; color:#0f766e; box-shadow:0 1px 3px rgba(15,23,42,.12); }
+        .gantt-summary-strip { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin:0 0 8px; padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; color:#475569; font-size:.8rem; }
+        .gantt-summary-strip strong { color:#0f172a; }
+        .gantt-summary-strip .over { color:#b91c1c; font-weight:bold; }
+        .gantt-conflict-summary { color:#b45309; font-weight:bold; }
+        .gantt-conflict-ok { color:#047857; }
+        .gantt-conflict-badge { flex-shrink:0; display:inline-flex; align-items:center; padding:1px 5px; border-radius:999px; background:#fef3c7; border:1px solid #fcd34d; color:#b45309; font-size:.66rem; font-weight:bold; }
+        .gantt-mode-note { margin:0 0 8px; padding:7px 10px; border-radius:7px; background:#f8fafc; border:1px solid #e2e8f0; color:#64748b; font-size:.78rem; line-height:1.5; }
+        .gantt-progress-value { font-weight:bold; color:#334155; margin-bottom:4px; }
+        .gantt-mini-track, .gantt-usage-track { height:5px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin:3px auto 0; width:92%; }
+        .gantt-mini-track span { display:block; height:100%; background:#4f46e5; border-radius:999px; }
+        .gantt-usage-track span { display:block; height:100%; background:#10b981; border-radius:999px; }
+        .gantt-usage-track span.over { background:#ef4444; }
+        .gantt-hours-main { font-size:.76rem; color:#475569; line-height:1.35; }
+        .gantt-hours-remain { margin-top:2px; font-size:.72rem; color:#047857; }
+        .gantt-hours-remain.over { color:#b91c1c; font-weight:bold; }
+        .gantt-unlogged { margin-top:3px; color:#b45309; font-size:.68rem; white-space:normal; }
+        .gantt-work-badge { position:absolute; left:2px; right:2px; bottom:2px; min-height:13px; line-height:13px; border-radius:3px; color:white; font-size:.62rem; font-weight:bold; text-align:center; overflow:hidden; }
+        .gantt-work-cell { color:white; text-align:center; font-weight:bold; font-size:.68rem; }
+        .gantt-work-cell span { display:block; min-width:32px; }
+        .gantt-work-outside { box-shadow:inset 0 0 0 2px #f59e0b; text-align:center; font-size:.65rem; font-weight:bold; }
+        .gantt-time-planned { background:#eef2ff !important; }
+        .gantt-toolbar-note { margin:0 auto 12px; max-width:980px; padding:9px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; color:#64748b; font-size:.82rem; line-height:1.5; }
+        .gantt-legend { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; margin:8px 0 14px; font-size:.78rem; color:#64748b; }
+        .gantt-legend-item { display:inline-flex; align-items:center; gap:5px; }
+        .gantt-table-wrap { width:100%; overflow:auto; border:1px solid #e2e8f0; border-radius:8px; background:white; }
+        .gantt-table { border-collapse:separate; border-spacing:0; min-width:max-content; font-size:.78rem; }
+        .gantt-table th, .gantt-table td { border-right:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:5px 6px; background:white; white-space:nowrap; height:30px; }
+        .gantt-table thead th { position:sticky; top:0; z-index:30; background:#f8fafc; color:#475569; font-weight:bold; text-align:center; }
+        .gantt-table .gantt-month-head { top:0; background:#e2e8f0; color:#334155; }
+        .gantt-table .gantt-day-head { top:31px; padding:4px 4px; }
+        .gantt-table .weekend { background:#f8fafc; }
+        .gantt-table .today-col { box-shadow:inset 2px 0 #f59e0b, inset -2px 0 #f59e0b; }
+        .gantt-left { position:sticky; z-index:20; background:white !important; }
+        .gantt-table thead .gantt-left { z-index:40; background:#f8fafc !important; }
+        .gantt-title-col { left:0; min-width:220px; max-width:220px; overflow:hidden; text-overflow:ellipsis; text-align:left !important; }
+        .gantt-status-col { left:220px; min-width:78px; text-align:center; }
+        .gantt-progress-col { left:298px; min-width:76px; text-align:center; }
+        .gantt-hours-col { left:374px; min-width:170px; text-align:center; }
+        .gantt-plan-col { left:544px; min-width:168px; text-align:center; }
+        .gantt-actual-col { left:712px; min-width:168px; text-align:center; }
+        .gantt-track-col { left:880px; min-width:76px; width:76px; text-align:center; box-shadow:3px 0 4px rgba(15,23,42,.06); font-weight:bold; }
+        .gantt-track-plan { background:#eef2ff !important; color:#4338ca; }
+        .gantt-track-actual { background:#ecfdf5 !important; color:#047857; }
+        .gantt-plan-row td { border-bottom-style:dashed; }
+        .gantt-actual-row td { border-bottom:2px solid #cbd5e1; }
+        .gantt-plan-row .gantt-day-cell { height:24px; }
+        .gantt-actual-row .gantt-day-cell { height:30px; }
+        .gantt-plan-row.gantt-time-focus .gantt-day-cell { opacity:.5; }
+        .gantt-rowspan-cell { vertical-align:middle; }
+        .gantt-group-row td { background:#eef2ff !important; color:#3730a3; font-weight:bold; border-left:4px solid #4f46e5; padding:7px 10px; }
+        .gantt-day-cell { padding:0 !important; position:relative; }
+        .gantt-scale-day .gantt-day-head, .gantt-scale-day .gantt-day-cell { min-width:38px; width:38px; max-width:38px; }
+        .gantt-scale-week .gantt-day-head, .gantt-scale-week .gantt-day-cell { min-width:88px; width:88px; max-width:88px; }
+        .gantt-scale-month .gantt-day-head, .gantt-scale-month .gantt-day-cell { min-width:96px; width:96px; max-width:96px; }
+        .gantt-bar-cell { opacity:1; }
+        .gantt-bar-cell.done { opacity:1; }
+        .gantt-bar-start { border-radius:5px 0 0 5px; }
+        .gantt-bar-end { border-radius:0 5px 5px 0; }
+        .gantt-task-title { display:flex; align-items:center; gap:7px; overflow:hidden; }
+        .gantt-task-title span:last-child { overflow:hidden; text-overflow:ellipsis; }
+        .free-card-note { font-size:.75rem; color:#64748b; margin-left:4px; }
+        .add-card-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin:35px auto; max-width:760px; }
+        .add-card-actions .add-main-btn { margin:0; width:auto; flex:1 1 260px; max-width:none; }
+
+        @media (max-width: 768px) {
+            .duration-grid { grid-template-columns:1fr 1fr; }
+            .worktime-form { grid-template-columns:1fr 1fr; }
+            .worktime-form .worktime-note-field { grid-column:1 / -1; }
+            .worktime-form button { grid-column:1 / -1; }
+            .worktime-row { grid-template-columns:76px 70px minmax(0,1fr) auto auto; }
+            .schedule-conflict-item { grid-template-columns:1fr; gap:2px; }
+            .schedule-conflict-meta { white-space:normal; }
+            .gantt-title-col { min-width:180px; max-width:180px; }
+            .gantt-status-col { left:180px; }
+            .gantt-progress-col { left:258px; }
+            .gantt-hours-col { left:334px; }
+            .gantt-plan-col { left:504px; }
+            .gantt-actual-col { left:672px; }
+            .gantt-track-col { left:840px; }
+            .gantt-mode-switch { width:100%; justify-content:center; }
+            .gantt-mode-btn { flex:1; }
+            .gantt-scale-switch { width:100%; justify-content:center; }
+            .gantt-scale-btn { flex:1; }
+            .gantt-summary-strip { gap:8px; font-size:.74rem; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 登入畫面 -->
+    <div id="login-screen">
+        <h1 style="font-size: 2.5rem; margin-bottom: 10px;">白板系統</h1>
+        <p style="color: #94a3b8; margin-bottom: 30px;">(SPA 雙向綁定子任務版)</p>
+        <button onclick="app.login()" style="padding: 14px 28px; font-size: 1.1rem; border-radius: 30px; border: none; background: #3b82f6; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+            使用 Google 登入
+        </button>
+    </div>
+
+    <div id="app-content" style="display: none;">
+        <!-- 工具列 -->
+        <div class="toolbar">
+            <div class="tool-left">
+                <div class="tool-title">白板</div>
+                <button class="btn" onclick="location.href='index.html'" title="回到專案檢討與規劃">🔬 Project Lab</button>
+                <button class="btn" onclick="app.toggleProjectBar()">📁 專案</button>
+                <button class="btn" onclick="app.taskNav.toggle()" id="btn-task-nav" title="快速跳到專案或卡片">🧭 <span class="nav-btn-label">導覽</span></button>
+                <button class="btn" onclick="app.switchView('timeline')" id="btn-view-timeline">📜 時間軸</button>
+                <button class="btn" onclick="app.switchView('matrix')" id="btn-view-matrix">💡 發想棋盤</button>
+                <button class="btn mobile-hidden" onclick="app.switchView('chronicle')" id="btn-view-chronicle">⚡ 大事記</button>
+                <button class="btn mobile-hidden" onclick="app.switchView('gantt')" id="btn-view-gantt">📊 甘特圖</button>
+                <button class="btn mobile-hidden" onclick="app.switchView('calendar')" id="btn-view-calendar">📅 日曆</button>
+                
+                <!-- SPA 沙盒入口 -->
+                <button class="btn" onclick="app.switchView('sandbox')" id="btn-view-sandbox" style="border-color:#10b981; color:#10b981; font-weight:bold;">🚀 進入心流沙盒</button>
+            </div>
+            <div class="tool-right">
+                <span id="cloud-time-display" style="font-size: 0.8rem; color: #94a3b8; margin-right: 10px; display: none;" class="mobile-hidden"></span>
+                <button class="btn btn-cloud-save" onclick="app.saveToCloudManual()">☁️ 存雲端</button>
+                <button class="btn btn-cloud-load" onclick="app.loadFromCloudManual()">📥 載雲端</button>
+                <div style="width:1px; height:20px; background:#475569; margin:0 2px;"></div>
+                <button class="btn btn-danger btn-clear-local" onclick="app.clearLocalData()">🧹 清本機</button>
+                <button class="btn" id="pomodoro-btn" onclick="app.togglePomodoro()">🍅 <span id="pomo-time">25:00</span></button>
+                <button class="btn" onclick="app.openNotebook()">📖 筆記</button>
+                <button class="btn btn-danger mobile-hidden" onclick="app.logout()">登出</button>
+            </div>
+        </div>
+
+        <div id="project-bar" style="display: none;"></div>
+        <div id="tab-bar"></div>
+
+        <!-- v2.2.1 任務導覽：與主版型解耦；桌面浮動、手機抽屜 -->
+        <div id="task-nav-overlay" onclick="app.taskNav.close()"></div>
+        <aside id="task-nav-panel" aria-label="任務導覽">
+            <div class="task-nav-header">
+                <div class="task-nav-title-row">
+                    <div class="task-nav-title">🧭 任務導覽</div>
+                    <button type="button" class="task-nav-close" onclick="app.taskNav.close()" title="收合導覽">✕</button>
+                </div>
+                <div class="task-nav-controls">
+                    <input id="task-nav-search" class="task-nav-search" type="search" placeholder="搜尋卡片／專案…" oninput="app.taskNav.setSearch(this.value)">
+                    <select id="task-nav-scope" class="task-nav-scope" onchange="app.taskNav.setScope(this.value)">
+                        <option value="current">本區</option>
+                        <option value="all">全部</option>
+                    </select>
+                </div>
+                <div class="task-nav-current-hint">專案可收合；點卡片直接切換工作區並定位。手機選取後自動收起。</div>
+            </div>
+            <div id="task-nav-list"></div>
+        </aside>
+
+
+        <div class="main-area">
+            
+            <!-- 0. 發想矩陣 -->
+            <div id="view-matrix" class="view-container">
+                <div class="matrix-input-bar">
+                    <input type="text" id="matrix-quick-input" class="matrix-input" placeholder="💡 輸入靈感... (按 Enter 落子)" onkeypress="if(event.key === 'Enter') app.actions.addMatrixNode()">
+                    <select id="matrix-tag-select" class="matrix-select">
+                        <option value="">無標籤</option>
+                        <option value="q1">🔥 重要・緊急</option>
+                        <option value="q2">📅 重要・不急</option>
+                        <option value="q3">⚡ 緊急・不重</option>
+                        <option value="q4">☕ 不重・不急</option>
+                    </select>
+                    <button class="btn btn-cloud-save" style="padding: 12px 20px; font-size: 1rem; justify-content: center;" onclick="app.actions.addMatrixNode()">＋ 落下棋子</button>
+                </div>
+                <div class="go-board-surface matrix-board" id="matrix-board">
+                    <div class="go-grid-lines" id="matrix-grid-lines"></div>
+                </div>
+            </div>
+
+            <!-- 1. 時間軸 -->
+            <div id="view-timeline" class="view-container active">
+                <div style="text-align:right; font-size:0.85rem; color:#94a3b8; margin-bottom:15px; font-weight: bold;">
+                    <span id="local-save-status">✅ 已存於本機</span>
+                </div>
+                <div class="timeline" id="timeline-render-target"></div>
+                <div class="add-card-actions">
+                    <button class="add-main-btn" onclick="app.actions.addCard('free')">＋ 新增自由卡片</button>
+                    <button class="add-main-btn" onclick="app.actions.addCard('scheduled')">＋ 新增排程工項</button>
+                </div>
+            </div>
+
+            <!-- 2. 大事記 -->
+            <div id="view-chronicle" class="view-container">
+                <h3 style="text-align: center; color: #475569; margin-top: 0; margin-bottom:6px;">⚡ 大事記</h3>
+                <p style="text-align:center; color:#64748b; font-size:.88rem; margin:0 0 16px;">只收你手動標記的重要成果、決定與節點；一般排程不會自動塞進來。</p>
+                <div id="chronicle-render-target"></div>
+            </div>
+
+            <!-- 3. 甘特圖 -->
+            <div id="view-gantt" class="view-container">
+                <h3 style="text-align: center; color: #475569; margin-top: 0;">📊 專案甘特圖</h3>
+                <div class="excel-actions">
+                    <button class="excel-copy-btn" onclick="app.worktime.copyTasksToExcel()">📋 複製工項總表</button>
+                    <button class="excel-copy-btn" onclick="app.worktime.copyLogsToExcel()">⏱️ 複製工時明細</button>
+                    <button class="excel-copy-btn" onclick="app.worktime.copyGanttSourceToExcel()">📊 複製甘特來源資料</button>
+                    <button class="excel-copy-btn" onclick="app.worktime.copyProjectJson()">🤖 複製專案 JSON</button>
+                    <button class="excel-copy-btn" onclick="app.worktime.exportProjectJson()">⬇️ 匯出專案 JSON</button>
+                    <button class="excel-copy-btn" onclick="app.worktime.exportWorkbookXlsx()">⬇️ 匯出 Excel (.xlsx)</button>
+                </div>
+                <div class="gantt-filter-bar">
+                    <div class="gantt-mode-switch" aria-label="甘特圖顯示模式">
+                        <button class="gantt-mode-btn active" type="button" data-gantt-mode="schedule" onclick="app.worktime.setGanttMode('schedule')">📅 排程</button>
+                        <button class="gantt-mode-btn" type="button" data-gantt-mode="time" onclick="app.worktime.setGanttMode('time')">⏱️ 工時</button>
+                    </div>
+                    <div class="gantt-scale-switch" aria-label="甘特圖時間尺度" title="只改顯示尺度，不改原始日期與工時">
+                        <button class="gantt-scale-btn" type="button" data-gantt-scale="day" onclick="app.worktime.setGanttScale('day')">日</button>
+                        <button class="gantt-scale-btn" type="button" data-gantt-scale="week" onclick="app.worktime.setGanttScale('week')">週</button>
+                        <button class="gantt-scale-btn" type="button" data-gantt-scale="month" onclick="app.worktime.setGanttScale('month')">月</button>
+                    </div>
+                    <label class="gantt-filter-field">
+                        <span>專案篩選</span>
+                        <select id="gantt-project-filter" class="gantt-filter-select" onchange="app.worktime.setGanttFilter('project', this.value)">
+                            <option value="">全部專案</option>
+                        </select>
+                    </label>
+                    <label class="gantt-filter-field">
+                        <span>月份篩選</span>
+                        <select id="gantt-month-filter" class="gantt-filter-select" onchange="app.worktime.setGanttFilter('month', this.value)">
+                            <option value="">全部月份</option>
+                        </select>
+                    </label>
+                    <button class="gantt-filter-reset" type="button" onclick="app.worktime.resetGanttFilters()">清除篩選</button>
+                </div>
+                <div class="gantt-toolbar-note">
+                    同一張甘特圖維持「📐 預計 / ⏱️ 實際」雙軌；時間尺度可切換日、週、月。可在卡片規劃區勾選「不要顯示於甘特圖」降低雜訊；隱藏卡仍保留工時與 Excel 工項資料，也仍會參與排程重疊提醒。
+                </div>
+                <div class="gantt-legend">
+                    <span class="gantt-legend-item"><span class="color-chip" style="background:#3b82f6"></span>一般</span>
+                    <span class="gantt-legend-item"><span class="color-chip" style="background:#10b981"></span>穩定</span>
+                    <span class="gantt-legend-item"><span class="color-chip" style="background:#ef4444"></span>關鍵／重要（人工）</span>
+                    <span class="gantt-legend-item"><span class="color-chip" style="background:#f59e0b"></span>注意</span>
+                    <span class="gantt-legend-item">📐 上層淡色列＝預計排程</span>
+                    <span class="gantt-legend-item">⏱️ 下層實色列＝目前尺度的實際工時</span>
+                    <span class="gantt-legend-item">⚠ 數字＝與其他正式排程重疊的工項數</span>
+                </div>
+                <div id="gantt-render-target"></div>
+            </div>
+
+            <!-- 4. 日曆 -->
+            <div id="view-calendar" class="view-container">
+                <h3 style="text-align: center; color: #475569; margin-top: 0;">📅 全域日曆</h3>
+                <div id="calendar-render-target"></div>
+            </div>
+
+            <!-- 🌟 5. 心流沙盒 (SPA 子任務雙向綁定版) 🌟 -->
+            <div id="view-sandbox" class="view-container" style="background: transparent; border: none;">
+                <div class="sb-header">
+                    <h1 style="margin: 0; color: #1e293b;">🌟 心流沙盒 <span style="font-size: 1rem; color: #64748b; font-weight: normal;">(自動綁定時間軸與筆記)</span></h1>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="sb-btn sb-btn-warning" onclick="app.sandbox.promoteNodesToCards()">💡 轉換此頁發想節點為任務</button>
+                        <button class="sb-btn sb-btn-primary" onclick="app.sandbox.downloadMarkdown()">⬇️ 匯出今日總結 (.md)</button>
+                        <button class="sb-btn sb-btn-outline" onclick="app.switchView('timeline')">🔙 退出沙盒</button>
+                    </div>
+                </div>
+
+                <div class="sb-layout">
+                    <!-- 左側：計時與任務 -->
+                    <div class="sb-left">
+                        <div class="sb-tabs">
+                            <button class="sb-tab-btn active" onclick="app.sandbox.switchLeftPanel('TIMER')" id="sb-tab-timer">⏱️ 計時器</button>
+                            <button class="sb-tab-btn" onclick="app.sandbox.switchLeftPanel('TODO')" id="sb-tab-todo">📋 任務矩陣</button>
+                        </div>
+
+                        <!-- 計時器 -->
+                        <div id="sb-view-timer">
+                            <div class="sb-tabs" style="margin-bottom: 15px;">
+                                <button class="sb-tab-btn active" onclick="app.sandbox.setTimerMode('FLEXIBLE')" id="sb-btn-mode-flex">彈性計時</button>
+                                <button class="sb-tab-btn" onclick="app.sandbox.setTimerMode('POMODORO')" id="sb-btn-mode-pomo">番茄時鐘</button>
+                            </div>
+                            
+                            <div class="sb-timer-display" id="sb-timeDisplay">00:00:00</div>
+                            <div class="sb-gif-container" id="sb-gifContainer"><span style="color:#ccc">GIF (停止)</span></div>
+                            <div style="text-align:center; margin: 10px 0; font-weight:bold; color:#6c757d;" id="sb-statusText">狀態: 閒置</div>
+                            <div class="timer-target" id="sb-timerTarget">目前未綁定卡片。選擇任務後，心流時間會直接累積到該卡。</div>
+                            
+                            <div style="display: flex; justify-content: space-between; gap: 5px;">
+                                <button class="sb-btn sb-btn-success" onclick="app.sandbox.startTimer()">▶ 啟動</button>
+                                <button class="sb-btn sb-btn-warning" onclick="app.sandbox.pauseTimer()">⏸ 暫停</button>
+                                <button class="sb-btn sb-btn-primary" onclick="app.sandbox.stopTimer()">⏹ 停止</button>
+                            </div>
+
+                            <hr style="border:0; border-top:1px dashed #ced4da; margin: 20px 0;">
+                            <h4 style="margin:5px 0; color:var(--danger);">🎯 死線倒數</h4>
+                            <input type="text" id="sb-deadlineTask" placeholder="專案名稱" oninput="app.sandbox.updateCountdown()" style="width:100%; padding:8px; margin-bottom:5px;">
+                            <input type="date" id="sb-deadlineDate" onchange="app.sandbox.updateCountdown()" style="width:100%; padding:8px;">
+                            <div id="sb-countdownDisplay" style="display:none; margin-top:15px; padding:10px; background:var(--danger); color:white; text-align:center; border-radius:5px; font-weight:bold;"></div>
+                        </div>
+
+                        <!-- 任務矩陣 (動態解析 Markdown 子任務) -->
+                        <div id="sb-view-todo" style="display:none; flex-grow: 1; flex-direction: column;">
+                            <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
+                                <div style="display:flex; gap:5px;">
+                                    <input type="text" id="sb-newTodoTask" placeholder="輸入任務 (Enter 自動建立為子任務或卡片)" style="flex:1; padding:8px;" onkeypress="if(event.key === 'Enter') app.sandbox.addTodo()">
+                                    <button class="sb-btn sb-btn-primary" onclick="app.sandbox.addTodo()">➕ 新增</button>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <button class="sb-btn sb-btn-outline" onclick="app.sandbox.mergeSelectedCards()">🔗 合併選中大卡片</button>
+                                <button class="sb-btn sb-btn-outline" style="color:var(--danger);" onclick="app.sandbox.clearCompletedCards()">清除已完成卡片</button>
+                            </div>
+                            
+                            <div id="sb-todoListContainer" style="flex-grow: 1; max-height: 500px; overflow-y: auto; border-top: 1px solid #dee2e6;">
+                                <!-- 任務動態生成 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右側：動態筆記焦點區 -->
+                    <div class="sb-right">
+                        <div class="sb-note-header">
+                            <div style="flex: 1;">
+                                <span style="font-size: 0.85rem; color: #6c757d; font-weight: bold;">當前焦點卡片 (點擊標題可修改)</span>
+                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
+                                    <span id="sb-activeTaskIcon" style="font-size: 1.5rem; display: none;">🎯</span>
+                                    <input type="text" id="sb-activeTaskTitle" 
+                                           style="margin: 0; color: var(--primary); font-size: 1.5rem; font-weight: bold; border: none; background: transparent; outline: none; flex: 1; padding: 0;" 
+                                           placeholder="全域沙盒草稿 (未選擇任務)" 
+                                           oninput="app.sandbox.renameActiveTask()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 工作紀錄：與時間軸卡片共用同一份 card.entries，預設收合避免干擾心流 -->
+                        <div id="sb-entry-context" style="display:none;"></div>
+
+                        <div class="sb-template-bar">
+                            <span style="font-size: 0.85rem; color: #666;">⚡ 快捷：</span>
+                            <button class="sb-btn-outline" onclick="app.sandbox.insertPrefix('- [ ] ')">✅ 待辦</button>
+                            <button class="sb-btn-outline" onclick="app.sandbox.insertTemplate('bug')">🐛 Bug</button>
+                            <button class="sb-btn-outline" onclick="app.sandbox.insertTemplate('dissect')">🔍 拆解</button>
+                            <button class="sb-btn-outline" onclick="app.sandbox.insertTemplate('review')">📝 覆盤</button>
+                            
+                            <span style="color: #ccc; margin: 0 5px;">|</span>
+                            <span style="font-size: 0.85rem; color: #666;">MD：</span>
+                            <button class="sb-btn-md" onclick="app.sandbox.wrapMarkdown('**', '**')"><b>B</b></button>
+                            <button class="sb-btn-md" onclick="app.sandbox.wrapMarkdown('*', '*')"><i>I</i></button>
+                            <button class="sb-btn-md" onclick="app.sandbox.wrapMarkdown('`', '`')">`code`</button>
+                        </div>
+
+                        <textarea id="sb-activeNoteArea" placeholder="選擇左側卡片並點擊「📝聚焦」，或直接在此處記錄全域靈感...&#10;&#10;✨ 提示：在此處輸入「- [ ] 事項」，左側面板會自動為你產生獨立的子任務按鈕！" oninput="app.sandbox.saveActiveNote()"></textarea>
+
+                        <div style="display: flex; gap: 8px; margin-top: 10px;">
+                            <button class="sb-btn sb-btn-success" style="pointer-events: none;">閃念</button>
+                            <input type="text" id="sb-quickLogInput" placeholder="輸入短語或進度，按 Enter 自動打上時間戳..." style="flex:1; padding:8px; border:2px solid var(--success); border-radius:4px;" onkeypress="if(event.key === 'Enter') app.sandbox.addQuickLog()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 模態彈窗：全域筆記本 -->
+        <div id="modal-notebook" class="modal-overlay">
+            <div class="modal-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #1e293b; font-size: 1.3rem;">📖 全域筆記本</h3>
+                    <button class="icon-btn" style="width:36px; height:36px;" onclick="app.closeNotebook()">×</button>
+                </div>
+                <select id="nb-template" onchange="app.actions.updateNotebookTemplate(this.value)" style="margin-bottom: 15px; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 1rem; width: 100%;">
+                    <option value="free">📝 自由筆記區</option>
+                    <option value="matrix">⚖️ 艾森豪四象限</option>
+                </select>
+                <div id="notebook-render-target"></div>
+            </div>
+        </div>
+
+        <!-- 🎲 獨立浮動詰棋視窗 -->
+        <div id="tsumego-widget-btn" onclick="app.toggleTsumego()">🎲</div>
+        <div id="tsumego-panel" class="tsumego-panel">
+            <div class="tsumego-header" id="tsumego-header">
+                <span>🎲 休息區：19x19 詰棋</span>
+                <button class="icon-btn" style="width:28px; height:28px; border:none; background:transparent;" onclick="app.toggleTsumego()">×</button>
+            </div>
+            <div class="tsumego-board-container">
+                <div class="go-board-surface" style="width:100%; aspect-ratio:1/1;" id="tsumego-board" onclick="app.actions.placeTsumegoStone(event)">
+                    <div class="go-grid-lines" id="tsumego-grid-lines"></div>
+                </div>
+            </div>
+            <div class="tsumego-controls">
+                <button class="tsumego-tool-btn active" id="ts-btn-black" onclick="app.actions.setTsumegoColor('black')">⚫</button>
+                <button class="tsumego-tool-btn" id="ts-btn-white" onclick="app.actions.setTsumegoColor('white')">⚪</button>
+                <button class="tsumego-tool-btn" id="ts-btn-clear" onclick="app.actions.setTsumegoColor('clear')">🧹</button>
+                <button class="tsumego-tool-btn" style="color:#ef4444; border-color:#fca5a5;" onclick="app.actions.resetTsumego()">🗑️ 清盤</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引用大腦檔案 -->
+    <script src="app.js"></script>
+</body>
+</html>

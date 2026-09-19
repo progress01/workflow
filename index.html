@@ -1,817 +1,961 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>白板 & 心流沙盒 v1.4</title>
-    
-    <!-- Firebase Compat -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
-    <!-- ExcelJS：在瀏覽器直接產生 .xlsx；不改動 Firebase 設定 -->
-    <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-
-    <style>
-        /* === 全域變數與重置 === */
-        :root { --primary: #4f46e5; --bg: #f8fafc; --text: #1f2937; --font-stack: "Microsoft JhengHei", sans-serif; --danger: #ef4444; --warning: #f59e0b; --success: #10b981; }
-        * { box-sizing: border-box; font-family: var(--font-stack); }
-        body { background: var(--bg); color: var(--text); margin: 0; padding: 0; min-height: 100vh; padding-top: 60px; overflow-x: hidden; padding-bottom: env(safe-area-inset-bottom); }
-        
-        #login-screen { position: fixed; top:0; left:0; right:0; bottom:0; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10000; color: white; padding: 20px; text-align: center; }
-        
-        /* === 頂部工具列 === */
-        .toolbar { position: fixed; top: 0; left: 0; right: 0; background: #1e293b; color: white; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; z-index: 2000; height: 60px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-        .tool-left, .tool-right { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
-        .tool-title { font-weight: bold; font-size: 1.2rem; margin-right: 15px; white-space: nowrap; }
-        .btn { background: transparent; border: 1px solid #475569; color: #e2e8f0; padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: 0.2s; white-space: nowrap; font-size: 0.95rem; display: flex; align-items: center; gap: 4px; }
-        .btn:hover { background: rgba(255,255,255,0.1); border-color: white; color: white; }
-        .btn.active { background: var(--primary); border-color: var(--primary); color: white; }
-        .btn-danger { border-color: #f87171; color: #f87171; }
-        .btn-danger:hover { background: #f87171; color: white; }
-        
-        .btn-cloud-save { background: #10b981; border-color: #059669; color: white; font-weight: bold; transition: box-shadow 0.3s ease; }
-        .btn-cloud-save:hover { background: #059669; }
-        .btn-cloud-load { background: #f59e0b; border-color: #d97706; color: white; font-weight: bold; }
-        .btn-cloud-load:hover { background: #d97706; }
-
-        /* === 專案與分頁列 === */
-        #project-bar { position: fixed; top: 60px; left: 50px; right: 0; background: white; border-bottom: 1px solid #e2e8f0; padding: 10px 20px; z-index: 1800; display: flex; gap: 10px; overflow-x: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.3s; }
-        #project-bar::-webkit-scrollbar, .toolbar::-webkit-scrollbar { display: none; }
-        .proj-badge { padding: 6px 14px; border-radius: 20px; border: 1px solid #cbd5e1; background: white; color: #64748b; font-size: 0.9rem; cursor: pointer; white-space: nowrap; transition: 0.2s; }
-        .proj-badge.active { background: #dbeafe; border-color: #3b82f6; color: #2563eb; font-weight: bold; }
-        
-        #tab-bar { position: fixed; top: 60px; left: 0; bottom: 0; width: 50px; background: #e2e8f0; z-index: 1900; display: flex; flex-direction: column; align-items: center; padding: 10px 0; gap: 8px; overflow-y: auto; overflow-x: hidden; transition: 0.3s; }
-        .tab-item { width: 100%; display: flex; flex-direction: column; align-items: center; padding: 15px 0; background: #cbd5e1; color: #64748b; cursor: pointer; border-radius: 0 8px 8px 0; border-left: 3px solid transparent; transition: 0.2s; user-select: none; }
-        .tab-item.active { background: var(--bg); color: var(--primary); border-left: 3px solid var(--primary); }
-        .tab-name { writing-mode: vertical-lr; text-orientation: upright; letter-spacing: 2px; font-weight: bold; font-size: 0.95rem; }
-        .tab-add { font-size: 1.5rem; color: #64748b; cursor: pointer; padding: 10px; font-weight: bold; }
-        
-        .main-area { margin-left: 50px; padding: 20px; width: calc(100% - 50px); transition: margin-top 0.3s; }
-        body.has-project-bar .main-area { margin-top: 50px; }
-        .view-container { display: none; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #e2e8f0; margin-bottom: 40px; width: 100%; overflow-x: hidden; }
-        .view-container.active { display: block; }
-        
-        /* === 白板視圖 (發想/時間軸/大事記/詰棋等) === */
-        /* 發想矩陣 */
-        .matrix-input-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-        .matrix-input { flex: 1; min-width: 200px; padding: 12px 15px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 1rem; outline: none; }
-        .matrix-select { padding: 12px; border: 2px solid #cbd5e1; border-radius: 8px; font-weight: bold; color: #475569; outline: none; }
-        .go-board-surface { background-color: #e5cc98; border: 6px solid #5a3d2b; border-radius: 6px; box-shadow: inset 0 0 20px rgba(0,0,0,0.15), 0 10px 20px rgba(0,0,0,0.2); position: relative; aspect-ratio: 1 / 1; margin: 0 auto; width: 100%; max-width: 800px; touch-action: none; }
-        .go-grid-lines { position: absolute; top: 4%; left: 4%; right: 4%; bottom: 4%; border-right: 1px solid #333; border-bottom: 1px solid #333; background-image: linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px); background-size: calc(100% / 18) calc(100% / 18); }
-        .star-point { position: absolute; width: clamp(4px, 1.5vw, 8px); height: clamp(4px, 1.5vw, 8px); background: #222; border-radius: 50%; transform: translate(-50%, -50%); }
-        .matrix-node { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -12px); touch-action: none; }
-        .matrix-node:active { z-index: 100 !important; }
-        .node-stone { width: clamp(20px, 4vw, 24px); height: clamp(20px, 4vw, 24px); border-radius: 50%; box-shadow: 2px 4px 6px rgba(0,0,0,0.4); cursor: grab; position: relative; z-index: 2; }
-        .stone-white .node-stone { background: radial-gradient(circle at 30% 30%, #ffffff, #d1d5db); border: 1px solid #94a3b8; }
-        .stone-black .node-stone { background: radial-gradient(circle at 30% 30%, #64748b, #0f172a); border: 1px solid #020617; }
-        .node-paper { background: #fffdf0; padding: 6px 10px; border-radius: 4px; box-shadow: 1px 3px 6px rgba(0,0,0,0.2); margin-top: -6px; position: relative; z-index: 1; min-width: 100px; max-width: 180px; display: flex; flex-direction: column; gap: 4px; opacity: 0.95; }
-        .matrix-node:hover .node-paper { opacity: 1; box-shadow: 0 6px 12px rgba(0,0,0,0.15); z-index: 101; }
-        .node-tag { font-size: 0.7rem; font-weight: bold; padding: 2px 6px; border-radius: 12px; align-self: center; white-space: nowrap; }
-        .tag-q1 { background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; } .tag-q2 { background: #dbeafe; color: #3b82f6; border: 1px solid #93c5fd; } .tag-q3 { background: #fef3c7; color: #f59e0b; border: 1px solid #fcd34d; } .tag-q4 { background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1; }
-        .matrix-node-text { font-size: 0.9rem; font-weight: bold; color: #334155; text-align: center; word-break: break-word; line-height: 1.4; }
-        .node-action-group { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
-        .node-action-btn { background: rgba(0,0,0,0.05); border: none; border-radius: 4px; padding: 4px 8px; font-size: 0.8rem; cursor: pointer; color: #475569; font-weight: bold; }
-
-        /* 卡片與時間軸 */
-        .timeline { position: relative; padding: 20px 0; max-width: 1200px; margin: 0 auto; }
-        .timeline::before { content: ''; position: absolute; top: 0; bottom: 0; left: 20px; width: 4px; background: #e5e7eb; border-radius: 2px; }
-        .card-wrapper { display: flex; margin-bottom: 30px; position: relative; padding-left: 45px; }
-        .card-dot { position: absolute; left: 16px; top: 20px; width: 12px; height: 12px; background: white; border: 4px solid var(--primary); border-radius: 50%; z-index: 2; }
-        .card { flex: 1; background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-top: 5px solid var(--primary); transition: 0.2s; width: 100%; overflow: hidden; }
-        .card[data-color="green"] { border-top-color: #10b981; background: #f0fdf4; } .card[data-color="red"] { border-top-color: #ef4444; background: #fef2f2; } .card[data-color="yellow"] { border-top-color: #f59e0b; background: #fffbeb; }
-        .card-header { padding: 12px 15px; border-bottom: 1px dashed #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .status-dot { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(0,0,0,0.1); flex-shrink: 0; }
-        .status-0 { background: #9ca3af; } .status-1 { background: #f59e0b; } .status-2 { background: #10b981; } .status-3 { background: #ef4444; }
-        .card-body { padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-        .input-title { font-size: 1.25rem; font-weight: bold; color: var(--primary); border: none; border-bottom: 1px dashed #cbd5e1; outline: none; background: transparent; width: 100%; padding-bottom: 8px; }
-        .input-content { padding: 10px; border: 1px solid transparent; border-radius: 6px; font-size: 1.05rem; line-height: 1.6; resize: none; outline: none; background: transparent; color: #334155; overflow: hidden; min-height: 80px; }
-        .card-footer { background: #cbd5e1; padding: 10px 15px; display: flex; justify-content: flex-end; border-radius: 0 0 12px 12px; }
-        .input-project { background: transparent; border: none; color: white; font-weight: bold; text-align: right; outline: none; font-size: 1rem; width: 100%; max-width: 200px; }
-        .icon-btn { background: white; border: 1px solid #cbd5e1; border-radius: 6px; width: 34px; height: 34px; display: inline-flex; justify-content: center; align-items: center; cursor: pointer; color: #64748b; font-size: 16px; }
-        .add-main-btn { display: block; width: 100%; max-width: 500px; margin: 40px auto; padding: 18px; background: white; border: 2px dashed #cbd5e1; border-radius: 12px; text-align: center; color: #64748b; font-weight: bold; cursor: pointer; font-size: 1.1rem; }
-
-        /* === 卡片工作紀錄：標題索引 / 單筆閱讀 === */
-        .worklog-panel { margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 8px; background: rgba(248,250,252,0.92); overflow: hidden; }
-        .worklog-panel.worklog-compact { margin-top: 8px; }
-        .worklog-header { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid #e2e8f0; background:#f8fafc; }
-        .worklog-heading { font-size:0.86rem; font-weight:bold; color:#475569; display:flex; align-items:center; gap:6px; min-width:0; }
-        .worklog-count { font-size:0.72rem; color:#64748b; background:#e2e8f0; padding:1px 7px; border-radius:999px; }
-        .worklog-add-btn, .worklog-back-btn, .worklog-action-btn { border:1px solid #cbd5e1; background:white; color:#475569; border-radius:6px; cursor:pointer; padding:5px 8px; font-size:0.8rem; }
-        .worklog-add-btn:hover, .worklog-back-btn:hover, .worklog-action-btn:hover { background:#f1f5f9; }
-        .worklog-action-btn.danger { color:#dc2626; border-color:#fecaca; }
-        .worklog-list { max-height:180px; overflow-y:auto; padding:4px 0; }
-        .worklog-compact .worklog-list { max-height:145px; }
-        .worklog-list-row { width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px; border:0; border-bottom:1px solid #f1f5f9; background:transparent; padding:8px 10px; cursor:pointer; text-align:left; }
-        .worklog-list-row:last-child { border-bottom:0; }
-        .worklog-list-row:hover { background:#eef2ff; }
-        .worklog-list-title { flex:1; min-width:0; color:#334155; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .worklog-list-date { flex-shrink:0; color:#94a3b8; font-size:0.72rem; }
-        .worklog-empty { padding:12px 10px; color:#94a3b8; font-size:0.82rem; text-align:center; }
-        .worklog-detail { padding:10px; max-height:260px; overflow-y:auto; }
-        .worklog-detail-title { font-weight:bold; color:#334155; font-size:1rem; margin:2px 0 8px; word-break:break-word; }
-        .worklog-detail-content { color:#475569; font-size:0.9rem; line-height:1.6; white-space:normal; word-break:break-word; }
-        .worklog-detail-meta { color:#94a3b8; font-size:0.72rem; margin-top:10px; }
-        .worklog-actions { display:flex; justify-content:flex-end; gap:6px; padding:8px 10px; border-top:1px solid #e2e8f0; background:#f8fafc; }
-        .worklog-form { padding:10px; display:flex; flex-direction:column; gap:8px; }
-        .worklog-title-input, .worklog-content-input { width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:8px 10px; color:#334155; background:white; outline:none; }
-        .worklog-title-input:focus, .worklog-content-input:focus { border-color:#818cf8; box-shadow:0 0 0 2px rgba(99,102,241,0.1); }
-        .worklog-content-input { min-height:120px; resize:vertical; line-height:1.55; }
-        .worklog-collapsed { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 10px; cursor:pointer; background:#f8fafc; }
-        .worklog-collapsed:hover { background:#eef2ff; }
-        .worklog-collapsed-main { min-width:0; display:flex; align-items:center; gap:8px; }
-        .worklog-collapsed-latest { min-width:0; color:#64748b; font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-
-        /* === 工項規劃 / 工時紀錄（向下相容：舊卡片沒有欄位也可正常顯示） === */
-        .task-meta-panel, .worktime-panel { border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; overflow:hidden; }
-        .task-meta-panel { padding:10px; display:flex; flex-direction:column; gap:8px; }
-        .task-meta-grid { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
-        .task-meta-field { display:flex; flex-direction:column; gap:4px; min-width:0; }
-        .task-meta-label { font-size:0.72rem; color:#64748b; font-weight:bold; }
-        .task-meta-input, .task-meta-textarea, .worktime-input { width:100%; border:1px solid #cbd5e1; border-radius:6px; padding:7px 8px; background:white; color:#334155; outline:none; }
-        .task-meta-textarea { min-height:52px; resize:vertical; line-height:1.4; }
-        .task-meta-input:focus, .task-meta-textarea:focus, .worktime-input:focus { border-color:#818cf8; box-shadow:0 0 0 2px rgba(99,102,241,.1); }
-        .gantt-visibility-toggle { margin-top:8px; display:flex; align-items:flex-start; gap:8px; padding:8px 10px; background:white; border:1px solid #e2e8f0; border-radius:7px; cursor:pointer; }
-        .gantt-visibility-toggle input { margin-top:3px; transform:scale(1.1); accent-color:#4f46e5; }
-        .gantt-visibility-toggle span { display:flex; flex-direction:column; gap:2px; color:#334155; font-size:.82rem; }
-        .gantt-visibility-toggle small { color:#64748b; font-size:.72rem; line-height:1.45; font-weight:normal; }
-        .schedule-conflict-panel { margin-top:8px; border-radius:7px; padding:8px 10px; font-size:.78rem; line-height:1.45; }
-        .schedule-conflict-panel.has-conflict { border:1px solid #fcd34d; background:#fffbeb; color:#92400e; }
-        .schedule-conflict-panel.no-conflict { border:1px solid #bbf7d0; background:#f0fdf4; color:#047857; }
-        .schedule-conflict-head { font-weight:bold; margin-bottom:6px; }
-        .schedule-conflict-list { display:flex; flex-direction:column; gap:5px; }
-        .schedule-conflict-item { width:100%; display:grid; grid-template-columns:145px minmax(0,1fr) auto; gap:8px; align-items:center; text-align:left; border:1px solid #fde68a; background:white; color:#475569; border-radius:6px; padding:6px 8px; cursor:pointer; }
-        .schedule-conflict-item:hover { background:#fef3c7; }
-        .schedule-conflict-date { color:#b45309; font-weight:bold; white-space:nowrap; }
-        .schedule-conflict-title { color:#334155; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .schedule-conflict-meta { color:#94a3b8; font-size:.7rem; white-space:nowrap; }
-        .schedule-conflict-help, .schedule-conflict-more { margin-top:6px; color:#78716c; font-size:.7rem; }
-        .worktime-header { padding:8px 10px; background:#eef2ff; display:flex; justify-content:space-between; align-items:center; gap:8px; border-bottom:1px solid #e2e8f0; }
-        .worktime-total { font-size:.82rem; color:#4338ca; font-weight:bold; }
-        .worktime-form { padding:9px 10px; display:grid; grid-template-columns:120px 90px minmax(150px,1fr) auto; gap:6px; align-items:end; }
-        .worktime-list { max-height:145px; overflow-y:auto; background:white; }
-        .worktime-row { display:grid; grid-template-columns:85px 70px minmax(0,1fr) auto; gap:8px; align-items:center; padding:7px 10px; border-top:1px solid #f1f5f9; font-size:.82rem; }
-        .worktime-row-note { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#475569; }
-        .worktime-source { color:#94a3b8; font-size:.72rem; }
-        .worktime-empty { padding:10px; color:#94a3b8; text-align:center; font-size:.8rem; background:white; }
-        .worktime-delete { border:0; background:transparent; color:#dc2626; cursor:pointer; padding:2px 5px; }
-        .excel-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:14px; }
-        .excel-copy-btn { border:1px solid #c7d2fe; background:#eef2ff; color:#4338ca; border-radius:6px; padding:8px 12px; cursor:pointer; font-weight:bold; }
-        .excel-copy-btn:hover { background:#e0e7ff; }
-        .timer-target { margin:8px 0; padding:8px 10px; border-radius:6px; background:#f1f5f9; color:#475569; font-size:.82rem; line-height:1.45; }
-
-        @media (max-width: 768px) {
-            .task-meta-grid { grid-template-columns:1fr; }
-            .worktime-form { grid-template-columns:1fr 1fr; }
-            .worktime-form .worktime-note-field { grid-column:1 / -1; }
-            .worktime-form button { grid-column:1 / -1; }
-            .worktime-row { grid-template-columns:78px 62px minmax(0,1fr) auto; }
-        }
-
-        #sb-entry-context { margin-bottom:10px; }
-        #sb-entry-context .worklog-panel { margin-top:0; border-color:#dbeafe; background:#fff; }
-        #sb-entry-context .worklog-header { background:#eff6ff; }
-
-        .chronicle-pin-btn.active { background:#fef3c7; border-color:#f59e0b; color:#92400e; }
-        .chronicle-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:18px; padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; }
-        .chronicle-scope-group { display:flex; gap:4px; }
-        .chronicle-filter-btn { border:1px solid #cbd5e1; background:white; color:#475569; padding:7px 11px; border-radius:7px; cursor:pointer; font-weight:bold; }
-        .chronicle-filter-btn.active { background:#eef2ff; border-color:#818cf8; color:#4338ca; }
-        .chronicle-project-filter { display:flex; align-items:center; gap:7px; color:#64748b; font-size:.85rem; }
-        .chronicle-project-filter select { min-width:150px; border:1px solid #cbd5e1; border-radius:7px; padding:7px 9px; background:white; color:#334155; }
-        .chronicle-count { margin-left:auto; color:#94a3b8; font-size:.8rem; }
-        .chronicle-month-group { margin:20px 0 28px; }
-        .chronicle-month-group > h4 { margin:0 0 10px; color:#475569; font-size:1rem; border-bottom:1px solid #e2e8f0; padding-bottom:7px; }
-        .chronicle-card { --chronicle-accent:#4f46e5; display:grid; grid-template-columns:128px minmax(0,1fr); gap:14px; margin-bottom:12px; padding:14px; border:1px solid #e2e8f0; border-left:5px solid var(--chronicle-accent); border-radius:10px; background:white; box-shadow:0 1px 2px rgba(15,23,42,.04); }
-        .chronicle-card-date input { width:100%; border:1px solid #cbd5e1; border-radius:7px; padding:7px 8px; color:#475569; background:#f8fafc; }
-        .chronicle-card-main { min-width:0; }
-        .chronicle-card-topline { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-        .chronicle-card-title-wrap { min-width:0; display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
-        .chronicle-project-tag { background:#e2e8f0; color:#475569; padding:2px 7px; border-radius:999px; font-size:.75rem; }
-        .chronicle-tab-tag { color:#94a3b8; font-size:.75rem; }
-        .chronicle-card-title { color:#1f2937; font-size:1rem; word-break:break-word; }
-        .chronicle-card-actions { display:flex; gap:6px; flex-shrink:0; }
-        .chronicle-summary-label { display:block; margin-top:10px; }
-        .chronicle-summary-label > span { display:block; color:#64748b; font-size:.78rem; font-weight:bold; margin-bottom:5px; }
-        .chronicle-summary-input { width:100%; min-height:66px; resize:vertical; border:1px solid #cbd5e1; border-radius:7px; padding:9px 10px; line-height:1.55; color:#334155; background:#fff; }
-        .chronicle-summary-input:focus { outline:none; border-color:#818cf8; box-shadow:0 0 0 2px rgba(99,102,241,.1); }
-        .chronicle-empty { padding:44px 20px; text-align:center; color:#64748b; border:2px dashed #cbd5e1; border-radius:12px; background:#f8fafc; }
-        .chronicle-empty p { max-width:620px; margin:8px auto 0; line-height:1.6; }
-        .chronicle-empty-icon { font-size:2rem; margin-bottom:8px; color:#f59e0b; }
-
-        @media (max-width: 768px) {
-            .chronicle-card { grid-template-columns:1fr; gap:8px; }
-            .chronicle-card-date input { max-width:170px; }
-            .chronicle-card-topline { flex-direction:column; }
-            .chronicle-card-actions { width:100%; flex-wrap:wrap; }
-            .chronicle-project-filter { width:100%; }
-            .chronicle-project-filter select { flex:1; min-width:0; }
-            .chronicle-count { margin-left:0; }
-        }
-
-        /* 詰棋與筆記本 modal */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9000; align-items: center; justify-content: center; padding: 15px; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
-        .nb-textarea { width: 100%; height: 400px; resize: vertical; padding: 15px; border: 1px solid #cbd5e1; border-radius: 8px; outline: none; font-size: 1.05rem; }
-        
-        #tsumego-widget-btn { position: fixed; bottom: 30px; right: 30px; z-index: 8500; width: 60px; height: 60px; border-radius: 30px; background: #1e293b; color: white; font-size: 2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.3); border: 2px solid #cbd5e1; transition: 0.2s; }
-        .tsumego-panel { position: fixed; top: 10vh; left: 10vw; width: 90vw; max-width: 550px; background: white; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #cbd5e1; overflow: hidden; display: none; z-index: 9500; }
-        .tsumego-header { background: #f8fafc; padding: 12px 15px; font-weight: bold; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; cursor: move; }
-        .tsumego-board-container { padding: 15px; background: #334155; display: flex; justify-content: center; align-items: center; }
-        .tsumego-controls { padding: 10px 15px; display: flex; gap: 5px; flex-wrap: wrap; }
-        .tsumego-tool-btn { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: white; cursor: pointer; font-weight: bold; color: #475569; }
-        .tsumego-tool-btn.active { background: #e0e7ff; border-color: #4f46e5; color: #4338ca; }
-        .pure-stone { position: absolute; width: clamp(14px, 4vw, 22px); height: clamp(14px, 4vw, 22px); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 2px 4px 6px rgba(0,0,0,0.4); pointer-events: none; }
-        .pure-stone.black { background: radial-gradient(circle at 30% 30%, #475569, #0f172a); border: 1px solid #020617; }
-        .pure-stone.white { background: radial-gradient(circle at 30% 30%, #ffffff, #cbd5e1); border: 1px solid #94a3b8; }
-
-
-        /* ==========================================
-           🌟 心流沙盒 (Sandbox) 專屬樣式 🌟
-           ========================================== */
-        #view-sandbox { background: #f0f2f5; border: none; box-shadow: none; padding: 0; }
-        .sb-header { display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-        .sb-layout { display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch; }
-        .sb-left { flex: 1; min-width: 320px; max-width: 450px; border: 2px solid var(--primary); border-radius: 8px; padding: 15px; background: #fff; display: flex; flex-direction: column; }
-        .sb-right { flex: 2; min-width: 300px; display: flex; flex-direction: column; background: #fff; border: 1px solid #ced4da; border-radius: 8px; padding: 15px;}
-        
-        .sb-tabs { display: flex; gap: 5px; margin-bottom: 10px; justify-content: center; }
-        .sb-tab-btn { background: #e9ecef; color: #495057; flex: 1; padding: 10px; border: none; cursor: pointer; font-weight: bold; border-radius: 4px;}
-        .sb-tab-btn.active { background: #17a2b8; color: white; }
-
-        .sb-timer-display { font-size: 3.5rem; font-weight: bold; text-align: center; margin: 10px 0; color: #343a40; border: 1px solid #ddd; border-radius: 8px; padding: 10px; background: #f8f9fa; }
-        .sb-gif-container { width: 120px; height: 120px; margin: 0 auto; display: flex; align-items: center; justify-content: center; border: 2px dashed #ccc; border-radius: 8px; overflow: hidden; background: white; }
-        .sb-gif-container img { width: 100%; height: 100%; object-fit: cover; }
-        
-        .sb-btn { cursor: pointer; padding: 8px 12px; border: none; border-radius: 5px; font-weight: bold; color: white; transition: 0.2s; font-size: 0.9rem;}
-        .sb-btn:hover { opacity: 0.9; }
-        .sb-btn-success { background: var(--success); }
-        .sb-btn-warning { background: var(--warning); color: #333; }
-        .sb-btn-danger { background: var(--danger); }
-        .sb-btn-primary { background: var(--primary); }
-        .sb-btn-outline { background: transparent; border: 1px solid #ced4da; color: #343a40; padding: 5px 8px; font-size: 0.85rem;}
-        .sb-btn-outline:hover { background: #f8f9fa; }
-        .sb-btn-md { background: #e9ecef; border: 1px solid #ced4da; color: #495057; font-family: monospace; padding: 4px 8px;}
-
-        /* Todo List & Sub-tasks */
-        .sb-todo-card { display: flex; flex-direction: column; background: #fff; border-bottom: 2px solid #e2e8f0; padding: 12px 10px; transition: 0.2s; position: relative;}
-        .sb-todo-card:hover { background: #f8fafc; }
-        .sb-todo-card.active-card { background: #eff6ff; border-left: 4px solid #3b82f6; }
-        .sb-badge { padding: 3px 6px; border-radius: 4px; font-size: 0.75em; color: white; }
-        
-        .sb-subtasks-container { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; margin-left: 28px; padding-left: 10px; border-left: 2px dashed #cbd5e1; }
-        .sb-subtask-item { display: flex; align-items: flex-start; gap: 8px; font-size: 0.9rem; color: #334155; }
-        .sb-subtask-item input[type="checkbox"] { transform: scale(1.2); cursor: pointer; margin-top: 3px; }
-        .sb-subtask-item.completed { text-decoration: line-through; color: #94a3b8; }
-        
-        .sb-note-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 10px; border-bottom: 2px solid #f8f9fa; margin-bottom: 10px; }
-        .sb-template-bar { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; background: #f8f9fa; padding: 8px; border-radius: 6px; align-items: center;}
-        
-        #sb-activeNoteArea { flex: 1; min-height: 350px; font-family: 'Courier New', Courier, monospace; resize: vertical; background: #fdfdfd; line-height: 1.6; font-size: 1rem; border: 2px solid #e9ecef; width: 100%; padding: 10px; border-radius: 6px;}
-        #sb-activeNoteArea:focus { outline: none; border-color: #17a2b8; box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.1); }
-
-
-
-        /* === v2.2.1：安全版任務導覽（不改主內容版型） === */
-        :root { --task-nav-width: 270px; }
-        #task-nav-panel {
-            position: fixed; top: 68px; left: 58px; bottom: 16px;
-            width: var(--task-nav-width); max-width: calc(100vw - 90px);
-            background: rgba(255,255,255,.98); border: 1px solid #dbe3ee;
-            border-radius: 10px; box-shadow: 0 10px 28px rgba(15,23,42,.13);
-            z-index: 1750; display: flex; flex-direction: column;
-            transform: translateX(calc(-100% - 75px)); opacity: 0; pointer-events: none;
-            transition: transform .2s ease, opacity .2s ease;
-        }
-        body.task-nav-open #task-nav-panel { transform: translateX(0); opacity: 1; pointer-events: auto; }
-        #task-nav-overlay { display: none; }
-        .task-nav-header { padding: 11px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px 10px 0 0; display: flex; flex-direction: column; gap: 8px; }
-        .task-nav-title-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-        .task-nav-title { font-weight: bold; color: #1e293b; }
-        .task-nav-close { border: 1px solid #cbd5e1; background: white; color: #64748b; border-radius: 6px; width: 30px; height: 30px; cursor: pointer; }
-        .task-nav-controls { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; }
-        .task-nav-search { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 7px; padding: 8px 9px; outline: none; color: #334155; background: white; }
-        .task-nav-search:focus { border-color: #818cf8; box-shadow: 0 0 0 2px rgba(99,102,241,.1); }
-        .task-nav-scope { border: 1px solid #cbd5e1; border-radius: 7px; background: white; color: #475569; padding: 7px 6px; max-width: 92px; }
-        .task-nav-current-hint { color: #94a3b8; font-size: .7rem; line-height: 1.35; }
-        #task-nav-list { flex: 1; overflow: auto; padding: 8px 7px 14px; overscroll-behavior: contain; }
-        .task-nav-empty { color: #94a3b8; font-size: .82rem; text-align: center; padding: 24px 10px; line-height: 1.6; }
-        .task-nav-workspace { margin-bottom: 10px; }
-        .task-nav-workspace-title { padding: 6px 7px; color: #64748b; font-size: .74rem; font-weight: bold; border-bottom: 1px solid #f1f5f9; }
-        .task-nav-project { margin-top: 4px; border-radius: 7px; overflow: hidden; }
-        .task-nav-project-head { width: 100%; border: 0; background: #f1f5f9; color: #334155; display: grid; grid-template-columns: 24px minmax(0,1fr) auto; align-items: center; gap: 4px; padding: 7px; cursor: pointer; text-align: left; }
-        .task-nav-project-head:hover { background: #e9eef6; }
-        .task-nav-project-arrow { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 4px; color: #64748b; }
-        .task-nav-project-arrow:hover { background: #dde5ef; }
-        .task-nav-project-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; font-size: .84rem; }
-        .task-nav-project-count { color: #94a3b8; font-size: .7rem; }
-        .task-nav-card-list { padding: 3px 0 4px 12px; border-left: 2px solid #e2e8f0; margin-left: 11px; }
-        .task-nav-project.collapsed .task-nav-card-list { display: none; }
-        .task-nav-card { width: 100%; border: 0; background: transparent; display: grid; grid-template-columns: 10px minmax(0,1fr) auto; align-items: center; gap: 7px; text-align: left; padding: 7px 6px; border-radius: 6px; color: #475569; cursor: pointer; font-size: .82rem; }
-        .task-nav-card:hover { background: #eef2ff; color: #3730a3; }
-        .task-nav-card.active { background: #e0e7ff; color: #3730a3; font-weight: bold; box-shadow: inset 3px 0 #4f46e5; }
-        .task-nav-card-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
-        .task-nav-card.status-1 .task-nav-card-dot { background: #f59e0b; }
-        .task-nav-card.status-2 .task-nav-card-dot { background: #10b981; }
-        .task-nav-card.status-3 .task-nav-card-dot { background: #ef4444; }
-        .task-nav-card-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .task-nav-card-kind { color: #94a3b8; font-size: .68rem; }
-        .task-nav-flash { animation: taskNavFlash 1.35s ease; }
-        @keyframes taskNavFlash { 0%,100% { outline: 0 solid transparent; } 35% { outline: 4px solid rgba(79,70,229,.28); outline-offset: 3px; } }
-
-        /* RWD */
-        @media (max-width: 768px) {
-            .tool-title, .mobile-hidden { display: none !important; }
-            .toolbar { display: flex; overflow-x: auto; flex-wrap: nowrap; padding: 8px 10px; align-items: center; gap: 10px; justify-content: flex-start; }
-            #tab-bar { position: fixed; top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: 60px; flex-direction: row; justify-content: space-around; padding: 0; background: white; border-top: 1px solid #cbd5e1; z-index: 8000; padding-bottom: env(safe-area-inset-bottom); }
-            .tab-item { border-radius: 0; border-left: none; border-top: 3px solid transparent; flex: 1; padding: 5px; justify-content: center; background: white; }
-            .tab-item.active { border-top: 3px solid var(--primary); background: #f8fafc; }
-            .tab-name { writing-mode: horizontal-tb; text-orientation: mixed; font-size: 0.85rem; margin-top: 4px; }
-            #project-bar { top: 60px; left: 0; }
-            .main-area { margin-left: 0; padding: 15px 10px; width: 100%; padding-bottom: 80px; }
-            
-            .sb-layout { flex-direction: column; }
-            .sb-timer-display { font-size: 2.5rem; }
-        }
-
-
-        @media (max-width: 768px) {
-            .nav-btn-label { display: none !important; }
-            #task-nav-panel {
-                top: 60px; left: 0; bottom: calc(60px + env(safe-area-inset-bottom));
-                width: min(88vw, 350px); max-width: none; border-radius: 0 12px 12px 0;
-                z-index: 8600; transform: translateX(-105%); box-shadow: 8px 0 24px rgba(15,23,42,.24);
-            }
-            #task-nav-overlay {
-                position: fixed; top: 60px; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom));
-                background: rgba(15,23,42,.42); z-index: 8550; display: block;
-                opacity: 0; pointer-events: none; transition: opacity .2s ease;
-            }
-            body.task-nav-open #task-nav-overlay { opacity: 1; pointer-events: auto; }
-            .task-nav-search { font-size: 16px; }
-            .task-nav-project-head, .task-nav-card { min-height: 44px; }
-            .task-nav-card { padding: 10px 7px; font-size: .9rem; }
-            #tsumego-widget-btn { bottom: 82px; }
-        }
-
-        @media (min-width: 769px) and (max-width: 1200px) {
-            #task-nav-panel { top: 68px; left: 58px; width: 250px; }
-        }
-
-        /* === v2：規劃 / 實際、共用日期軸甘特、Excel 匯出 === */
-        .pm-collapse-toggle { width:100%; border:0; background:#f8fafc; color:#334155; padding:8px 10px; border-radius:7px; cursor:pointer; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:10px; text-align:left; }
-        .pm-collapse-toggle:hover { background:#f1f5f9; }
-        .pm-collapse-toggle-open { margin-bottom:2px; border-bottom:1px dashed #cbd5e1; border-radius:7px 7px 4px 4px; }
-        .focus-planner { background:#fff; border-color:#c7d2fe; padding:0; }
-        .focus-planner-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:#eef2ff; border-bottom:1px solid #c7d2fe; }
-        .focus-planner-head > div:first-child { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-        .focus-current { font-size:.72rem; color:#4338ca; background:#fff; border:1px solid #c7d2fe; padding:3px 7px; border-radius:999px; font-weight:bold; }
-        .focus-head-actions { display:flex; gap:6px; flex-wrap:wrap; }
-        .focus-link-btn { border:1px solid #cbd5e1; background:#fff; color:#475569; border-radius:7px; padding:5px 8px; cursor:pointer; font-size:.75rem; font-weight:700; }
-        .focus-link-btn:hover { background:#f8fafc; }
-        .focus-maturity-row { display:grid; grid-template-columns:auto 140px minmax(0,1fr); align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid #eef2f7; font-size:.76rem; color:#64748b; }
-        .focus-next-preview { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
-        .focus-mode-tabs { display:flex; gap:6px; flex-wrap:wrap; padding:10px 12px 4px; }
-        .focus-mode-btn { border:1px solid #dbe2ea; background:#f8fafc; color:#475569; border-radius:999px; padding:6px 9px; cursor:pointer; font-size:.74rem; font-weight:800; }
-        .focus-mode-btn.active { background:#4f46e5; border-color:#4f46e5; color:#fff; }
-        .focus-body { padding:8px 12px 12px; display:flex; flex-direction:column; gap:9px; }
-        .focus-question { display:grid; grid-template-columns:28px minmax(0,1fr); gap:8px; align-items:start; }
-        .focus-question > span { width:24px; height:24px; border-radius:50%; background:#eef2ff; color:#4338ca; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:.72rem; margin-top:18px; }
-        .focus-question label { font-size:.77rem; font-weight:800; color:#475569; display:flex; flex-direction:column; gap:5px; }
-        .focus-important { border-color:#818cf8 !important; background:#fafaff !important; }
-        .focus-inline { display:grid; grid-template-columns:1fr auto 1fr; gap:6px; align-items:center; }
-        .focus-hint { font-size:.74rem; color:#64748b; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:7px; padding:8px 10px; line-height:1.45; }
-        .focus-hint.warning { background:#fff7ed; border-color:#fdba74; color:#9a3412; }
-        .focus-review-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; }
-        .focus-review-metrics > div { background:#f8fafc; border:1px solid #e2e8f0; border-radius:7px; padding:8px; }
-        .focus-review-metrics small { display:block; color:#64748b; font-size:.68rem; }
-        .focus-review-metrics strong { display:block; margin-top:3px; color:#1f2937; font-size:.84rem; }
-        .focus-full-back { padding:4px 0 2px; }
-        @media(max-width:768px){ .focus-maturity-row{grid-template-columns:1fr 120px}.focus-next-preview{grid-column:1/-1}.focus-review-metrics{grid-template-columns:1fr 1fr}.focus-inline{grid-template-columns:1fr}.focus-inline span{display:none} }
-        .pm-collapse-title { font-weight:bold; white-space:nowrap; }
-        .pm-collapse-summary { color:#64748b; font-size:.76rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .pm-collapse-icon { color:#64748b; font-size:.76rem; white-space:nowrap; }
-        .task-meta-collapsed { padding:6px; }
-        .pm-section { border:1px solid #e2e8f0; border-radius:8px; overflow:hidden; background:#fff; }
-        .pm-section + .pm-section { margin-top:8px; }
-        .pm-section-title { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 10px; font-size:.82rem; font-weight:bold; }
-        .pm-section-plan .pm-section-title { background:#eef2ff; color:#4338ca; }
-        .pm-section-actual .pm-section-title { background:#ecfdf5; color:#047857; }
-        .pm-section-body { padding:9px 10px; }
-        .pm-summary { font-size:.76rem; color:#64748b; font-weight:normal; }
-        .duration-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:6px; }
-        .actual-metric { padding:8px 10px; border:1px solid #d1fae5; background:#f0fdf4; border-radius:6px; min-height:58px; }
-        .actual-metric strong { display:block; margin-top:3px; color:#065f46; font-size:1rem; }
-        .variance-positive { color:#b91c1c !important; }
-        .variance-negative { color:#047857 !important; }
-        .color-select-wrap { display:flex; align-items:center; gap:6px; }
-        .color-chip { width:13px; height:13px; border-radius:50%; border:1px solid rgba(0,0,0,.15); flex:0 0 auto; }
-        .worktime-form { grid-template-columns:118px 82px 82px minmax(150px,1fr) auto; }
-        .worktime-row { grid-template-columns:88px 78px minmax(0,1fr) auto auto; }
-        .worktime-edit { border:0; background:transparent; color:#4338ca; cursor:pointer; padding:2px 5px; }
-        .gantt-filter-bar { margin:0 auto 10px; max-width:980px; display:flex; align-items:flex-end; justify-content:center; gap:10px; flex-wrap:wrap; padding:10px 12px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; }
-        .gantt-filter-field { display:flex; flex-direction:column; gap:4px; min-width:180px; }
-        .gantt-filter-field span { font-size:.72rem; font-weight:bold; color:#64748b; }
-        .gantt-filter-select { border:1px solid #cbd5e1; border-radius:6px; background:white; color:#334155; padding:7px 9px; min-height:34px; }
-        .gantt-filter-reset { border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; color:#475569; padding:7px 11px; cursor:pointer; min-height:34px; }
-        .gantt-filter-reset:hover { background:#f1f5f9; }
-        .gantt-mode-switch { display:flex; gap:4px; align-items:center; background:#f1f5f9; border:1px solid #cbd5e1; padding:3px; border-radius:8px; min-height:34px; }
-        .gantt-mode-btn { border:0; background:transparent; color:#64748b; border-radius:6px; padding:6px 11px; cursor:pointer; font-weight:bold; font-size:.8rem; }
-        .gantt-mode-btn.active { background:white; color:#4338ca; box-shadow:0 1px 3px rgba(15,23,42,.12); }
-        .gantt-scale-switch { display:flex; gap:4px; align-items:center; background:#f1f5f9; border:1px solid #cbd5e1; padding:3px; border-radius:8px; min-height:34px; }
-        .gantt-scale-btn { border:0; background:transparent; color:#64748b; border-radius:6px; padding:6px 11px; cursor:pointer; font-weight:bold; font-size:.8rem; min-width:42px; }
-        .gantt-scale-btn.active { background:white; color:#0f766e; box-shadow:0 1px 3px rgba(15,23,42,.12); }
-        .gantt-summary-strip { display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin:0 0 8px; padding:8px 10px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; color:#475569; font-size:.8rem; }
-        .gantt-summary-strip strong { color:#0f172a; }
-        .gantt-summary-strip .over { color:#b91c1c; font-weight:bold; }
-        .gantt-conflict-summary { color:#b45309; font-weight:bold; }
-        .gantt-conflict-ok { color:#047857; }
-        .gantt-conflict-badge { flex-shrink:0; display:inline-flex; align-items:center; padding:1px 5px; border-radius:999px; background:#fef3c7; border:1px solid #fcd34d; color:#b45309; font-size:.66rem; font-weight:bold; }
-        .gantt-mode-note { margin:0 0 8px; padding:7px 10px; border-radius:7px; background:#f8fafc; border:1px solid #e2e8f0; color:#64748b; font-size:.78rem; line-height:1.5; }
-        .gantt-progress-value { font-weight:bold; color:#334155; margin-bottom:4px; }
-        .gantt-mini-track, .gantt-usage-track { height:5px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin:3px auto 0; width:92%; }
-        .gantt-mini-track span { display:block; height:100%; background:#4f46e5; border-radius:999px; }
-        .gantt-usage-track span { display:block; height:100%; background:#10b981; border-radius:999px; }
-        .gantt-usage-track span.over { background:#ef4444; }
-        .gantt-hours-main { font-size:.76rem; color:#475569; line-height:1.35; }
-        .gantt-hours-remain { margin-top:2px; font-size:.72rem; color:#047857; }
-        .gantt-hours-remain.over { color:#b91c1c; font-weight:bold; }
-        .gantt-unlogged { margin-top:3px; color:#b45309; font-size:.68rem; white-space:normal; }
-        .gantt-work-badge { position:absolute; left:2px; right:2px; bottom:2px; min-height:13px; line-height:13px; border-radius:3px; color:white; font-size:.62rem; font-weight:bold; text-align:center; overflow:hidden; }
-        .gantt-work-cell { color:white; text-align:center; font-weight:bold; font-size:.68rem; }
-        .gantt-work-cell span { display:block; min-width:32px; }
-        .gantt-work-outside { box-shadow:inset 0 0 0 2px #f59e0b; text-align:center; font-size:.65rem; font-weight:bold; }
-        .gantt-time-planned { background:#eef2ff !important; }
-        .gantt-toolbar-note { margin:0 auto 12px; max-width:980px; padding:9px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; color:#64748b; font-size:.82rem; line-height:1.5; }
-        .gantt-legend { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:center; margin:8px 0 14px; font-size:.78rem; color:#64748b; }
-        .gantt-legend-item { display:inline-flex; align-items:center; gap:5px; }
-        .gantt-table-wrap { width:100%; overflow:auto; border:1px solid #e2e8f0; border-radius:8px; background:white; }
-        .gantt-table { border-collapse:separate; border-spacing:0; min-width:max-content; font-size:.78rem; }
-        .gantt-table th, .gantt-table td { border-right:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:5px 6px; background:white; white-space:nowrap; height:30px; }
-        .gantt-table thead th { position:sticky; top:0; z-index:30; background:#f8fafc; color:#475569; font-weight:bold; text-align:center; }
-        .gantt-table .gantt-month-head { top:0; background:#e2e8f0; color:#334155; }
-        .gantt-table .gantt-day-head { top:31px; padding:4px 4px; }
-        .gantt-table .weekend { background:#f8fafc; }
-        .gantt-table .today-col { box-shadow:inset 2px 0 #f59e0b, inset -2px 0 #f59e0b; }
-        .gantt-left { position:sticky; z-index:20; background:white !important; }
-        .gantt-table thead .gantt-left { z-index:40; background:#f8fafc !important; }
-        .gantt-title-col { left:0; min-width:220px; max-width:220px; overflow:hidden; text-overflow:ellipsis; text-align:left !important; }
-        .gantt-status-col { left:220px; min-width:78px; text-align:center; }
-        .gantt-progress-col { left:298px; min-width:76px; text-align:center; }
-        .gantt-hours-col { left:374px; min-width:170px; text-align:center; }
-        .gantt-plan-col { left:544px; min-width:168px; text-align:center; }
-        .gantt-actual-col { left:712px; min-width:168px; text-align:center; }
-        .gantt-track-col { left:880px; min-width:76px; width:76px; text-align:center; box-shadow:3px 0 4px rgba(15,23,42,.06); font-weight:bold; }
-        .gantt-track-plan { background:#eef2ff !important; color:#4338ca; }
-        .gantt-track-actual { background:#ecfdf5 !important; color:#047857; }
-        .gantt-plan-row td { border-bottom-style:dashed; }
-        .gantt-actual-row td { border-bottom:2px solid #cbd5e1; }
-        .gantt-plan-row .gantt-day-cell { height:24px; }
-        .gantt-actual-row .gantt-day-cell { height:30px; }
-        .gantt-plan-row.gantt-time-focus .gantt-day-cell { opacity:.5; }
-        .gantt-rowspan-cell { vertical-align:middle; }
-        .gantt-group-row td { background:#eef2ff !important; color:#3730a3; font-weight:bold; border-left:4px solid #4f46e5; padding:7px 10px; }
-        .gantt-day-cell { padding:0 !important; position:relative; }
-        .gantt-scale-day .gantt-day-head, .gantt-scale-day .gantt-day-cell { min-width:38px; width:38px; max-width:38px; }
-        .gantt-scale-week .gantt-day-head, .gantt-scale-week .gantt-day-cell { min-width:88px; width:88px; max-width:88px; }
-        .gantt-scale-month .gantt-day-head, .gantt-scale-month .gantt-day-cell { min-width:96px; width:96px; max-width:96px; }
-        .gantt-bar-cell { opacity:1; }
-        .gantt-bar-cell.done { opacity:1; }
-        .gantt-bar-start { border-radius:5px 0 0 5px; }
-        .gantt-bar-end { border-radius:0 5px 5px 0; }
-        .gantt-task-title { display:flex; align-items:center; gap:7px; overflow:hidden; }
-        .gantt-task-title span:last-child { overflow:hidden; text-overflow:ellipsis; }
-        .free-card-note { font-size:.75rem; color:#64748b; margin-left:4px; }
-        .add-card-actions { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin:35px auto; max-width:760px; }
-        .add-card-actions .add-main-btn { margin:0; width:auto; flex:1 1 260px; max-width:none; }
-
-        @media (max-width: 768px) {
-            .duration-grid { grid-template-columns:1fr 1fr; }
-            .worktime-form { grid-template-columns:1fr 1fr; }
-            .worktime-form .worktime-note-field { grid-column:1 / -1; }
-            .worktime-form button { grid-column:1 / -1; }
-            .worktime-row { grid-template-columns:76px 70px minmax(0,1fr) auto auto; }
-            .schedule-conflict-item { grid-template-columns:1fr; gap:2px; }
-            .schedule-conflict-meta { white-space:normal; }
-            .gantt-title-col { min-width:180px; max-width:180px; }
-            .gantt-status-col { left:180px; }
-            .gantt-progress-col { left:258px; }
-            .gantt-hours-col { left:334px; }
-            .gantt-plan-col { left:504px; }
-            .gantt-actual-col { left:672px; }
-            .gantt-track-col { left:840px; }
-            .gantt-mode-switch { width:100%; justify-content:center; }
-            .gantt-mode-btn { flex:1; }
-            .gantt-scale-switch { width:100%; justify-content:center; }
-            .gantt-scale-btn { flex:1; }
-            .gantt-summary-strip { gap:8px; font-size:.74rem; }
-        }
-
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Lab v1.4｜聚焦規劃與檢討</title>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  <style>
+    :root{
+      --bg:#f6f7fb;--panel:#fff;--text:#1f2937;--muted:#64748b;--line:#dbe2ea;
+      --primary:#4f46e5;--primary-soft:#eef2ff;--success:#059669;--warn:#b45309;--danger:#dc2626;
+      --shadow:0 8px 24px rgba(15,23,42,.08);--radius:12px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:"Microsoft JhengHei",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+    button,input,select,textarea{font:inherit}
+    button{cursor:pointer}
+    .hidden{display:none!important}
+    #login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#fff;z-index:50}
+    .login-card{width:min(440px,90vw);background:#111827;padding:28px;border-radius:18px;text-align:center;box-shadow:var(--shadow)}
+    .login-card h1{margin:0 0 8px}.login-card p{color:#cbd5e1;line-height:1.6}
+    .btn{border:1px solid var(--line);background:#fff;color:#334155;padding:8px 12px;border-radius:8px;font-weight:700}
+    .btn:hover{background:#f8fafc}.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+    .btn.success{background:#ecfdf5;border-color:#a7f3d0;color:#047857}.btn.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
+    .btn.danger{background:#fef2f2;border-color:#fecaca;color:#b91c1c}.btn.ghost{background:transparent}
+    .btn.small{padding:5px 8px;font-size:.82rem}
+    .app{min-height:100vh}
+    .topbar{position:sticky;top:0;z-index:20;background:#172033;color:#fff;padding:12px 18px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.16)}
+    .brand{font-weight:900;white-space:nowrap}.topbar select{min-width:240px;background:#fff;color:#111827;border:0;border-radius:8px;padding:8px}
+    .topbar .spacer{flex:1}.topbar .status{font-size:.8rem;color:#cbd5e1}
+    .shell{max-width:1600px;margin:0 auto;padding:18px}
+    .summary-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-bottom:14px}
+    .summary-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+    .summary-card .k{font-size:.76rem;color:var(--muted);font-weight:800}.summary-card .v{font-size:1.12rem;font-weight:900;margin-top:4px}
+    .layout{display:grid;grid-template-columns:minmax(270px,320px) minmax(0,1fr) minmax(320px,420px);gap:14px;align-items:start}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 3px 10px rgba(15,23,42,.05);overflow:hidden}
+    .panel h2,.panel h3{margin:0}.panel-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fbfcfe}
+    .panel-body{padding:14px}.muted{color:var(--muted);font-size:.86rem}.tiny{font-size:.75rem;color:#94a3b8}.stack{display:flex;flex-direction:column;gap:10px}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    label.field{display:flex;flex-direction:column;gap:5px;font-size:.78rem;font-weight:800;color:#475569}
+    input[type="text"],input[type="date"],input[type="number"],select,textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;background:#fff;color:#1f2937;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:#818cf8;box-shadow:0 0 0 2px rgba(99,102,241,.09)}
+    textarea{resize:vertical;min-height:90px;line-height:1.55}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.meta-grid .wide{grid-column:1/-1}
+    .milestone{display:grid;grid-template-columns:130px 1fr auto;gap:6px;margin-bottom:6px}
+    .nav-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.tab-btn{border:1px solid var(--line);background:#fff;padding:7px 10px;border-radius:8px;font-weight:800;color:#475569}.tab-btn.active{background:var(--primary-soft);border-color:#a5b4fc;color:#3730a3}
+    .view{display:none}.view.active{display:block}
+    .card-list{display:flex;flex-direction:column;gap:8px}.source-card,.snapshot-item,.review-item,.finding-item,.decision-item,.scenario-item{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff}
+    .source-card h4,.scenario-card h4{margin:0 0 6px;font-size:.98rem}.pill{display:inline-block;border-radius:999px;padding:2px 7px;font-size:.7rem;font-weight:800;background:#eef2ff;color:#4338ca;margin-right:4px}.pill.free{background:#f1f5f9;color:#475569}.pill.warn{background:#fffbeb;color:#92400e}.pill.ok{background:#ecfdf5;color:#047857}.pill.danger{background:#fef2f2;color:#b91c1c}
+    .source-card .meta,.scenario-card .meta{font-size:.76rem;color:#64748b;display:flex;gap:8px;flex-wrap:wrap}
+    .source-card .desc{font-size:.87rem;color:#475569;margin-top:6px;white-space:pre-wrap}
+    details{border-top:1px dashed #e2e8f0;margin-top:8px;padding-top:6px}summary{cursor:pointer;color:#475569;font-weight:800;font-size:.8rem}
+    .template-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.template-btn{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:8px;text-align:left;color:#334155;font-weight:800}.template-btn.active{background:#eef2ff;border-color:#818cf8;color:#3730a3}
+    .codebox{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:12px;max-height:350px;overflow:auto;font-size:.8rem;line-height:1.45}
+    .notice{padding:9px 10px;border-radius:8px;font-size:.82rem;line-height:1.45}.notice.info{background:#eff6ff;color:#1e40af}.notice.warn{background:#fffbeb;color:#92400e}.notice.ok{background:#ecfdf5;color:#047857}.notice.bad{background:#fef2f2;color:#991b1b}
+    .scenario-card{border-left:4px solid #818cf8}.scenario-card.changed{border-left-color:#f59e0b}.scenario-card.added{border-left-color:#10b981}.scenario-card.removed{opacity:.55;border-left-color:#ef4444}
+    .scenario-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}.scenario-fields .wide{grid-column:1/-1}
+    .diff-group{margin-bottom:12px}.diff-row{border:1px solid var(--line);border-radius:8px;padding:9px;margin:6px 0;background:#fff}.diff-row code{font-family:ui-monospace,Consolas,monospace;font-size:.78rem}
+    .list-empty{padding:22px;text-align:center;color:#94a3b8;border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc}
+    .section-title{font-weight:900;color:#334155;margin:14px 0 8px}.divider{height:1px;background:#e2e8f0;margin:12px 0}
+    .danger-text{color:#b91c1c}.readonly{background:#f8fafc!important;color:#64748b}
+    .time-compare{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin:8px 0}
+    .time-box{border:1px solid #e2e8f0;border-radius:8px;padding:8px;background:#f8fafc}
+    .time-box .k{font-size:.68rem;color:#64748b;font-weight:800}.time-box .v{font-size:.92rem;color:#1f2937;font-weight:900;margin-top:2px}
+    .time-box.over{background:#fef2f2;border-color:#fecaca}.time-box.over .v{color:#b91c1c}
+    .time-box.ok{background:#ecfdf5;border-color:#a7f3d0}.time-box.ok .v{color:#047857}
+    .worklog-wrap{overflow-x:auto;margin-top:8px}
+    .worklog-table,.time-overview-table{width:100%;border-collapse:collapse;font-size:.75rem}
+    .worklog-table th,.worklog-table td,.time-overview-table th,.time-overview-table td{border-bottom:1px solid #e2e8f0;padding:6px 7px;text-align:left;vertical-align:top}
+    .worklog-table th,.time-overview-table th{background:#f8fafc;color:#475569;white-space:nowrap}
+    .worklog-table td.num,.time-overview-table td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .worklog-note{white-space:pre-wrap;min-width:180px}
+    .management-item{border:1px solid #dbeafe;border-left:5px solid #6366f1;border-radius:10px;background:#fff;padding:12px;margin-bottom:12px}
+    .management-item.closed{opacity:.68;border-left-color:#94a3b8}
+    .management-item.waiting{border-left-color:#f59e0b}
+    .management-item.decision{border-left-color:#ef4444}
+    .management-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .management-title{flex:1;min-width:220px;font-size:1rem;font-weight:900}
+    .management-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
+    .management-grid .wide{grid-column:1/-1}
+    .management-next{background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;padding:10px;margin-top:10px}
+    .management-next.missing{background:#fff7ed;border-color:#fed7aa}
+    .management-next .label{font-size:.72rem;font-weight:900;color:#64748b;margin-bottom:4px}
+    .management-next .value{font-weight:900;color:#312e81;white-space:pre-wrap}
+    .management-next.missing .value{color:#9a3412}
+    .question-preview{white-space:pre-wrap;background:#f8fafc;border:1px dashed #94a3b8;border-radius:8px;padding:10px;font-size:.8rem;line-height:1.55}
+    .mgmt-kpi{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+    .mgmt-kpi span{font-size:.73rem;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:5px 9px;font-weight:800;color:#475569}
+    .linked-card{font-size:.72rem;color:#4f46e5;font-weight:800}
+    .thinking-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 8px}
+    .thinking-btn{border:1px solid #dbe2ea;background:#f8fafc;color:#475569;border-radius:999px;padding:6px 9px;font-size:.73rem;font-weight:800;cursor:pointer}
+    .thinking-btn.active{background:#4f46e5;border-color:#4f46e5;color:#fff}
+    .focus-box{border:1px solid #dbeafe;background:#fbfdff;border-radius:9px;padding:10px;margin-top:8px}
+    .focus-box .field{margin-top:8px}.focus-box .field:first-child{margin-top:0}
+    .focus-number{display:inline-flex;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;background:#eef2ff;color:#4338ca;font-weight:900;font-size:.7rem;margin-right:5px}
+    .patch-item{border:1px solid #fecaca;border-left:5px solid #ef4444;border-radius:10px;background:#fff;padding:12px;margin-bottom:12px}
+    .patch-edit{border-top:1px solid #fee2e2;padding-top:10px;margin-top:10px}
+    .redline-old{color:#7f1d1d;background:#fff1f2;padding:7px 9px;border-radius:7px;text-decoration:line-through;white-space:pre-wrap}
+    .redline-new{color:#b91c1c;background:#fef2f2;padding:7px 9px;border-radius:7px;font-weight:800;white-space:pre-wrap;margin-top:5px}
+    .patch-reason{font-size:.75rem;color:#64748b;margin-top:6px;white-space:pre-wrap}
+    .stale{border-color:#f59e0b!important;background:#fffbeb!important}.stale-note{color:#92400e;font-size:.74rem;font-weight:800;margin-top:5px}
+    .outcome-status{display:flex;gap:6px;flex-wrap:wrap}.outcome-status label{font-size:.75rem;border:1px solid #dbe2ea;border-radius:999px;padding:5px 8px;background:#fff;cursor:pointer}
+    .purpose-chain{display:grid;grid-template-columns:1fr;gap:8px}
+    .purpose-chain .field{padding:9px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
+    .ai-mode-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .ai-mode-card{border:1px solid #dbe2ea;border-radius:9px;padding:9px;background:#f8fafc}
+    .ai-mode-card strong{display:block;margin-bottom:5px}
+    .source-focus{margin-top:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px;font-size:.76rem;color:#475569;line-height:1.5}
+    .time-bar{height:7px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:5px}
+    .time-bar > span{display:block;height:100%;background:#6366f1}
+    .time-bar > span.over{background:#dc2626}
+    @media(max-width:1180px){.layout{grid-template-columns:280px minmax(0,1fr)}.right-panel{grid-column:1/-1}.summary-grid{grid-template-columns:repeat(3,1fr)}}
+    @media(max-width:760px){.time-compare{grid-template-columns:1fr 1fr}.management-grid{grid-template-columns:1fr}.management-grid .wide{grid-column:auto}.topbar{flex-wrap:wrap}.topbar select{min-width:0;flex:1}.layout{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,1fr)}.meta-grid,.scenario-fields{grid-template-columns:1fr}.meta-grid .wide,.scenario-fields .wide{grid-column:auto}.template-grid{grid-template-columns:1fr}.milestone{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
+<div id="login-screen">
+  <div class="login-card">
+    <h1>🔬 Project Lab</h1>
+    <p>讀取正式白板，建立 Snapshot、Review、Finding、Decision 與 Scenario。<br>這裡可以亂想，正式白板保持安靜。</p>
+    <button class="btn primary" onclick="lab.login()">使用 Google 登入</button>
+  </div>
+</div>
 
-    <!-- 登入畫面 -->
-    <div id="login-screen">
-        <h1 style="font-size: 2.5rem; margin-bottom: 10px;">白板系統</h1>
-        <p style="color: #94a3b8; margin-bottom: 30px;">(SPA 雙向綁定子任務版)</p>
-        <button onclick="app.login()" style="padding: 14px 28px; font-size: 1.1rem; border-radius: 30px; border: none; background: #3b82f6; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-            使用 Google 登入
-        </button>
+<div id="app" class="app hidden">
+  <div class="topbar">
+    <div class="brand">🔬 Project Lab <span style="font-size:.72rem;opacity:.75">v1.4</span></div>
+    <select id="project-select" onchange="lab.changeProject(this.value)"></select>
+    <button class="btn small" onclick="lab.reloadSource()">↻ 重新讀取白板</button>
+    <button class="btn small" onclick="location.href='whiteboard.html'">↗ 打開正式白板</button>
+    <button class="btn small success" onclick="lab.createSnapshot()">📸 建立 Snapshot</button>
+    <div class="spacer"></div>
+    <div id="source-status" class="status"></div>
+    <button class="btn small" onclick="lab.logout()">登出</button>
+  </div>
+
+  <div class="shell">
+    <div id="summary-grid" class="summary-grid"></div>
+
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-head"><h3>🧭 Project</h3><span class="tiny">專案邊界與限制</span></div>
+        <div class="panel-body stack">
+          <div id="project-id-view" class="notice info"></div>
+          <div class="meta-grid">
+            <label class="field wide">專案名稱<input id="pm-name" type="text"></label>
+            <div class="purpose-chain wide">
+              <label class="field">目的｜為什麼做？真正想解決什麼？<textarea id="pm-purpose" placeholder="描述要改善的問題或希望改變的狀態"></textarea></label>
+              <label class="field">目標｜在這個期限內，要達到什麼狀態？<textarea id="pm-goal" placeholder="可以被判斷的階段目標，不要只寫手段"></textarea></label>
+              <label class="field">目前做法｜現在打算怎麼達成？<textarea id="pm-approach" placeholder="目前方案，可隨新資訊調整"></textarea></label>
+            </div>
+            <label class="field">專案期限<input id="pm-deadline" type="date"></label>
+            <label class="field">期限性質<select id="pm-deadlineType"><option value="hard">硬性期限</option><option value="target">目標日期</option><option value="none">未設定</option></select></label>
+            <label class="field wide">完成定義 Definition of Done<textarea id="pm-dod" placeholder="做到什麼程度，這一階段可以算完成？"></textarea></label>
+            <label class="field wide">固定限制 Constraints<textarea id="pm-constraints" placeholder="不能改、不能犧牲、必須遵守的條件"></textarea></label>
+            <label class="field">下次規劃檢討日<input id="pm-reviewDate" type="date"></label>
+            <label class="field">近期詳細規劃視野（天）<input id="pm-horizon" type="number" min="1" step="1"></label>
+          </div>
+          <div>
+            <div class="section-title">里程碑</div>
+            <div id="milestone-list"></div>
+            <button class="btn small" onclick="lab.addMilestone()">＋ 新增里程碑</button>
+          </div>
+          <button class="btn primary" onclick="lab.saveProjectMeta()">儲存 Project 資料</button>
+          <div class="notice warn">Project Lab 的專案資料與「管理事項」獨立保存在瀏覽器，不會寫回正式白板。正式白板負責執行；這裡負責釐清、推進、追蹤與決策。</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h3>🧪 工作區</h3><span id="center-subtitle" class="tiny"></span></div>
+        <div class="panel-body">
+          <div class="nav-tabs" id="center-tabs">
+            <button class="tab-btn active" data-view="source" onclick="lab.showView('source')">正式資料</button>
+            <button class="tab-btn" data-view="management" onclick="lab.showView('management')">管理事項</button>
+            <button class="tab-btn" data-view="snapshots" onclick="lab.showView('snapshots')">Snapshots</button>
+            <button class="tab-btn" data-view="reviews" onclick="lab.showView('reviews')">Reviews</button>
+            <button class="tab-btn" data-view="patches" onclick="lab.showView('patches')">批改</button>
+            <button class="tab-btn" data-view="findings" onclick="lab.showView('findings')">Findings</button>
+            <button class="tab-btn" data-view="decisions" onclick="lab.showView('decisions')">Decisions</button>
+            <button class="tab-btn" data-view="scenarios" onclick="lab.showView('scenarios')">Scenarios</button>
+          </div>
+          <div id="view-source" class="view active"></div>
+          <div id="view-management" class="view"></div>
+          <div id="view-snapshots" class="view"></div>
+          <div id="view-reviews" class="view"></div>
+          <div id="view-patches" class="view"></div>
+          <div id="view-findings" class="view"></div>
+          <div id="view-decisions" class="view"></div>
+          <div id="view-scenarios" class="view"></div>
+        </div>
+      </section>
+
+      <section class="panel right-panel">
+        <div class="panel-head"><h3>🤖 AI 協作</h3><span class="tiny">手動複製 / 貼上｜先討論，再結構化</span></div>
+        <div class="panel-body stack">
+          <div>
+            <div class="section-title" style="margin-top:0">AI 教練｜先問再改</div>
+            <div id="review-template-grid" class="template-grid"></div>
+          </div>
+          <label class="field">這次我特別想問<textarea id="ai-custom-question" placeholder="例如：我不確定這張卡是否拆太大，先問我最重要的 1～3 個問題。"></textarea></label>
+          <div class="row">
+            <select id="ai-snapshot-select" style="flex:1"></select>
+            <button class="btn" onclick="lab.buildReviewPrompt()">產生教練提問</button>
+            <button class="btn" onclick="lab.copyPrompt()">複製</button>
+          </div>
+          <div class="ai-mode-row">
+            <div class="ai-mode-card"><strong>✏️ 小幅批改</strong><select id="ai-target-card-select"></select><div class="row" style="margin-top:6px"><button class="btn small" onclick="lab.buildPatchPrompt()">產生批改提示</button><button class="btn small" onclick="lab.copyPatchSchema()">Patch Schema</button></div></div>
+            <div class="ai-mode-card"><strong>🧩 大幅重排</strong><div class="tiny">只有整個規劃結構要重做時才用 Scenario。</div><button class="btn small" style="margin-top:6px" onclick="lab.buildScenarioPrompt()">產生 Scenario 提示</button></div>
+          </div>
+          <div class="notice info"><strong>手動 AI 模式：</strong>複製 Prompt 到你使用的 AI，再把回答貼回。教練模式用正常文字；批改與 Scenario 才要求 JSON。正式白板與歷史工時不會被 AI 自動改寫。</div><div id="prompt-preview" class="codebox">尚未產生提問。</div>
+          <div class="divider"></div>
+          <label class="field">貼上 AI 回覆<textarea id="ai-response" placeholder="一般討論可存 Review；Patch / Scenario JSON 可直接解析。"></textarea></label>
+          <div class="row">
+            <button class="btn success" onclick="lab.saveReview()">💬 儲存 Review</button>
+            <button class="btn" onclick="lab.tryImportPatchFromResponse()">✏️ 解析 Patch</button>
+            <button class="btn" onclick="lab.tryImportScenarioFromResponse()">🧩 解析 Scenario</button>
+          </div>
+          <div id="import-status"></div>
+          <div class="divider"></div>
+          <div class="section-title" style="margin:0">Scenario 結構化</div>
+          <div class="notice info">當討論已經形成可試排方案時，再要求 AI 回傳完整 Scenario。不是每一輪對話都需要 JSON。</div>
+          <button class="btn" onclick="lab.copyScenarioSchema()">複製 Scenario JSON Schema 範例</button>
+        </div>
+      </section>
     </div>
+  </div>
+</div>
 
-    <div id="app-content" style="display: none;">
-        <!-- 工具列 -->
-        <div class="toolbar">
-            <div class="tool-left">
-                <div class="tool-title">白板</div>
-                <button class="btn" onclick="app.toggleProjectBar()">📁 專案</button>
-                <button class="btn" onclick="app.taskNav.toggle()" id="btn-task-nav" title="快速跳到專案或卡片">🧭 <span class="nav-btn-label">導覽</span></button>
-                <button class="btn" onclick="app.switchView('timeline')" id="btn-view-timeline">📜 時間軸</button>
-                <button class="btn" onclick="app.switchView('matrix')" id="btn-view-matrix">💡 發想棋盤</button>
-                <button class="btn mobile-hidden" onclick="app.switchView('chronicle')" id="btn-view-chronicle">⚡ 大事記</button>
-                <button class="btn mobile-hidden" onclick="app.switchView('gantt')" id="btn-view-gantt">📊 甘特圖</button>
-                <button class="btn mobile-hidden" onclick="app.switchView('calendar')" id="btn-view-calendar">📅 日曆</button>
-                
-                <!-- SPA 沙盒入口 -->
-                <button class="btn" onclick="app.switchView('sandbox')" id="btn-view-sandbox" style="border-color:#10b981; color:#10b981; font-weight:bold;">🚀 進入心流沙盒</button>
-            </div>
-            <div class="tool-right">
-                <span id="cloud-time-display" style="font-size: 0.8rem; color: #94a3b8; margin-right: 10px; display: none;" class="mobile-hidden"></span>
-                <button class="btn btn-cloud-save" onclick="app.saveToCloudManual()">☁️ 存雲端</button>
-                <button class="btn btn-cloud-load" onclick="app.loadFromCloudManual()">📥 載雲端</button>
-                <div style="width:1px; height:20px; background:#475569; margin:0 2px;"></div>
-                <button class="btn btn-danger btn-clear-local" onclick="app.clearLocalData()">🧹 清本機</button>
-                <button class="btn" id="pomodoro-btn" onclick="app.togglePomodoro()">🍅 <span id="pomo-time">25:00</span></button>
-                <button class="btn" onclick="app.openNotebook()">📖 筆記</button>
-                <button class="btn btn-danger mobile-hidden" onclick="app.logout()">登出</button>
-            </div>
-        </div>
+<script>
+// Firebase Web 設定只用於既有登入 / 使用者識別；本頁不含、也不呼叫任何生成式 AI API Key。
+const firebaseConfig = {
+  apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
+  authDomain: "maplestoryboss.firebaseapp.com",
+  projectId: "maplestoryboss",
+  storageBucket: "maplestoryboss.firebasestorage.app",
+  messagingSenderId: "198034430854",
+  appId: "1:198034430854:web:527ffcee039e223b972a07"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
 
-        <div id="project-bar" style="display: none;"></div>
-        <div id="tab-bar"></div>
+const REVIEW_TEMPLATES = [
+  {id:'management', label:'管理事項判斷', text:'針對目前管理事項，協助我釐清真正需求、情境、角色與權責、尚缺資訊、可行方案與取捨、應由誰處理，以及我下一個可以推進的動作。不要把所有事情都變成我自己的執行工項。'},
+  {id:'health', label:'專案健檢', text:'檢查目前專案規劃是否存在結構缺口、互相矛盾、粒度失衡或缺少必要前置資訊。不要急著修改，先指出問題與需要補充的資訊。'},
+  {id:'unknowns', label:'找未知與假設', text:'找出目前規劃中被當成事實但其實尚未驗證的假設、仍缺資料的未知、以及這些不確定性會影響哪些工項。'},
+  {id:'logic', label:'檢查規劃邏輯', text:'檢查工項的前後關係、依賴、產出與驗收是否合理。特別指出「其實不能直接排程」或「需要先探索」的部分。'},
+  {id:'deadline', label:'期限壓力分析', text:'以專案期限、里程碑、剩餘時間與目前工項為基礎，分析哪一些工作已經成為時間風險，哪些工作可以降規或延後，不直接替我做決定。'},
+  {id:'challenge', label:'挑戰目前想法', text:'刻意站在反方檢查目前規劃，指出我可能因為既有做法、沉沒成本或過度追求完整而忽略的替代方案。請具體說明理由。'},
+  {id:'premortem', label:'假設專案失敗', text:'假設到了專案期限時成果沒有達成。根據目前資料反推最可能的失敗原因，並區分：已知問題、風險、假設、未知。不要把所有小例外都列成重大風險。'},
+  {id:'custom', label:'自訂問題', text:'以我的額外問題為主，使用專案資料協助分析。資訊不足時明確指出，不要自行補成事實。'}
+];
 
-        <!-- v2.2.1 任務導覽：與主版型解耦；桌面浮動、手機抽屜 -->
-        <div id="task-nav-overlay" onclick="app.taskNav.close()"></div>
-        <aside id="task-nav-panel" aria-label="任務導覽">
-            <div class="task-nav-header">
-                <div class="task-nav-title-row">
-                    <div class="task-nav-title">🧭 任務導覽</div>
-                    <button type="button" class="task-nav-close" onclick="app.taskNav.close()" title="收合導覽">✕</button>
-                </div>
-                <div class="task-nav-controls">
-                    <input id="task-nav-search" class="task-nav-search" type="search" placeholder="搜尋卡片／專案…" oninput="app.taskNav.setSearch(this.value)">
-                    <select id="task-nav-scope" class="task-nav-scope" onchange="app.taskNav.setScope(this.value)">
-                        <option value="current">本區</option>
-                        <option value="all">全部</option>
-                    </select>
-                </div>
-                <div class="task-nav-current-hint">專案可收合；點卡片直接切換工作區並定位。手機選取後自動收起。</div>
-            </div>
-            <div id="task-nav-list"></div>
-        </aside>
+const FINDING_TYPES = [
+  ['assumption','❓ 假設'],['risk','⚠ 風險'],['issue','🚧 已發生問題'],['dependency','🔗 依賴'],['decision_candidate','💡 待決策事項']
+];
+
+const MANAGEMENT_STATUSES = [
+  ['intake','收到／待釐清'],
+  ['clarifying','釐清中'],
+  ['analyzing','方案整理'],
+  ['delegated','已交辦'],
+  ['waiting','等待回覆'],
+  ['decision','待決策'],
+  ['tracking','追蹤中'],
+  ['closed','已結案']
+];
+const MANAGEMENT_ROLES = [
+  ['owner','主責'],
+  ['coordinator','協調／追蹤'],
+  ['contributor','協作'],
+  ['consultant','諮詢'],
+  ['observer','掌握即可']
+];
+
+const THINKING_STATES = [
+  ['capture','抓住'],['clarify','釐清'],['decide','判斷'],['advance','推進'],['close','收斂']
+];
+const OUTCOME_STATUSES = [
+  ['solved','✅ 已解決'],['partial','🟡 部分解決'],['unsolved','❌ 未解決'],['unknown','❓ 尚不能確認']
+];
+
+const lab = {
+  user:null,
+  source:{raw:null,cards:[],nodes:[],tabs:[],loadedAt:null},
+  state:{projects:{},projectNameMap:{},snapshots:[],reviews:[],patches:[],findings:[],decisions:[],scenarios:[],managementItems:[],activeProjectId:'',activeView:'source',activeTemplate:'health',lastPrompt:'',lastScenarioPrompt:'',lastPatchPrompt:''},
+  managementUi:{},
+
+  login(){ auth.signInWithPopup(provider).catch(e=>alert('登入失敗：'+e.message)); },
+  logout(){ auth.signOut(); },
+  key(){ return `project_lab_state_${this.user?.uid || 'anon'}`; },
+  now(){ return new Date().toISOString(); },
+  uid(prefix){ return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`; },
+  esc(v){ return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); },
+  fmt(iso){ if(!iso)return''; const d=new Date(iso); if(Number.isNaN(d.getTime()))return iso; return d.toLocaleString('zh-TW',{hour12:false}); },
+  daysUntil(dateStr){ if(!dateStr)return null; const t=new Date(); t.setHours(0,0,0,0); const d=new Date(dateStr+'T00:00:00'); return Math.ceil((d-t)/86400000); },
+  sourceProjectName(card){ return String(card?.project||'').trim() || '未分類'; },
+  plannedMinutes(card){ if(Number.isFinite(Number(card?.plannedMinutes))) return Math.max(0,Number(card.plannedMinutes)); if(Number.isFinite(Number(card?.plannedHours))) return Math.max(0,Number(card.plannedHours)*60); return 0; },
+  logMinutes(log){ if(Number.isFinite(Number(log?.minutes)))return Math.max(0,Number(log.minutes)); if(Number.isFinite(Number(log?.seconds)))return Math.max(0,Number(log.seconds)/60); if(Number.isFinite(Number(log?.hours)))return Math.max(0,Number(log.hours)*60); return 0; },
+  actualMinutes(card){ return (Array.isArray(card?.workLogs)?card.workLogs:[]).reduce((s,l)=>s+this.logMinutes(l),0); },
+  formatMinutes(mins){
+    const n=Math.max(0,Math.round(Number(mins)||0)), h=Math.floor(n/60), m=n%60;
+    if(h&&m)return `${h}h ${m}m`; if(h)return `${h}h`; return `${m}m`;
+  },
+  actualStart(card){
+    const dates=(Array.isArray(card?.workLogs)?card.workLogs:[]).filter(l=>this.logMinutes(l)>0&&l.workDate).map(l=>String(l.workDate)).sort();
+    return dates[0]||'';
+  },
+  actualEnd(card){
+    const dates=(Array.isArray(card?.workLogs)?card.workLogs:[]).filter(l=>this.logMinutes(l)>0&&l.workDate).map(l=>String(l.workDate)).sort();
+    return dates.length?dates[dates.length-1]:'';
+  },
+  timeUsagePercent(card){
+    const p=this.plannedMinutes(card); return p>0?Math.round((this.actualMinutes(card)/p)*100):null;
+  },
+  timeVariance(card){
+    const p=this.plannedMinutes(card); return p>0?Math.round(this.actualMinutes(card)-p):null;
+  },
+  remainingPlanned(card){
+    const p=this.plannedMinutes(card); return p>0?Math.round(p-this.actualMinutes(card)):null;
+  },
+  statusLabel(s){ return ['未開始','進行中','完成','阻塞'][Number(s)||0] || `狀態${s}`; },
+  planningMaturityLabel(v){ return ({idea:'想法',actionable:'可行動',planned:'已規劃',committed:'已承諾'})[v] || '想法'; },
+
+  loadState(){
+    try{
+      const raw=localStorage.getItem(this.key());
+      if(raw){
+        const d=JSON.parse(raw);
+        this.state={...this.state,...d};
+        if(!Array.isArray(this.state.managementItems)) this.state.managementItems=[];
+        if(!Array.isArray(this.state.patches)) this.state.patches=[];
+        Object.values(this.state.projects||{}).forEach(p=>{
+          if(p.purpose===undefined){ p.purpose=p.goal||''; p.goal=''; }
+          if(p.currentApproach===undefined) p.currentApproach='';
+        });
+        (this.state.managementItems||[]).forEach(m=>{ if(!m.thinkingState) m.thinkingState=this.defaultThinkingState(m.status); });
+      }
+    }catch(e){console.warn(e)}
+  },
+  saveState(){ localStorage.setItem(this.key(),JSON.stringify(this.state)); },
+
+  init(){
+    this.loadState();
+    this.renderTemplateButtons();
+    this.reloadSource(false);
+  },
+
+  reloadSource(showAlert=true){
+    if(!this.user)return;
+    const raw=localStorage.getItem(`whiteboard_state_${this.user.uid}`);
+    if(!raw){
+      this.source={raw:null,cards:[],nodes:[],tabs:[],loadedAt:this.now()};
+      document.getElementById('source-status').innerText='找不到白板 localStorage';
+      if(showAlert) alert('找不到正式白板資料。請先在同一個網域、同一個瀏覽器登入並開啟白板。');
+      this.renderAll();
+      return;
+    }
+    try{
+      const wb=JSON.parse(raw);
+      const tabs=Array.isArray(wb.tabs)?wb.tabs:[];
+      const cards=[]; const nodes=[];
+      Object.entries(wb.workspaces||{}).forEach(([tabId,list])=>{
+        const tabName=tabs.find(t=>t.id===tabId)?.name||'未知';
+        (list||[]).forEach(card=>cards.push({card:structuredClone(card),tabId,tabName}));
+      });
+      Object.entries(wb.nodes||{}).forEach(([tabId,list])=>{
+        const tabName=tabs.find(t=>t.id===tabId)?.name||'未知';
+        (list||[]).forEach(node=>nodes.push({node:structuredClone(node),tabId,tabName}));
+      });
+      this.source={raw:wb,cards,nodes,tabs,loadedAt:this.now()};
+      this.syncProjectsFromSource();
+      document.getElementById('source-status').innerText=`已讀取 ${cards.length} 張卡片 · ${new Date().toLocaleTimeString('zh-TW',{hour12:false})}`;
+      if(showAlert) alert(`已重新讀取正式白板：${cards.length} 張卡片。`);
+    }catch(e){ alert('白板資料解析失敗：'+e.message); }
+    this.renderAll();
+  },
+
+  syncProjectsFromSource(){
+    const names=[...new Set(this.source.cards.map(({card})=>this.sourceProjectName(card)))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+    names.forEach(name=>{
+      let pid=this.state.projectNameMap[name];
+      if(!pid){
+        pid=this.uid('proj');
+        this.state.projectNameMap[name]=pid;
+        this.state.projects[pid]={id:pid,sourceName:name,name,purpose:'',goal:'',currentApproach:'',deadline:'',deadlineType:'none',definitionOfDone:'',constraints:'',nextReviewDate:'',planningHorizonDays:7,milestones:[],createdAt:this.now(),updatedAt:this.now()};
+      }
+    });
+    if(!this.state.activeProjectId || !this.state.projects[this.state.activeProjectId]){
+      const firstName=names[0]; this.state.activeProjectId=firstName?this.state.projectNameMap[firstName]:'';
+    }
+    this.saveState();
+  },
+
+  activeProject(){ return this.state.projects[this.state.activeProjectId] || null; },
+  activeSourceName(){ return this.activeProject()?.sourceName || this.activeProject()?.name || ''; },
+  projectCards(){ const name=this.activeSourceName(); return this.source.cards.filter(({card})=>this.sourceProjectName(card)===name); },
+  projectNodes(){ const name=this.activeSourceName(); return this.source.nodes.filter(({node})=>(String(node.project||'').trim()||'未分類')===name); },
+
+  changeProject(pid){ this.state.activeProjectId=pid; this.saveState(); this.renderAll(); },
+  showView(name){ this.state.activeView=name; this.saveState(); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===name)); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`)); },
+
+  renderAll(){ this.renderProjectSelect(); this.renderSummary(); this.renderProjectMeta(); this.renderSource(); this.renderManagement(); this.renderSnapshots(); this.renderReviews(); this.renderPatches(); this.renderFindings(); this.renderDecisions(); this.renderScenarios(); this.renderSnapshotSelect(); this.renderAiTargetSelect(); this.showView(this.state.activeView||'source'); },
+
+  renderProjectSelect(){
+    const el=document.getElementById('project-select'); if(!el)return;
+    const list=Object.values(this.state.projects).filter(p=>this.source.cards.some(({card})=>this.sourceProjectName(card)===p.sourceName));
+    el.innerHTML=list.map(p=>`<option value="${this.esc(p.id)}" ${p.id===this.state.activeProjectId?'selected':''}>${this.esc(p.name||p.sourceName)}</option>`).join('') || '<option value="">尚無專案</option>';
+  },
+
+  renderSummary(){
+    const p=this.activeProject(); const cards=this.projectCards(); const sched=cards.filter(x=>!x.card.isMemo); const completed=cards.filter(x=>Number(x.card.status)===2).length;
+    const planned=sched.reduce((s,x)=>s+this.plannedMinutes(x.card),0);
+    const scheduledActual=sched.reduce((s,x)=>s+this.actualMinutes(x.card),0);
+    const totalActual=cards.reduce((s,x)=>s+this.actualMinutes(x.card),0);
+    const unplannedActual=cards.filter(x=>this.plannedMinutes(x.card)<=0).reduce((s,x)=>s+this.actualMinutes(x.card),0);
+    const days=this.daysUntil(p?.deadline);
+    const usage=planned>0?Math.round((scheduledActual/planned)*100):null;
+    const data=[
+      ['卡片',cards.length],
+      ['排程 / 自由',`${sched.length} / ${cards.length-sched.length}`],
+      ['完成',`${completed}/${cards.length}`],
+      ['排程預估 / 實際',`${this.formatMinutes(planned)} / ${this.formatMinutes(scheduledActual)}`],
+      ['工時使用率',usage===null?'未設定預估':`${usage}%${unplannedActual>0?`（另未規劃 ${this.formatMinutes(unplannedActual)}）`:''}`],
+      ['待推進事項',this.projectManagementItems().filter(x=>x.status!=='closed').length],
+      ['距期限',days===null?'未設定':days<0?`逾期 ${Math.abs(days)} 天`:`${days} 天`]
+    ];
+    document.getElementById('summary-grid').innerHTML=data.map(([k,v])=>`<div class="summary-card"><div class="k">${k}</div><div class="v">${this.esc(v)}</div></div>`).join('');
+  },
+
+  renderProjectMeta(){
+    const p=this.activeProject(); if(!p)return;
+    document.getElementById('project-id-view').innerHTML=`<strong>Project ID</strong><br><code>${this.esc(p.id)}</code><br><span class="tiny">來源名稱：${this.esc(p.sourceName)}</span>`;
+    ['name','goal','deadline','deadlineType','definitionOfDone','constraints','nextReviewDate','planningHorizonDays'].forEach(()=>{});
+    document.getElementById('pm-name').value=p.name||'';
+    document.getElementById('pm-purpose').value=p.purpose||'';
+    document.getElementById('pm-goal').value=p.goal||'';
+    document.getElementById('pm-approach').value=p.currentApproach||'';
+    document.getElementById('pm-deadline').value=p.deadline||'';
+    document.getElementById('pm-deadlineType').value=p.deadlineType||'none';
+    document.getElementById('pm-dod').value=p.definitionOfDone||'';
+    document.getElementById('pm-constraints').value=p.constraints||'';
+    document.getElementById('pm-reviewDate').value=p.nextReviewDate||'';
+    document.getElementById('pm-horizon').value=p.planningHorizonDays||7;
+    this.renderMilestones();
+  },
+
+  saveProjectMeta(){
+    const p=this.activeProject(); if(!p)return;
+    p.name=document.getElementById('pm-name').value.trim()||p.sourceName;
+    p.purpose=document.getElementById('pm-purpose').value.trim();
+    p.goal=document.getElementById('pm-goal').value.trim();
+    p.currentApproach=document.getElementById('pm-approach').value.trim();
+    p.deadline=document.getElementById('pm-deadline').value;
+    p.deadlineType=document.getElementById('pm-deadlineType').value;
+    p.definitionOfDone=document.getElementById('pm-dod').value.trim();
+    p.constraints=document.getElementById('pm-constraints').value.trim();
+    p.nextReviewDate=document.getElementById('pm-reviewDate').value;
+    p.planningHorizonDays=Math.max(1,Number(document.getElementById('pm-horizon').value)||7);
+    p.updatedAt=this.now(); this.saveState(); this.renderAll(); alert('Project 資料已儲存。');
+  },
+  addMilestone(){ const p=this.activeProject(); if(!p)return; p.milestones.push({id:this.uid('ms'),date:'',name:'',fixed:false}); this.saveState(); this.renderMilestones(); },
+  updateMilestone(id,field,value){ const p=this.activeProject(); const m=p?.milestones?.find(x=>x.id===id); if(!m)return; m[field]=field==='fixed'?!!value:value; p.updatedAt=this.now(); this.saveState(); },
+  deleteMilestone(id){ const p=this.activeProject(); if(!p)return; p.milestones=(p.milestones||[]).filter(x=>x.id!==id); this.saveState(); this.renderMilestones(); },
+  renderMilestones(){ const p=this.activeProject(); const root=document.getElementById('milestone-list'); if(!root||!p)return; root.innerHTML=(p.milestones||[]).map(m=>`<div class="milestone"><input type="date" value="${this.esc(m.date||'')}" onchange="lab.updateMilestone('${m.id}','date',this.value)"><input type="text" value="${this.esc(m.name||'')}" placeholder="里程碑名稱" onchange="lab.updateMilestone('${m.id}','name',this.value)"><button class="btn small danger" onclick="lab.deleteMilestone('${m.id}')">刪</button><label class="tiny" style="grid-column:2/-1"><input type="checkbox" ${m.fixed?'checked':''} onchange="lab.updateMilestone('${m.id}','fixed',this.checked)"> 固定不可移動</label></div>`).join('') || '<div class="tiny">尚未設定里程碑。</div>'; },
+
+  renderSource(){
+    const cards=this.projectCards(); const root=document.getElementById('view-source'); if(!root)return;
+    document.getElementById('center-subtitle').innerText=this.activeProject()?.name||'';
+    if(!cards.length){root.innerHTML='<div class="list-empty">目前專案沒有卡片。</div>';return;}
+    root.innerHTML=`<div class="notice info">此區為正式白板唯讀資料。工時明細同樣視為歷史事實，會進入 Snapshot 與 AI Context，但 Scenario 不可改寫。</div>
+      <div class="section-title">規劃 vs 實際工時總覽</div>
+      ${this.renderProjectTimeOverview(cards)}
+      <div class="section-title">正式卡片</div>
+      <div class="card-list">${cards.map(x=>this.renderSourceCard(x)).join('')}</div>
+      ${this.projectNodes().length?`<div class="section-title">同專案發想節點</div><div class="card-list">${this.projectNodes().map(({node,tabName})=>`<div class="source-card"><span class="pill free">發想</span><strong>${this.esc(node.text||'未命名')}</strong><div class="meta"><span>${this.esc(tabName)}</span><span>${this.esc(node.tag||'')}</span></div></div>`).join('')}</div>`:''}`;
+  },
+  renderProjectTimeOverview(cards){
+    const rows=cards.map(({card})=>{
+      const p=this.plannedMinutes(card), a=this.actualMinutes(card), usage=p>0?Math.round(a/p*100):null;
+      const remain=p>0?p-a:null;
+      return `<tr>
+        <td>${this.esc(card.title||'未命名')}</td>
+        <td>${this.esc(this.statusLabel(card.status))}</td>
+        <td class="num">${p>0?this.formatMinutes(p):'—'}</td>
+        <td class="num">${this.formatMinutes(a)}</td>
+        <td class="num">${usage===null?'—':usage+'%'}</td>
+        <td class="num">${remain===null?(a>0?'未規劃':'—'):(remain>=0?'尚餘 '+this.formatMinutes(remain):'超出 '+this.formatMinutes(Math.abs(remain)))}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="worklog-wrap"><table class="time-overview-table"><thead><tr><th>工項</th><th>狀態</th><th>預估</th><th>實際</th><th>使用率</th><th>差異 / 剩餘</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  },
+  renderTimeCompare(card){
+    const p=this.plannedMinutes(card), a=this.actualMinutes(card), usage=p>0?Math.round(a/p*100):null, variance=p>0?Math.round(a-p):null;
+    const isDone=Number(card.status)===2;
+    const remain=p>0?p-a:null;
+    const fourth = p<=0
+      ? (a>0?`未規劃 ${this.formatMinutes(a)}`:'尚無工時')
+      : isDone
+        ? (variance===0?'估算吻合':variance>0?`超估 ${this.formatMinutes(variance)}`:`少於預估 ${this.formatMinutes(Math.abs(variance))}`)
+        : (remain>=0?`預估尚餘 ${this.formatMinutes(remain)}`:`已超出 ${this.formatMinutes(Math.abs(remain))}`);
+    const cls=(p>0&&a>p)?'over':(isDone&&p>0&&a<=p)?'ok':'';
+    const width=usage===null?0:Math.min(100,Math.max(0,usage));
+    return `<div class="time-compare">
+      <div class="time-box"><div class="k">預估工時</div><div class="v">${p>0?this.formatMinutes(p):'未設定'}</div></div>
+      <div class="time-box"><div class="k">實際工時</div><div class="v">${this.formatMinutes(a)}</div></div>
+      <div class="time-box ${cls}"><div class="k">工時使用率</div><div class="v">${usage===null?'—':usage+'%'}</div><div class="time-bar"><span class="${usage>100?'over':''}" style="width:${width}%"></span></div></div>
+      <div class="time-box ${cls}"><div class="k">${isDone?'估算結果':'目前差異'}</div><div class="v">${this.esc(fourth)}</div></div>
+    </div>`;
+  },
+  renderWorkLogs(card){
+    const logs=(Array.isArray(card?.workLogs)?card.workLogs:[]).slice().sort((a,b)=>String(a.workDate||'').localeCompare(String(b.workDate||'')));
+    if(!logs.length)return '<div class="tiny">尚無工時明細。</div>';
+    return `<div class="worklog-wrap"><table class="worklog-table"><thead><tr><th>日期</th><th>工時</th><th>來源</th><th>內容</th></tr></thead><tbody>${logs.map(log=>`<tr>
+      <td>${this.esc(log.workDate||'')}</td>
+      <td class="num">${this.formatMinutes(this.logMinutes(log))}</td>
+      <td>${this.esc(log.source==='timer'?'心流計時':'手動補登')}</td>
+      <td class="worklog-note">${this.esc(log.note||'')}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+  },
+  renderSourceCard({card,tabName}){
+    const type=card.isMemo?'自由卡':'排程卡';
+    const plan=card.isMemo?'':`${card.dateStart||card.dateSingle||''}${card.dateEnd?` → ${card.dateEnd}`:''}`;
+    return `<div class="source-card">
+      <div class="row"><div><span class="pill ${card.isMemo?'free':''}">${type}</span><span class="pill">${this.esc(this.statusLabel(card.status))}</span>${card.category?`<span class="pill free">${this.esc(card.category)}</span>`:''}</div><button class="btn small" onclick="lab.addManagementFromCard('${card.id}')">建立管理事項</button></div>
+      <h4>${this.esc(card.title||'未命名')}</h4>
+      <div class="meta"><span>${this.esc(tabName)}</span>${plan?`<span>${this.esc(plan)}</span>`:''}${this.actualStart(card)?`<span>實際 ${this.esc(this.actualStart(card))}${this.actualEnd(card)&&this.actualEnd(card)!==this.actualStart(card)?` → ${this.esc(this.actualEnd(card))}`:''}</span>`:''}</div>
+      ${this.renderTimeCompare(card)}
+      ${card.content?`<div class="desc">${this.esc(card.content)}</div>`:''}
+      ${(card.nextAction||card.decisionPoint||card.planningMaturity)?`<div class="source-focus"><strong>規劃成熟度：</strong>${this.esc(this.planningMaturityLabel(card.planningMaturity))}<br><strong>下一步：</strong>${this.esc(card.nextAction||'—')}<br><strong>下一判斷點：</strong>${this.esc(card.decisionPoint||'—')}</div>`:''}
+      <details><summary>規劃 / 驗收 / 工作紀錄</summary><div class="desc"><strong>預期產出：</strong>${this.esc(card.deliverable||'')}<br><strong>驗收條件：</strong>${this.esc(card.acceptance||'')}<br><strong>驗收證據：</strong>${this.esc(card.acceptanceEvidence||'')}<br><strong>工作紀錄：</strong>${(Array.isArray(card.entries)?card.entries:[]).length} 筆</div></details>
+      <details><summary>⏱️ 工時明細（${(Array.isArray(card.workLogs)?card.workLogs:[]).length}）</summary>${this.renderWorkLogs(card)}</details>
+    </div>`;
+  },
 
 
-        <div class="main-area">
-            
-            <!-- 0. 發想矩陣 -->
-            <div id="view-matrix" class="view-container">
-                <div class="matrix-input-bar">
-                    <input type="text" id="matrix-quick-input" class="matrix-input" placeholder="💡 輸入靈感... (按 Enter 落子)" onkeypress="if(event.key === 'Enter') app.actions.addMatrixNode()">
-                    <select id="matrix-tag-select" class="matrix-select">
-                        <option value="">無標籤</option>
-                        <option value="q1">🔥 重要・緊急</option>
-                        <option value="q2">📅 重要・不急</option>
-                        <option value="q3">⚡ 緊急・不重</option>
-                        <option value="q4">☕ 不重・不急</option>
-                    </select>
-                    <button class="btn btn-cloud-save" style="padding: 12px 20px; font-size: 1rem; justify-content: center;" onclick="app.actions.addMatrixNode()">＋ 落下棋子</button>
-                </div>
-                <div class="go-board-surface matrix-board" id="matrix-board">
-                    <div class="go-grid-lines" id="matrix-grid-lines"></div>
-                </div>
-            </div>
+  defaultThinkingState(status){
+    if(status==='clarifying')return 'clarify';
+    if(status==='analyzing'||status==='decision')return 'decide';
+    if(status==='delegated'||status==='waiting'||status==='tracking')return 'advance';
+    if(status==='closed')return 'close';
+    return 'capture';
+  },
+  thinkingStateLabel(v){ return (THINKING_STATES.find(x=>x[0]===v)||['','抓住'])[1]; },
+  setManagementThinking(id,value){ const m=this.state.managementItems.find(x=>x.id===id); if(!m)return; m.thinkingState=value; m.updatedAt=this.now(); this.saveState(); this.renderManagement(); },
+  toggleManagementAll(id){ this.managementUi[id]={...(this.managementUi[id]||{}),showAll:!(this.managementUi[id]?.showAll)}; this.renderManagement(); },
 
-            <!-- 1. 時間軸 -->
-            <div id="view-timeline" class="view-container active">
-                <div style="text-align:right; font-size:0.85rem; color:#94a3b8; margin-bottom:15px; font-weight: bold;">
-                    <span id="local-save-status">✅ 已存於本機</span>
-                </div>
-                <div class="timeline" id="timeline-render-target"></div>
-                <div class="add-card-actions">
-                    <button class="add-main-btn" onclick="app.actions.addCard('free')">＋ 新增自由卡片</button>
-                    <button class="add-main-btn" onclick="app.actions.addCard('scheduled')">＋ 新增排程工項</button>
-                </div>
-            </div>
+  managementStatusLabel(v){ return (MANAGEMENT_STATUSES.find(x=>x[0]===v)||['',v||'收到／待釐清'])[1]; },
+  managementRoleLabel(v){ return (MANAGEMENT_ROLES.find(x=>x[0]===v)||['',v||'協調／追蹤'])[1]; },
+  projectManagementItems(){
+    return (this.state.managementItems||[])
+      .filter(x=>x.projectId===this.state.activeProjectId)
+      .sort((a,b)=>{
+        if(a.status==='closed'&&b.status!=='closed')return 1;
+        if(a.status!=='closed'&&b.status==='closed')return -1;
+        const ad=a.followUpDate||'9999-12-31', bd=b.followUpDate||'9999-12-31';
+        return ad.localeCompare(bd)||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''));
+      });
+  },
+  addManagementItem(seed={}){
+    const m={
+      id:this.uid('mgmt'),projectId:this.state.activeProjectId,
+      title:seed.title||'',status:seed.status||'intake',thinkingState:seed.thinkingState||'capture',outcomeStatus:seed.outcomeStatus||'unknown',
+      source:seed.source||'',rawRequest:seed.rawRequest||'',context:seed.context||'',
+      desiredOutcome:seed.desiredOutcome||'',myRole:seed.myRole||'coordinator',
+      decisionOwner:seed.decisionOwner||'',assignee:seed.assignee||'',
+      knownFacts:seed.knownFacts||'',unknowns:seed.unknowns||'',
+      options:seed.options||'',tradeoffs:seed.tradeoffs||'',
+      recommendation:seed.recommendation||'',nextAction:seed.nextAction||'',
+      askWho:seed.askWho||'',askQuestion:seed.askQuestion||'',
+      followUpDate:seed.followUpDate||'',result:seed.result||'',
+      linkedCardId:seed.linkedCardId||'',preparedQuestion:'',
+      createdAt:this.now(),updatedAt:this.now()
+    };
+    this.state.managementItems.push(m);
+    this.saveState(); this.renderAll(); this.showView('management');
+    setTimeout(()=>document.getElementById(`mgmt-title-${m.id}`)?.focus(),0);
+  },
+  addManagementFromCard(cardId){
+    const hit=this.projectCards().find(x=>x.card.id===cardId);
+    if(!hit)return;
+    const c=hit.card;
+    this.addManagementItem({
+      title:c.title||'未命名管理事項',
+      rawRequest:c.content||c.title||'',
+      context:`來源正式卡片：${c.title||'未命名'}${c.category?`｜分類：${c.category}`:''}`,
+      desiredOutcome:c.deliverable||'',
+      linkedCardId:c.id||'',
+      myRole:'coordinator',
+      nextAction:''
+    });
+  },
+  updateManagementItem(id,field,value){
+    const m=this.state.managementItems.find(x=>x.id===id); if(!m)return;
+    m[field]=value; m.updatedAt=this.now(); this.saveState();
+    if(['status','followUpDate','nextAction','title','linkedCardId'].includes(field)) this.renderSummary();
+  },
+  deleteManagementItem(id){
+    if(!confirm('刪除這筆管理事項？'))return;
+    this.state.managementItems=this.state.managementItems.filter(x=>x.id!==id);
+    this.saveState(); this.renderAll();
+  },
+  linkedCardTitle(id){
+    if(!id)return '';
+    return this.projectCards().find(x=>x.card.id===id)?.card?.title||'';
+  },
+  managementQuestionText(m){
+    const parts=[
+      `我目前在處理：${m.title||'（尚未命名）'}`,
+      m.rawRequest?`原始交辦／需求：${m.rawRequest}`:'',
+      m.context?`背景／情境：${m.context}`:'',
+      m.desiredOutcome?`希望達到的結果：${m.desiredOutcome}`:'',
+      m.knownFacts?`目前已確認：${m.knownFacts}`:'',
+      m.unknowns?`我目前卡住或不確定的是：${m.unknowns}`:'',
+      m.options?`目前想到的做法：${m.options}`:'',
+      m.tradeoffs?`我看到的取捨：${m.tradeoffs}`:'',
+      m.recommendation?`我目前暫時傾向：${m.recommendation}`:'',
+      m.askQuestion?`想請你協助確認：${m.askQuestion}`:'想請你協助確認：以你的經驗，這件事情我現在還缺什麼關鍵資訊或限制？',
+      m.askWho?`預計詢問對象：${m.askWho}`:''
+    ].filter(Boolean);
+    return parts.join('\n');
+  },
+  prepareManagementQuestion(id){
+    const m=this.state.managementItems.find(x=>x.id===id); if(!m)return;
+    m.preparedQuestion=this.managementQuestionText(m); m.updatedAt=this.now();
+    this.saveState(); this.renderManagement();
+  },
+  copyManagementQuestion(id){
+    const m=this.state.managementItems.find(x=>x.id===id); if(!m)return;
+    const text=(m.preparedQuestion||this.managementQuestionText(m)).trim();
+    this.copyText(text,'已複製詢問草稿。');
+  },
+  sendManagementToAI(id){
+    const m=this.state.managementItems.find(x=>x.id===id); if(!m)return;
+    this.state.activeTemplate='management';
+    this.saveState(); this.renderTemplateButtons();
+    const q=`請以這筆管理事項為焦點協助我判斷：\n\n${this.managementQuestionText(m)}\n\n另外請指出：這件事情哪些是我自己要做的執行工作、哪些應該交辦／詢問／追蹤，以及我下一步最小可行動作。`;
+    document.getElementById('ai-custom-question').value=q;
+    this.buildReviewPrompt();
+    window.scrollTo({top:0,behavior:'smooth'});
+  },
+  managementToFinding(id){
+    const m=this.state.managementItems.find(x=>x.id===id); if(!m)return;
+    this.addFinding({
+      title:m.title||'管理事項發現',
+      detail:[m.unknowns,m.tradeoffs,m.recommendation].filter(Boolean).join('\n\n'),
+      type:'decision_candidate'
+    });
+    this.showView('findings');
+  },
+  renderManagement(){
+    const root=document.getElementById('view-management'); if(!root)return;
+    const list=this.projectManagementItems();
+    const open=list.filter(x=>x.status!=='closed');
+    const waiting=open.filter(x=>x.status==='waiting'||x.status==='delegated').length;
+    const decision=open.filter(x=>x.status==='decision').length;
+    const missingNext=open.filter(x=>!String(x.nextAction||'').trim()).length;
+    const head=`<div class="notice info"><strong>管理事項不是執行卡。</strong>它用來練「收到事情 → 釐清需求 → 判斷角色與方案 → 找人／交辦 → 追蹤 → 決策」。不是每一格都必填，但每一筆進行中的事項最好都有一個「下一步」。</div>
+      <div class="row"><button class="btn primary" onclick="lab.addManagementItem()">＋ 新增管理事項</button></div>
+      <div class="mgmt-kpi"><span>進行中 ${open.length}</span><span>等待／已交辦 ${waiting}</span><span>待決策 ${decision}</span><span>${missingNext?'⚠':''} 缺下一步 ${missingNext}</span></div>`;
+    if(!list.length){root.innerHTML=head+'<div class="list-empty">目前沒有管理事項。當你收到一件「不一定由你親手做，但你必須把它推進」的事情，就放在這裡。</div>';return;}
+    root.innerHTML=head+list.map(m=>this.renderManagementItem(m)).join('');
+  },
+  renderManagementItem(m){
+    const linked=this.linkedCardTitle(m.linkedCardId);
+    const statusClass=m.status==='closed'?'closed':(m.status==='waiting'||m.status==='delegated')?'waiting':m.status==='decision'?'decision':'';
+    const next=String(m.nextAction||'').trim();
+    const prepared=m.preparedQuestion||'';
+    const thinking=m.thinkingState||this.defaultThinkingState(m.status);
+    const showAll=!!this.managementUi[m.id]?.showAll;
+    const cardOptions=this.projectCards().map(({card})=>`<option value="${this.esc(card.id)}" ${m.linkedCardId===card.id?'selected':''}>${this.esc(card.title||'未命名')}</option>`).join('');
+    const tabs=THINKING_STATES.map(([v,l])=>`<button class="thinking-btn ${thinking===v?'active':''}" onclick="lab.setManagementThinking('${m.id}','${v}')">${l}</button>`).join('');
+    let focused='';
+    if(thinking==='capture') focused=`<div class="focus-box"><label class="field"><span><span class="focus-number">1</span>我的角色</span><select onchange="lab.updateManagementItem('${m.id}','myRole',this.value)">${MANAGEMENT_ROLES.map(([v,l])=>`<option value="${v}" ${m.myRole===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="field"><span><span class="focus-number">2</span>原始交辦／這件事目前怎麼說</span><textarea onchange="lab.updateManagementItem('${m.id}','rawRequest',this.value)">${this.esc(m.rawRequest)}</textarea></label><label class="field"><span><span class="focus-number">3</span>現在下一步</span><textarea class="focus-important" onchange="lab.updateManagementItem('${m.id}','nextAction',this.value);lab.renderManagement()">${this.esc(m.nextAction)}</textarea></label></div>`;
+    else if(thinking==='clarify') focused=`<div class="focus-box"><label class="field"><span><span class="focus-number">1</span>真正希望得到什麼結果？</span><textarea onchange="lab.updateManagementItem('${m.id}','desiredOutcome',this.value)">${this.esc(m.desiredOutcome)}</textarea></label><label class="field"><span><span class="focus-number">2</span>目前最重要的不知道是什麼？</span><textarea onchange="lab.updateManagementItem('${m.id}','unknowns',this.value)">${this.esc(m.unknowns)}</textarea></label><div class="management-grid"><label class="field">誰可能知道？<input value="${this.esc(m.askWho)}" onchange="lab.updateManagementItem('${m.id}','askWho',this.value)"></label><label class="field">真正想問什麼？<textarea onchange="lab.updateManagementItem('${m.id}','askQuestion',this.value)">${this.esc(m.askQuestion)}</textarea></label></div><div class="row"><button class="btn small" onclick="lab.prepareManagementQuestion('${m.id}')">整理成問同事的問題</button><button class="btn small" onclick="lab.copyManagementQuestion('${m.id}')">複製</button></div>${prepared?`<div class="question-preview">${this.esc(prepared)}</div>`:''}</div>`;
+    else if(thinking==='decide') focused=`<div class="focus-box"><label class="field"><span><span class="focus-number">1</span>有哪些做法？</span><textarea onchange="lab.updateManagementItem('${m.id}','options',this.value)">${this.esc(m.options)}</textarea></label><label class="field"><span><span class="focus-number">2</span>各自犧牲什麼／有什麼取捨？</span><textarea onchange="lab.updateManagementItem('${m.id}','tradeoffs',this.value)">${this.esc(m.tradeoffs)}</textarea></label><label class="field"><span><span class="focus-number">3</span>我目前暫時傾向什麼？</span><textarea onchange="lab.updateManagementItem('${m.id}','recommendation',this.value)">${this.esc(m.recommendation)}</textarea></label></div>`;
+    else if(thinking==='advance') focused=`<div class="focus-box"><div class="management-grid"><label class="field">誰有權決定<input value="${this.esc(m.decisionOwner)}" onchange="lab.updateManagementItem('${m.id}','decisionOwner',this.value)"></label><label class="field">誰執行／承接<input value="${this.esc(m.assignee)}" onchange="lab.updateManagementItem('${m.id}','assignee',this.value)"></label></div><label class="field"><span><span class="focus-number">2</span>現在球在誰手上／下一步</span><textarea class="focus-important" onchange="lab.updateManagementItem('${m.id}','nextAction',this.value);lab.renderManagement()">${this.esc(m.nextAction)}</textarea></label><div class="management-grid"><label class="field">目前狀態<select onchange="lab.updateManagementItem('${m.id}','status',this.value)">${MANAGEMENT_STATUSES.map(([v,l])=>`<option value="${v}" ${m.status===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="field">下次追蹤日<input type="date" value="${this.esc(m.followUpDate)}" onchange="lab.updateManagementItem('${m.id}','followUpDate',this.value);lab.renderManagement()"></label></div></div>`;
+    else focused=`<div class="focus-box"><label class="field"><span><span class="focus-number">1</span>最後怎麼處理／得到什麼結果？</span><textarea onchange="lab.updateManagementItem('${m.id}','result',this.value)">${this.esc(m.result)}</textarea></label><label class="field"><span><span class="focus-number">2</span>原本問題解決了嗎？</span><select onchange="lab.updateManagementItem('${m.id}','outcomeStatus',this.value)">${OUTCOME_STATUSES.map(([v,l])=>`<option value="${v}" ${(m.outcomeStatus||'unknown')===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="field"><span><span class="focus-number">3</span>正式計畫需要因此改嗎？</span><textarea placeholder="不一定要改。若要改，先記要改什麼，再自己回白板處理。" onchange="lab.updateManagementItem('${m.id}','recommendation',this.value)">${this.esc(m.recommendation)}</textarea></label><div class="row"><button class="btn small" onclick="lab.createOutcomeFromManagement('${m.id}')">建立 Outcome Review</button><button class="btn small" onclick="lab.managementToFinding('${m.id}')">轉 Finding</button></div></div>`;
+    const full=showAll?`<details open><summary>完整管理資料</summary><div class="management-grid"><label class="field">來源<input value="${this.esc(m.source)}" onchange="lab.updateManagementItem('${m.id}','source',this.value)"></label><label class="field">我的角色<select onchange="lab.updateManagementItem('${m.id}','myRole',this.value)">${MANAGEMENT_ROLES.map(([v,l])=>`<option value="${v}" ${m.myRole===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="field wide">背景／情境<textarea onchange="lab.updateManagementItem('${m.id}','context',this.value)">${this.esc(m.context)}</textarea></label><label class="field wide">已知事實<textarea onchange="lab.updateManagementItem('${m.id}','knownFacts',this.value)">${this.esc(m.knownFacts)}</textarea></label><label class="field wide">連結正式執行卡<select onchange="lab.updateManagementItem('${m.id}','linkedCardId',this.value)"><option value="">未連結</option>${cardOptions}</select></label></div></details>`:'';
+    return `<div class="management-item ${statusClass}"><div class="management-top"><input id="mgmt-title-${m.id}" class="management-title" type="text" value="${this.esc(m.title)}" placeholder="這件事情一句話叫什麼？" onchange="lab.updateManagementItem('${m.id}','title',this.value)"><span class="tiny">${this.fmt(m.updatedAt)}</span></div><div class="management-next ${next?'':'missing'}"><div class="label">▶ 現在下一步</div><div class="value">${this.esc(next||'尚未寫。先留一個現在可做的最小動作。')}</div></div>${linked?`<div class="linked-card" style="margin-top:7px">🔗 ${this.esc(linked)}</div>`:''}<div class="thinking-tabs">${tabs}<button class="thinking-btn" onclick="lab.toggleManagementAll('${m.id}')">${showAll?'收起完整資料':'展開完整資料'}</button></div>${focused}${full}<div class="row" style="margin-top:9px"><button class="btn small" onclick="lab.sendManagementToAI('${m.id}')">拿這筆問 AI</button><button class="btn small danger" onclick="lab.deleteManagementItem('${m.id}')">刪除</button></div></div>`;
+  },
 
-            <!-- 2. 大事記 -->
-            <div id="view-chronicle" class="view-container">
-                <h3 style="text-align: center; color: #475569; margin-top: 0; margin-bottom:6px;">⚡ 大事記</h3>
-                <p style="text-align:center; color:#64748b; font-size:.88rem; margin:0 0 16px;">只收你手動標記的重要成果、決定與節點；一般排程不會自動塞進來。</p>
-                <div id="chronicle-render-target"></div>
-            </div>
+  snapshotPayload(){
+    const p=structuredClone(this.activeProject());
+    const cards=this.projectCards().map(({card,tabId,tabName})=>({card:structuredClone(card),tabId,tabName}));
+    const nodes=this.projectNodes().map(x=>structuredClone(x));
+    const managementItems=this.projectManagementItems().map(x=>structuredClone(x));
+    return {project:p,cards,nodes,managementItems,sourceLoadedAt:this.source.loadedAt};
+  },
+  createSnapshot(){
+    const p=this.activeProject(); if(!p)return;
+    const snap={id:this.uid('snap'),projectId:p.id,createdAt:this.now(),label:`${p.name} ${new Date().toLocaleString('zh-TW',{hour12:false})}`,payload:this.snapshotPayload()};
+    this.state.snapshots.push(snap); this.saveState(); this.renderAll(); this.showView('snapshots'); alert('Snapshot 已建立。');
+  },
+  projectSnapshots(){ return this.state.snapshots.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); },
+  renderSnapshots(){ const root=document.getElementById('view-snapshots'); const list=this.projectSnapshots(); if(!list.length){root.innerHTML='<div class="list-empty">還沒有 Snapshot。開始重要檢討前建立一份即可。</div>';return;} root.innerHTML=`<div class="card-list">${list.map(s=>`<div class="snapshot-item"><div class="row"><strong>${this.esc(s.label)}</strong><span class="pill free">${this.esc(s.id)}</span></div><div class="meta">${this.fmt(s.createdAt)}｜${s.payload.cards.length} 張卡片｜${(s.payload.managementItems||[]).length} 筆管理事項</div><div class="row" style="margin-top:8px"><button class="btn small" onclick="lab.createScenarioFromSnapshot('${s.id}')">從此 Snapshot 建 Scenario</button><button class="btn small" onclick="lab.useSnapshotForAI('${s.id}')">用於 AI</button><button class="btn small danger" onclick="lab.deleteSnapshot('${s.id}')">刪除</button></div></div>`).join('')}</div>`; },
+  deleteSnapshot(id){ if(!confirm('刪除這份 Snapshot？相關 Review / Scenario 不會自動刪除。'))return; this.state.snapshots=this.state.snapshots.filter(x=>x.id!==id); this.saveState(); this.renderAll(); },
+  useSnapshotForAI(id){ document.getElementById('ai-snapshot-select').value=id; this.buildReviewPrompt(); },
 
-            <!-- 3. 甘特圖 -->
-            <div id="view-gantt" class="view-container">
-                <h3 style="text-align: center; color: #475569; margin-top: 0;">📊 專案甘特圖</h3>
-                <div class="excel-actions">
-                    <button class="excel-copy-btn" onclick="app.worktime.copyTasksToExcel()">📋 複製工項總表</button>
-                    <button class="excel-copy-btn" onclick="app.worktime.copyLogsToExcel()">⏱️ 複製工時明細</button>
-                    <button class="excel-copy-btn" onclick="app.worktime.copyGanttSourceToExcel()">📊 複製甘特來源資料</button>
-                    <button class="excel-copy-btn" onclick="app.worktime.copyProjectJson()">🤖 複製專案 JSON</button>
-                    <button class="excel-copy-btn" onclick="app.worktime.exportProjectJson()">⬇️ 匯出專案 JSON</button>
-                    <button class="excel-copy-btn" onclick="app.worktime.exportWorkbookXlsx()">⬇️ 匯出 Excel (.xlsx)</button>
-                </div>
-                <div class="gantt-filter-bar">
-                    <div class="gantt-mode-switch" aria-label="甘特圖顯示模式">
-                        <button class="gantt-mode-btn active" type="button" data-gantt-mode="schedule" onclick="app.worktime.setGanttMode('schedule')">📅 排程</button>
-                        <button class="gantt-mode-btn" type="button" data-gantt-mode="time" onclick="app.worktime.setGanttMode('time')">⏱️ 工時</button>
-                    </div>
-                    <div class="gantt-scale-switch" aria-label="甘特圖時間尺度" title="只改顯示尺度，不改原始日期與工時">
-                        <button class="gantt-scale-btn" type="button" data-gantt-scale="day" onclick="app.worktime.setGanttScale('day')">日</button>
-                        <button class="gantt-scale-btn" type="button" data-gantt-scale="week" onclick="app.worktime.setGanttScale('week')">週</button>
-                        <button class="gantt-scale-btn" type="button" data-gantt-scale="month" onclick="app.worktime.setGanttScale('month')">月</button>
-                    </div>
-                    <label class="gantt-filter-field">
-                        <span>專案篩選</span>
-                        <select id="gantt-project-filter" class="gantt-filter-select" onchange="app.worktime.setGanttFilter('project', this.value)">
-                            <option value="">全部專案</option>
-                        </select>
-                    </label>
-                    <label class="gantt-filter-field">
-                        <span>月份篩選</span>
-                        <select id="gantt-month-filter" class="gantt-filter-select" onchange="app.worktime.setGanttFilter('month', this.value)">
-                            <option value="">全部月份</option>
-                        </select>
-                    </label>
-                    <button class="gantt-filter-reset" type="button" onclick="app.worktime.resetGanttFilters()">清除篩選</button>
-                </div>
-                <div class="gantt-toolbar-note">
-                    同一張甘特圖維持「📐 預計 / ⏱️ 實際」雙軌；時間尺度可切換日、週、月。可在卡片規劃區勾選「不要顯示於甘特圖」降低雜訊；隱藏卡仍保留工時與 Excel 工項資料，也仍會參與排程重疊提醒。
-                </div>
-                <div class="gantt-legend">
-                    <span class="gantt-legend-item"><span class="color-chip" style="background:#3b82f6"></span>一般</span>
-                    <span class="gantt-legend-item"><span class="color-chip" style="background:#10b981"></span>穩定</span>
-                    <span class="gantt-legend-item"><span class="color-chip" style="background:#ef4444"></span>關鍵／重要（人工）</span>
-                    <span class="gantt-legend-item"><span class="color-chip" style="background:#f59e0b"></span>注意</span>
-                    <span class="gantt-legend-item">📐 上層淡色列＝預計排程</span>
-                    <span class="gantt-legend-item">⏱️ 下層實色列＝目前尺度的實際工時</span>
-                    <span class="gantt-legend-item">⚠ 數字＝與其他正式排程重疊的工項數</span>
-                </div>
-                <div id="gantt-render-target"></div>
-            </div>
+  renderTemplateButtons(){ const root=document.getElementById('review-template-grid'); root.innerHTML=REVIEW_TEMPLATES.map(t=>`<button class="template-btn ${this.state.activeTemplate===t.id?'active':''}" data-id="${t.id}" onclick="lab.selectTemplate('${t.id}')">${t.label}</button>`).join(''); },
+  selectTemplate(id){ this.state.activeTemplate=id; this.saveState(); this.renderTemplateButtons(); },
+  renderSnapshotSelect(){ const el=document.getElementById('ai-snapshot-select'); if(!el)return; const snaps=this.projectSnapshots(); el.innerHTML=`<option value="current">目前正式資料（即時讀取）</option>`+snaps.map(s=>`<option value="${s.id}">${this.esc(s.label)}</option>`).join(''); },
+  selectedContext(){ const val=document.getElementById('ai-snapshot-select').value; if(val==='current')return {id:'current',payload:this.snapshotPayload(),label:'目前正式資料'}; const s=this.state.snapshots.find(x=>x.id===val); return s?{id:s.id,payload:s.payload,label:s.label}:{id:'current',payload:this.snapshotPayload(),label:'目前正式資料'}; },
 
-            <!-- 4. 日曆 -->
-            <div id="view-calendar" class="view-container">
-                <h3 style="text-align: center; color: #475569; margin-top: 0;">📅 全域日曆</h3>
-                <div id="calendar-render-target"></div>
-            </div>
+  compactContext(payload){
+    const p=payload.project||{};
+    const cards=(payload.cards||[]).map(({card,tabName})=>{
+      const planned=this.plannedMinutes(card), actual=this.actualMinutes(card);
+      return {
+        id:card.id||'',
+        type:card.isMemo?'free':'scheduled',
+        workspace:tabName,
+        title:card.title||'',
+        content:card.content||'',
+        category:card.category||'',
+        status:this.statusLabel(card.status),
+        statusCode:Number(card.status||0),
+        progress:card.progress??null,
+        plannedStart:card.dateStart||card.dateSingle||'',
+        plannedEnd:card.dateEnd||'',
+        plannedMinutes:planned,
+        deliverable:card.deliverable||'',
+        acceptanceCriteria:card.acceptance||'',
+        acceptanceEvidence:card.acceptanceEvidence||'',
+        planningMaturity:card.planningMaturity||'idea',
+        planningFocus:card.planningFocus||'start',
+        nextAction:card.nextAction||'',
+        decisionPoint:card.decisionPoint||'',
+        breakdownDraft:card.breakdownDraft||'',
+        dependencyNote:card.dependencyNote||'',
+        reviewNote:card.reviewNote||'',
+        actual:{
+          start:this.actualStart(card),
+          end:this.actualEnd(card),
+          totalMinutes:actual,
+          usagePercent:planned>0?Math.round(actual/planned*100):null,
+          varianceMinutes:planned>0?Math.round(actual-planned):null,
+          workLogs:(Array.isArray(card.workLogs)?card.workLogs:[]).map(l=>({
+            date:l.workDate||'',
+            minutes:Math.round(this.logMinutes(l)*100)/100,
+            source:l.source==='timer'?'timer':'manual',
+            note:l.note||''
+          }))
+        },
+        workNotes:(Array.isArray(card.entries)?card.entries:[]).map(e=>({title:e.title||'',content:e.content||'',createdAt:e.createdAt||''}))
+      };
+    });
+    const scheduled=cards.filter(c=>c.type==='scheduled');
+    const plannedTotal=scheduled.reduce((s,c)=>s+(Number(c.plannedMinutes)||0),0);
+    const scheduledActual=scheduled.reduce((s,c)=>s+(Number(c.actual?.totalMinutes)||0),0);
+    const allActual=cards.reduce((s,c)=>s+(Number(c.actual?.totalMinutes)||0),0);
+    return {
+      project:{
+        id:p.id,name:p.name,purpose:p.purpose||'',goal:p.goal||'',currentApproach:p.currentApproach||'',deadline:p.deadline,deadlineType:p.deadlineType,
+        definitionOfDone:p.definitionOfDone,constraints:p.constraints,nextReviewDate:p.nextReviewDate,
+        planningHorizonDays:p.planningHorizonDays,milestones:p.milestones||[],
+        timeSummary:{
+          plannedMinutes:plannedTotal,
+          scheduledActualMinutes:scheduledActual,
+          allActualMinutes:allActual,
+          scheduledUsagePercent:plannedTotal>0?Math.round(scheduledActual/plannedTotal*100):null
+        }
+      },
+      cards,
+      managementItems:(payload.managementItems||[]).map(m=>({
+        id:m.id,
+        status:m.status,
+        statusLabel:this.managementStatusLabel(m.status),
+        thinkingState:m.thinkingState||this.defaultThinkingState(m.status),
+        outcomeStatus:m.outcomeStatus||'unknown',
+        title:m.title||'',
+        source:m.source||'',
+        rawRequest:m.rawRequest||'',
+        context:m.context||'',
+        desiredOutcome:m.desiredOutcome||'',
+        myRole:m.myRole||'',
+        decisionOwner:m.decisionOwner||'',
+        assignee:m.assignee||'',
+        knownFacts:m.knownFacts||'',
+        unknowns:m.unknowns||'',
+        options:m.options||'',
+        tradeoffs:m.tradeoffs||'',
+        recommendation:m.recommendation||'',
+        nextAction:m.nextAction||'',
+        askWho:m.askWho||'',
+        askQuestion:m.askQuestion||'',
+        followUpDate:m.followUpDate||'',
+        result:m.result||'',
+        linkedCardId:m.linkedCardId||''
+      }))
+    };
+  },
 
-            <!-- 🌟 5. 心流沙盒 (SPA 子任務雙向綁定版) 🌟 -->
-            <div id="view-sandbox" class="view-container" style="background: transparent; border: none;">
-                <div class="sb-header">
-                    <h1 style="margin: 0; color: #1e293b;">🌟 心流沙盒 <span style="font-size: 1rem; color: #64748b; font-weight: normal;">(自動綁定時間軸與筆記)</span></h1>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="sb-btn sb-btn-warning" onclick="app.sandbox.promoteNodesToCards()">💡 轉換此頁發想節點為任務</button>
-                        <button class="sb-btn sb-btn-primary" onclick="app.sandbox.downloadMarkdown()">⬇️ 匯出今日總結 (.md)</button>
-                        <button class="sb-btn sb-btn-outline" onclick="app.switchView('timeline')">🔙 退出沙盒</button>
-                    </div>
-                </div>
+  buildReviewPrompt(){
+    const ctx=this.selectedContext(); const t=REVIEW_TEMPLATES.find(x=>x.id===this.state.activeTemplate)||REVIEW_TEMPLATES[0]; const q=document.getElementById('ai-custom-question').value.trim();
+    const prompt=`你是我的專案思考教練。這一輪不要替我重寫整個計畫，也不要一次丟出大量框架。你的工作是幫我找出「現在最值得我自己判斷的 1～3 件事」。\n\n【本次焦點】\n${t.text}\n\n【我的額外問題】\n${q||'無。請依本次焦點進行。'}\n\n【教練規則】\n1. 最多先提出 3 個關鍵問題或判斷點，依重要性排序。\n2. 若現有資訊已足以開始，請明確說「目前先不用補更多規劃」，並指出最小下一步。\n3. 區分目的、目標與目前手段。若我把手段當成目標，先用問題讓我辨識，不要直接替我改答案。\n4. 對工作卡，優先判斷：下一步是否清楚、是否真的需要拆、產出／驗收是否足以判斷。\n5. 對管理事項，區分：我自己做、找人問、交辦、等待、追蹤、待決策。不要把所有事情都變成我的執行卡。\n6. 把原本估算與實際工時／工作紀錄一起看；若工作未完成，不要只看工時百分比下結論。\n7. 資訊不足時指出缺口，不要補成事實。\n8. 只有真正影響期限、成果、決策或下一步的風險才優先。\n9. 用正常文字回答，不需要 JSON。\n\n【資料基準】\n${ctx.label} (${ctx.id})\n\n【專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}`;
+    this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt;
+  },
+  async copyText(text,msg='已複製'){ try{await navigator.clipboard.writeText(text); alert(msg);}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(msg);} },
+  copyPrompt(){ const p=this.state.lastPrompt||this.buildReviewPrompt(); this.copyText(p,'已複製完整 AI 提問。'); },
 
-                <div class="sb-layout">
-                    <!-- 左側：計時與任務 -->
-                    <div class="sb-left">
-                        <div class="sb-tabs">
-                            <button class="sb-tab-btn active" onclick="app.sandbox.switchLeftPanel('TIMER')" id="sb-tab-timer">⏱️ 計時器</button>
-                            <button class="sb-tab-btn" onclick="app.sandbox.switchLeftPanel('TODO')" id="sb-tab-todo">📋 任務矩陣</button>
-                        </div>
+  saveReview(){
+    const response=document.getElementById('ai-response').value.trim(); if(!response)return alert('請先貼上 AI 回覆。'); const ctx=this.selectedContext(); const t=REVIEW_TEMPLATES.find(x=>x.id===this.state.activeTemplate)||REVIEW_TEMPLATES[0];
+    const review={id:this.uid('review'),reviewType:'discussion',projectId:this.state.activeProjectId,snapshotId:ctx.id==='current'?'':ctx.id,contextLabel:ctx.label,templateId:t.id,templateLabel:t.label,customQuestion:document.getElementById('ai-custom-question').value.trim(),prompt:this.state.lastPrompt||this.buildReviewPrompt(),response,userReflection:'',createdAt:this.now()};
+    this.state.reviews.push(review); this.saveState(); document.getElementById('ai-response').value=''; this.renderReviews(); this.showView('reviews'); alert('已儲存為 Review。');
+  },
+  projectReviews(){ return this.state.reviews.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); },
+  updateReviewReflection(id,value){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; r.userReflection=value; this.saveState(); },
+  updateReviewField(id,field,value){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; r[field]=value; r.updatedAt=this.now(); this.saveState(); },
+  reviewToFinding(id){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; this.addFinding({sourceReviewId:id,title:`來自 ${r.templateLabel||'Outcome Review'} 的發現`,detail:'',type:'decision_candidate'}); this.showView('findings'); },
+  addOutcomeReview(seed={}){ const r={id:this.uid('review'),reviewType:'outcome',projectId:this.state.activeProjectId,templateLabel:'Outcome Review',problem:seed.problem||'',outcomeStatus:seed.outcomeStatus||'unknown',originalApproach:seed.originalApproach||'',actualApproach:seed.actualApproach||'',changeReason:seed.changeReason||'',lesson:seed.lesson||'',transferable:false,transferableRule:'',sourceManagementId:seed.sourceManagementId||'',createdAt:this.now(),updatedAt:this.now()}; this.state.reviews.push(r); this.saveState(); this.renderReviews(); this.showView('reviews'); },
+  createOutcomeFromManagement(id){ const m=this.state.managementItems.find(x=>x.id===id); if(!m)return; this.addOutcomeReview({problem:m.desiredOutcome||m.title,outcomeStatus:m.outcomeStatus||'unknown',originalApproach:m.options||m.recommendation,actualApproach:m.result,changeReason:'',lesson:'',sourceManagementId:m.id}); },
+  renderOutcomeReview(r){ return `<div class="review-item"><div class="row"><strong>Outcome Review</strong><span class="tiny">${this.fmt(r.createdAt)}</span></div><label class="field">原本要解決的問題<textarea onchange="lab.updateReviewField('${r.id}','problem',this.value)">${this.esc(r.problem||'')}</textarea></label><label class="field">問題最後解決了嗎？<select onchange="lab.updateReviewField('${r.id}','outcomeStatus',this.value)">${OUTCOME_STATUSES.map(([v,l])=>`<option value="${v}" ${(r.outcomeStatus||'unknown')===v?'selected':''}>${l}</option>`).join('')}</select></label><div class="management-grid"><label class="field">原本打算怎麼解<textarea onchange="lab.updateReviewField('${r.id}','originalApproach',this.value)">${this.esc(r.originalApproach||'')}</textarea></label><label class="field">實際最後怎麼解<textarea onchange="lab.updateReviewField('${r.id}','actualApproach',this.value)">${this.esc(r.actualApproach||'')}</textarea></label></div><label class="field">為什麼不同／出現了什麼新資訊<textarea onchange="lab.updateReviewField('${r.id}','changeReason',this.value)">${this.esc(r.changeReason||'')}</textarea></label><label class="field">本次經驗<textarea onchange="lab.updateReviewField('${r.id}','lesson',this.value)">${this.esc(r.lesson||'')}</textarea></label><label class="tiny"><input type="checkbox" ${r.transferable?'checked':''} onchange="lab.updateReviewField('${r.id}','transferable',this.checked);lab.renderReviews()"> 值得帶到其他專案</label>${r.transferable?`<label class="field">可遷移原則<textarea onchange="lab.updateReviewField('${r.id}','transferableRule',this.value)">${this.esc(r.transferableRule||'')}</textarea></label>`:''}<div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉 Finding</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`; },
+  renderReviews(){ const root=document.getElementById('view-reviews'); const list=this.projectReviews(); const add=`<button class="btn primary" onclick="lab.addOutcomeReview()">＋ Outcome Review</button>`; if(!list.length){root.innerHTML=`${add}<div style="height:10px"></div><div class="list-empty">尚無 Review。討論原文與事情結束後的 Outcome Review 都放在這裡。</div>`;return;} root.innerHTML=add+'<div style="height:10px"></div>'+list.map(r=>r.reviewType==='outcome'?this.renderOutcomeReview(r):`<div class="review-item"><div class="row"><strong>${this.esc(r.templateLabel)}</strong><span class="pill free">${this.esc(r.contextLabel||'')}</span><span class="tiny">${this.fmt(r.createdAt)}</span></div>${r.customQuestion?`<div class="desc"><strong>我的問題：</strong>${this.esc(r.customQuestion)}</div>`:''}<details><summary>AI 回覆原文</summary><div class="desc">${this.esc(r.response||'').replace(/\n/g,'<br>')}</div></details><label class="field" style="margin-top:8px">我的後續想法<textarea onchange="lab.updateReviewReflection('${r.id}',this.value)">${this.esc(r.userReflection||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉 Finding</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`).join(''); },
 
-                        <!-- 計時器 -->
-                        <div id="sb-view-timer">
-                            <div class="sb-tabs" style="margin-bottom: 15px;">
-                                <button class="sb-tab-btn active" onclick="app.sandbox.setTimerMode('FLEXIBLE')" id="sb-btn-mode-flex">彈性計時</button>
-                                <button class="sb-tab-btn" onclick="app.sandbox.setTimerMode('POMODORO')" id="sb-btn-mode-pomo">番茄時鐘</button>
-                            </div>
-                            
-                            <div class="sb-timer-display" id="sb-timeDisplay">00:00:00</div>
-                            <div class="sb-gif-container" id="sb-gifContainer"><span style="color:#ccc">GIF (停止)</span></div>
-                            <div style="text-align:center; margin: 10px 0; font-weight:bold; color:#6c757d;" id="sb-statusText">狀態: 閒置</div>
-                            <div class="timer-target" id="sb-timerTarget">目前未綁定卡片。選擇任務後，心流時間會直接累積到該卡。</div>
-                            
-                            <div style="display: flex; justify-content: space-between; gap: 5px;">
-                                <button class="sb-btn sb-btn-success" onclick="app.sandbox.startTimer()">▶ 啟動</button>
-                                <button class="sb-btn sb-btn-warning" onclick="app.sandbox.pauseTimer()">⏸ 暫停</button>
-                                <button class="sb-btn sb-btn-primary" onclick="app.sandbox.stopTimer()">⏹ 停止</button>
-                            </div>
+  renderAiTargetSelect(){ const el=document.getElementById('ai-target-card-select'); if(!el)return; const cards=this.projectCards(); const prev=el.value; el.innerHTML=cards.map(({card})=>`<option value="${this.esc(card.id)}">${this.esc(card.title||'未命名')}</option>`).join('')||'<option value="">沒有卡片</option>'; if(cards.some(({card})=>card.id===prev))el.value=prev; },
+  patchAllowedFields(){ return ['title','content','category','nextAction','decisionPoint','breakdownDraft','dependencyNote','deliverable','acceptance','acceptanceEvidence','reviewNote']; },
+  patchableCardView(card){ const out={}; this.patchAllowedFields().forEach(k=>out[k]=String(card?.[k]??'')); return out; },
+  patchSchemaExample(){ const id=document.getElementById('ai-target-card-select')?.value||'card_xxx'; return {schemaVersion:'1.0',type:'project_lab_patch',baseSnapshotId:this.selectedContext().id,targetType:'card',targetId:id,summary:'主要問題',edits:[{field:'deliverable',expectedOriginal:'原文',proposedValue:'建議文字',reason:'為什麼值得改',changeType:'clarify'}],questions:[]}; },
+  buildPatchPrompt(){ const ctx=this.selectedContext(); const id=document.getElementById('ai-target-card-select')?.value; const currentHit=this.projectCards().find(x=>x.card.id===id); if(!currentHit)return alert('請先選擇要批改的卡片。'); const hit=(ctx.payload?.cards||[]).find(x=>x.card?.id===id)||currentHit; const card=hit.card; const q=document.getElementById('ai-custom-question').value.trim(); const prompt=`請像批改作業一樣檢查這張工作卡。整體方向若合理，請保留原規劃，只指出真正影響可理解性、可執行性、目的／目標連結或可驗收性的地方。\n\n【規則】\n1. 最多提出 3 項修改；沒有必要改的欄位不要動。\n2. 不要重新規劃整個專案；若需要大幅重構，questions 裡明確說應改用 Scenario。\n3. 特別檢查：是否把手段當目標、下一步是否具體、下一判斷點是否合理、產出／驗收是否可判斷。\n4. expectedOriginal 必須逐字等於提供資料中的現值，讓系統檢查這份批改是否已過期。\n5. 只能修改以下文字欄位：${this.patchAllowedFields().join(', ')}。\n6. 只輸出合法 JSON，不要 Markdown code fence 或其他文字。\n\n【我的額外問題】\n${q||'無'}\n\n【資料基準】\n${ctx.label} (${ctx.id})\n\n【目標卡片完整脈絡】\n${JSON.stringify(this.compactContext({project:ctx.payload.project,cards:[hit],managementItems:[]}).cards[0],null,2)}\n\n【可批改欄位現值｜expectedOriginal 必須從這裡逐字取值】\n${JSON.stringify(this.patchableCardView(card),null,2)}\n\n【專案目的／目標／目前做法】\n${JSON.stringify({purpose:this.activeProject()?.purpose||'',goal:this.activeProject()?.goal||'',currentApproach:this.activeProject()?.currentApproach||'',deadline:this.activeProject()?.deadline||''},null,2)}\n\n【回傳格式】\n${JSON.stringify(this.patchSchemaExample(),null,2)}`; this.state.lastPatchPrompt=prompt; this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt; },
+  copyPatchSchema(){ this.copyText(JSON.stringify(this.patchSchemaExample(),null,2),'已複製 Patch JSON Schema。'); },
+  projectPatches(){ return (this.state.patches||[]).filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); },
+  currentCardField(cardId,field){ const c=this.projectCards().find(x=>x.card.id===cardId)?.card; return c?String(c[field]??''):null; },
+  validatePatchImport(obj){ const e=[]; if(obj?.schemaVersion!=='1.0')e.push('schemaVersion 必須是 1.0'); if(obj?.type!=='project_lab_patch')e.push('type 必須是 project_lab_patch'); if(obj?.targetType!=='card')e.push('targetType 必須是 card'); if(!obj?.baseSnapshotId)e.push('缺少 baseSnapshotId'); else if(obj.baseSnapshotId!=='current'&&!this.state.snapshots.some(x=>x.id===obj.baseSnapshotId))e.push('baseSnapshotId 找不到對應 Snapshot'); if(!obj?.targetId)e.push('缺少 targetId'); if(!Array.isArray(obj?.edits))e.push('缺少 edits'); if((obj?.edits||[]).length>3)e.push('edits 不應超過 3 項'); const allowed=new Set(this.patchAllowedFields()); (obj?.edits||[]).forEach((x,i)=>{ if(!allowed.has(x.field))e.push(`edits[${i}] 不允許修改欄位 ${x.field}`); if(x.expectedOriginal===undefined)e.push(`edits[${i}] 缺少 expectedOriginal`); if(x.proposedValue===undefined)e.push(`edits[${i}] 缺少 proposedValue`); if(!x.reason)e.push(`edits[${i}] 缺少 reason`); }); if(!this.projectCards().some(x=>x.card.id===obj?.targetId))e.push('targetId 不存在於目前專案'); return e; },
+  tryImportPatchFromResponse(){ const box=document.getElementById('import-status'); try{ const obj=this.extractJson(document.getElementById('ai-response').value); const errs=this.validatePatchImport(obj); if(errs.length){box.innerHTML=`<div class="notice bad"><strong>Patch 格式不能匯入：</strong><br>${errs.map(x=>'• '+this.esc(x)).join('<br>')}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyPatchRepairPrompt()">複製 Patch 修復提示詞</button></div>`;return;} const edits=obj.edits.map(x=>({...x,stale:this.currentCardField(obj.targetId,x.field)!==String(x.expectedOriginal??''),decision:'pending',finalValue:''})); const p={id:this.uid('patch'),projectId:this.state.activeProjectId,baseSnapshotId:obj.baseSnapshotId||'',targetType:'card',targetId:obj.targetId,summary:obj.summary||'',questions:obj.questions||[],edits,createdAt:this.now()}; this.state.patches.push(p); this.saveState(); box.innerHTML='<div class="notice ok">Patch 已匯入。採用／保留只記錄你的判斷，不會直接改正式白板。</div>'; this.renderPatches(); this.showView('patches'); }catch(e){box.innerHTML=`<div class="notice bad"><strong>Patch JSON 解析失敗：</strong>${this.esc(e.message)}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyPatchRepairPrompt()">複製 Patch 修復提示詞</button></div>`;} },
+  copyPatchRepairPrompt(){ const txt=`你剛才的批改內容無法被 Project Lab 匯入。不要改變建議，只修正格式。請只輸出合法 JSON，並符合：\n${JSON.stringify(this.patchSchemaExample(),null,2)}`; this.copyText(txt,'已複製 Patch 修復提示詞。'); },
+  updatePatchEdit(pid,index,field,value){ const p=this.state.patches.find(x=>x.id===pid); if(!p||!p.edits[index])return; p.edits[index][field]=value; this.saveState(); this.renderPatches(); },
+  renderPatches(){ const root=document.getElementById('view-patches'); if(!root)return; const list=this.projectPatches(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 AI 批改。選一張卡產生「批改提示」，把 JSON 貼回後會以刪除線／紅字方式顯示。</div>';return;} const labels={title:'標題',content:'內容',category:'分類',nextAction:'下一步',decisionPoint:'下一判斷點',breakdownDraft:'拆解草稿',dependencyNote:'依賴',deliverable:'預期產出',acceptance:'驗收條件',acceptanceEvidence:'驗收證據',reviewNote:'回顧'}; root.innerHTML=list.map(p=>{const title=this.projectCards().find(x=>x.card.id===p.targetId)?.card?.title||p.targetId; return `<div class="patch-item"><div class="row"><strong>✏️ ${this.esc(title)}</strong><span class="tiny">${this.fmt(p.createdAt)}</span></div>${p.summary?`<div class="desc">${this.esc(p.summary)}</div>`:''}${p.edits.map((e,i)=>`<div class="patch-edit ${e.stale?'stale':''}"><strong>${i+1}/${p.edits.length} ${this.esc(labels[e.field]||e.field)}</strong>${e.stale?'<div class="stale-note">⚠ 正式白板目前值已和 AI 批改時的原文不同，請先人工確認。</div>':''}<div class="redline-old">${this.esc(e.expectedOriginal||'（空白）')}</div><div class="redline-new">${this.esc(e.proposedValue||'（空白）')}</div><div class="patch-reason">理由：${this.esc(e.reason||'')}</div><div class="row" style="margin-top:7px"><button class="btn small ${e.decision==='accepted'?'success':''}" onclick="lab.updatePatchEdit('${p.id}',${i},'decision','accepted')">採用這項</button><button class="btn small" onclick="lab.updatePatchEdit('${p.id}',${i},'decision','kept')">保留原文</button><button class="btn small" onclick="lab.updatePatchEdit('${p.id}',${i},'decision','edited')">自己修改</button></div>${e.decision==='edited'?`<label class="field" style="margin-top:6px">我最後想怎麼寫<textarea onchange="lab.updatePatchEdit('${p.id}',${i},'finalValue',this.value)">${this.esc(e.finalValue||e.proposedValue||'')}</textarea></label>`:''}<div class="tiny">目前選擇：${e.decision==='accepted'?'採用建議':e.decision==='kept'?'保留原文':e.decision==='edited'?'自己修改':'尚未判斷'}</div></div>`).join('')}${(p.questions||[]).length?`<details><summary>AI 留下的問題</summary><div class="desc">${p.questions.map(x=>'• '+this.esc(x)).join('<br>')}</div></details>`:''}<button class="btn small danger" onclick="lab.deleteEntity('patches','${p.id}')">刪除批改</button></div>`;}).join(''); },
 
-                            <hr style="border:0; border-top:1px dashed #ced4da; margin: 20px 0;">
-                            <h4 style="margin:5px 0; color:var(--danger);">🎯 死線倒數</h4>
-                            <input type="text" id="sb-deadlineTask" placeholder="專案名稱" oninput="app.sandbox.updateCountdown()" style="width:100%; padding:8px; margin-bottom:5px;">
-                            <input type="date" id="sb-deadlineDate" onchange="app.sandbox.updateCountdown()" style="width:100%; padding:8px;">
-                            <div id="sb-countdownDisplay" style="display:none; margin-top:15px; padding:10px; background:var(--danger); color:white; text-align:center; border-radius:5px; font-weight:bold;"></div>
-                        </div>
+  addFinding(seed={}){ const f={id:this.uid('find'),projectId:this.state.activeProjectId,type:seed.type||'risk',title:seed.title||'',detail:seed.detail||'',impact:'',validation:'',status:'open',sourceReviewId:seed.sourceReviewId||'',createdAt:this.now(),updatedAt:this.now()}; this.state.findings.push(f); this.saveState(); this.renderFindings(); },
+  updateFinding(id,field,value){ const f=this.state.findings.find(x=>x.id===id); if(!f)return; f[field]=value; f.updatedAt=this.now(); this.saveState(); },
+  projectFindings(){return this.state.findings.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));},
+  renderFindings(){ const root=document.getElementById('view-findings'); const list=this.projectFindings(); const add=`<button class="btn primary" onclick="lab.addFinding()">＋ 新增 Finding</button>`; if(!list.length){root.innerHTML=`${add}<div style="height:10px"></div><div class="list-empty">沒有 Finding。只把值得持續追蹤的未知、風險、問題、依賴或待決策事項放進來。</div>`;return;} root.innerHTML=`${add}<div style="height:10px"></div>`+list.map(f=>`<div class="finding-item"><div class="row"><select style="max-width:170px" onchange="lab.updateFinding('${f.id}','type',this.value)">${FINDING_TYPES.map(([v,l])=>`<option value="${v}" ${v===f.type?'selected':''}>${l}</option>`).join('')}</select><select style="max-width:120px" onchange="lab.updateFinding('${f.id}','status',this.value)"><option value="open" ${f.status==='open'?'selected':''}>待處理</option><option value="validated" ${f.status==='validated'?'selected':''}>已確認</option><option value="closed" ${f.status==='closed'?'selected':''}>已關閉</option><option value="ignored" ${f.status==='ignored'?'selected':''}>不處理</option></select></div><input type="text" value="${this.esc(f.title)}" placeholder="一句話描述" onchange="lab.updateFinding('${f.id}','title',this.value)" style="margin-top:8px"><label class="field" style="margin-top:8px">內容<textarea onchange="lab.updateFinding('${f.id}','detail',this.value)">${this.esc(f.detail)}</textarea></label><label class="field">影響<textarea onchange="lab.updateFinding('${f.id}','impact',this.value)">${this.esc(f.impact)}</textarea></label><label class="field">驗證 / 處理方式<textarea onchange="lab.updateFinding('${f.id}','validation',this.value)">${this.esc(f.validation)}</textarea></label><div class="row"><button class="btn small" onclick="lab.findingToDecision('${f.id}')">形成 Decision</button><button class="btn small danger" onclick="lab.deleteEntity('findings','${f.id}')">刪除</button></div></div>`).join(''); },
 
-                        <!-- 任務矩陣 (動態解析 Markdown 子任務) -->
-                        <div id="sb-view-todo" style="display:none; flex-grow: 1; flex-direction: column;">
-                            <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #dee2e6;">
-                                <div style="display:flex; gap:5px;">
-                                    <input type="text" id="sb-newTodoTask" placeholder="輸入任務 (Enter 自動建立為子任務或卡片)" style="flex:1; padding:8px;" onkeypress="if(event.key === 'Enter') app.sandbox.addTodo()">
-                                    <button class="sb-btn sb-btn-primary" onclick="app.sandbox.addTodo()">➕ 新增</button>
-                                </div>
-                            </div>
-                            
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <button class="sb-btn sb-btn-outline" onclick="app.sandbox.mergeSelectedCards()">🔗 合併選中大卡片</button>
-                                <button class="sb-btn sb-btn-outline" style="color:var(--danger);" onclick="app.sandbox.clearCompletedCards()">清除已完成卡片</button>
-                            </div>
-                            
-                            <div id="sb-todoListContainer" style="flex-grow: 1; max-height: 500px; overflow-y: auto; border-top: 1px solid #dee2e6;">
-                                <!-- 任務動態生成 -->
-                            </div>
-                        </div>
-                    </div>
+  findingToDecision(id){ const f=this.state.findings.find(x=>x.id===id); if(!f)return; const d={id:this.uid('decision'),projectId:f.projectId,question:f.title,context:f.detail,options:'',decision:'',reason:'',tradeoffs:'',confidence:'medium',status:'proposed',sourceFindingId:f.id,createdAt:this.now(),updatedAt:this.now()}; this.state.decisions.push(d); this.saveState(); this.renderDecisions(); this.showView('decisions'); },
+  updateDecision(id,field,value){ const d=this.state.decisions.find(x=>x.id===id); if(!d)return; d[field]=value; d.updatedAt=this.now(); this.saveState(); },
+  projectDecisions(){return this.state.decisions.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));},
+  renderDecisions(){ const root=document.getElementById('view-decisions'); const list=this.projectDecisions(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 Decision。只有真正形成選擇時才留下決策紀錄。</div>';return;} root.innerHTML=list.map(d=>`<div class="decision-item"><div class="row"><span class="pill">Decision</span><select style="max-width:140px" onchange="lab.updateDecision('${d.id}','status',this.value)"><option value="proposed" ${d.status==='proposed'?'selected':''}>Proposed</option><option value="accepted" ${d.status==='accepted'?'selected':''}>Accepted</option><option value="superseded" ${d.status==='superseded'?'selected':''}>Superseded</option><option value="rejected" ${d.status==='rejected'?'selected':''}>Rejected</option></select><select style="max-width:120px" onchange="lab.updateDecision('${d.id}','confidence',this.value)"><option value="low" ${d.confidence==='low'?'selected':''}>低信心</option><option value="medium" ${d.confidence==='medium'?'selected':''}>中信心</option><option value="high" ${d.confidence==='high'?'selected':''}>高信心</option></select></div><label class="field">問題<input type="text" value="${this.esc(d.question)}" onchange="lab.updateDecision('${d.id}','question',this.value)"></label><label class="field">背景<textarea onchange="lab.updateDecision('${d.id}','context',this.value)">${this.esc(d.context)}</textarea></label><label class="field">考慮過的選項<textarea onchange="lab.updateDecision('${d.id}','options',this.value)">${this.esc(d.options)}</textarea></label><label class="field">決定<textarea onchange="lab.updateDecision('${d.id}','decision',this.value)">${this.esc(d.decision)}</textarea></label><label class="field">理由<textarea onchange="lab.updateDecision('${d.id}','reason',this.value)">${this.esc(d.reason)}</textarea></label><label class="field">代價 / 取捨<textarea onchange="lab.updateDecision('${d.id}','tradeoffs',this.value)">${this.esc(d.tradeoffs)}</textarea></label><button class="btn small danger" onclick="lab.deleteEntity('decisions','${d.id}')">刪除</button></div>`).join(''); },
 
-                    <!-- 右側：動態筆記焦點區 -->
-                    <div class="sb-right">
-                        <div class="sb-note-header">
-                            <div style="flex: 1;">
-                                <span style="font-size: 0.85rem; color: #6c757d; font-weight: bold;">當前焦點卡片 (點擊標題可修改)</span>
-                                <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px;">
-                                    <span id="sb-activeTaskIcon" style="font-size: 1.5rem; display: none;">🎯</span>
-                                    <input type="text" id="sb-activeTaskTitle" 
-                                           style="margin: 0; color: var(--primary); font-size: 1.5rem; font-weight: bold; border: none; background: transparent; outline: none; flex: 1; padding: 0;" 
-                                           placeholder="全域沙盒草稿 (未選擇任務)" 
-                                           oninput="app.sandbox.renameActiveTask()">
-                                </div>
-                            </div>
-                        </div>
+  createScenarioFromSnapshot(snapshotId){ const s=this.state.snapshots.find(x=>x.id===snapshotId); if(!s)return; const scenario={id:this.uid('scenario'),projectId:s.projectId,baseSnapshotId:s.id,name:`Scenario ${this.projectScenarios().length+1}`,status:'draft',createdAt:this.now(),updatedAt:this.now(),cards:s.payload.cards.map(({card,tabId,tabName})=>({id:card.id||this.uid('temp'),originId:card.id||'',isNew:false,isDeleted:false,tabId,tabName,...structuredClone(card)})),notes:''}; this.state.scenarios.push(scenario); this.saveState(); this.renderScenarios(); this.showView('scenarios'); },
+  projectScenarios(){return this.state.scenarios.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));},
+  updateScenario(id,field,value){const s=this.state.scenarios.find(x=>x.id===id);if(!s)return;s[field]=value;s.updatedAt=this.now();this.saveState();},
+  updateScenarioCard(sid,cid,field,value){const s=this.state.scenarios.find(x=>x.id===sid);const c=s?.cards.find(x=>x.id===cid);if(!c)return; if(['plannedMinutes','progress','status'].includes(field) && value!=='') value=Number(value); c[field]=value; if(field==='dateStart'||field==='dateEnd') c.dateMode='range'; s.updatedAt=this.now();this.saveState();},
+  addScenarioCard(sid){const s=this.state.scenarios.find(x=>x.id===sid);if(!s)return; s.cards.push({id:this.uid('temp'),originId:'',isNew:true,isDeleted:false,title:'',content:'',project:this.activeSourceName(),category:'',status:0,progress:'',isMemo:false,dateMode:'range',dateStart:'',dateEnd:'',plannedMinutes:0,planningMaturity:'idea',nextAction:'',decisionPoint:'',breakdownDraft:'',dependencyNote:'',deliverable:'',acceptance:'',acceptanceEvidence:'',workLogs:[],entries:[]}); s.updatedAt=this.now();this.saveState();this.renderScenarios();},
+  toggleDeleteScenarioCard(sid,cid){const s=this.state.scenarios.find(x=>x.id===sid);const c=s?.cards.find(x=>x.id===cid);if(!c)return;if(c.isNew)s.cards=s.cards.filter(x=>x.id!==cid);else c.isDeleted=!c.isDeleted;s.updatedAt=this.now();this.saveState();this.renderScenarios();},
+  baseSnapshot(s){return this.state.snapshots.find(x=>x.id===s.baseSnapshotId)||null;},
+  scenarioDiff(s){
+    const base=this.baseSnapshot(s); const baseCards=new Map((base?.payload?.cards||[]).map(x=>[x.card.id,x.card])); const current=new Map(s.cards.map(c=>[c.originId||c.id,c])); const added=[],removed=[],modified=[];
+    s.cards.forEach(c=>{ if(c.isDeleted)return; if(c.isNew||!c.originId||!baseCards.has(c.originId)){added.push(c);return;} const b=baseCards.get(c.originId); const fields=['title','content','category','status','progress','dateStart','dateEnd','plannedMinutes','deliverable','acceptance','isMemo']; const changes={}; fields.forEach(f=>{const bv=f==='plannedMinutes'?this.plannedMinutes(b):(b[f]??'');const cv=f==='plannedMinutes'?this.plannedMinutes(c):(c[f]??'');if(JSON.stringify(bv)!==JSON.stringify(cv))changes[f]={from:bv,to:cv};}); if(Object.keys(changes).length)modified.push({card:c,changes}); });
+    (base?.payload?.cards||[]).forEach(x=>{const c=s.cards.find(sc=>sc.originId===x.card.id);if(!c||c.isDeleted)removed.push(x.card);}); return {added,removed,modified};
+  },
+  renderScenarios(){ const root=document.getElementById('view-scenarios'); const list=this.projectScenarios(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 Scenario。先從 Snapshot 建立一份完整候選規劃，再自由調整。</div>';return;} root.innerHTML=list.map(s=>this.renderScenario(s)).join(''); },
+  renderScenario(s){ const diff=this.scenarioDiff(s); const cards=s.cards.filter(c=>!c.isDeleted); return `<div class="scenario-item"><div class="row"><input type="text" style="flex:1;font-weight:900" value="${this.esc(s.name)}" onchange="lab.updateScenario('${s.id}','name',this.value)"><select style="max-width:150px" onchange="lab.updateScenario('${s.id}','status',this.value)"><option value="draft" ${s.status==='draft'?'selected':''}>草稿</option><option value="candidate" ${s.status==='candidate'?'selected':''}>候選</option><option value="adopted" ${s.status==='adopted'?'selected':''}>決定採用</option><option value="rejected" ${s.status==='rejected'?'selected':''}>不採用</option></select></div><div class="tiny">Base: ${this.esc(s.baseSnapshotId)}｜${this.fmt(s.createdAt)}</div><label class="field" style="margin-top:8px">Scenario 說明<textarea onchange="lab.updateScenario('${s.id}','notes',this.value)">${this.esc(s.notes||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.addScenarioCard('${s.id}')">＋ 新增卡片</button><button class="btn small" onclick="lab.toggleDiff('${s.id}')">比較 Snapshot</button><button class="btn small" onclick="lab.exportScenario('${s.id}')">匯出 JSON</button><button class="btn small danger" onclick="lab.deleteEntity('scenarios','${s.id}')">刪除 Scenario</button></div><div id="diff-${s.id}" class="hidden" style="margin-top:10px">${this.renderDiff(diff)}</div><div class="section-title">候選規劃（${cards.length} 張）</div><div class="card-list">${cards.map(c=>this.renderScenarioCard(s,c,diff)).join('')}</div></div>`; },
+  renderScenarioCard(s,c,diff){
+    const isMod=diff.modified.some(x=>x.card.id===c.id), isAdd=diff.added.some(x=>x.id===c.id);
+    const factStatus = c.isNew
+      ? `<select onchange="lab.updateScenarioCard('${s.id}','${c.id}','status',this.value)">${[0,1,2,3].map(v=>`<option value="${v}" ${Number(c.status)===v?'selected':''}>${this.statusLabel(v)}</option>`).join('')}</select>`
+      : `<input class="readonly" type="text" readonly value="${this.esc(this.statusLabel(c.status))}">`;
+    return `<div class="scenario-card ${isAdd?'added':isMod?'changed':''}">
+      <div class="row"><span class="pill ${isAdd?'ok':'free'}">${isAdd?'新增':c.isMemo?'自由卡':'排程卡'}</span><button class="btn small danger" onclick="lab.toggleDeleteScenarioCard('${s.id}','${c.id}')">${c.isNew?'移除':'標記刪除'}</button></div>
+      ${!c.isNew?this.renderTimeCompare(c):'<div class="notice info" style="margin-top:8px">新卡尚無歷史工時；只有規劃資料可調整。</div>'}
+      <div class="scenario-fields">
+        <label class="field wide">標題<input type="text" value="${this.esc(c.title||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','title',this.value)"></label>
+        <label class="field wide">內容<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','content',this.value)">${this.esc(c.content||'')}</textarea></label>
+        <label class="field">分類<input type="text" value="${this.esc(c.category||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','category',this.value)"></label>
+        <label class="field">型態<select onchange="lab.updateScenarioCard('${s.id}','${c.id}','isMemo',this.value==='true')"><option value="false" ${!c.isMemo?'selected':''}>排程卡</option><option value="true" ${c.isMemo?'selected':''}>自由卡</option></select></label>
+        <label class="field">預計開始<input type="date" value="${this.esc(c.dateStart||c.dateSingle||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','dateStart',this.value)"></label>
+        <label class="field">預計完成<input type="date" value="${this.esc(c.dateEnd||'')}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','dateEnd',this.value)"></label>
+        <label class="field">預估工時（分鐘）<input type="number" min="0" value="${this.plannedMinutes(c)}" onchange="lab.updateScenarioCard('${s.id}','${c.id}','plannedMinutes',this.value)"></label>
+        <label class="field">規劃成熟度<select onchange="lab.updateScenarioCard('${s.id}','${c.id}','planningMaturity',this.value)"><option value="idea" ${(c.planningMaturity||'idea')==='idea'?'selected':''}>想法</option><option value="actionable" ${c.planningMaturity==='actionable'?'selected':''}>可行動</option><option value="planned" ${c.planningMaturity==='planned'?'selected':''}>已規劃</option><option value="committed" ${c.planningMaturity==='committed'?'selected':''}>已承諾</option></select></label>
+        <label class="field wide">下一步<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','nextAction',this.value)">${this.esc(c.nextAction||'')}</textarea></label>
+        <label class="field wide">下一判斷點<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','decisionPoint',this.value)">${this.esc(c.decisionPoint||'')}</textarea></label>
+        <label class="field">${c.isNew?'初始狀態':'目前狀態（事實）'}${factStatus}</label>
+        <label class="field wide">預期產出<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','deliverable',this.value)">${this.esc(c.deliverable||'')}</textarea></label>
+        <label class="field wide">驗收條件<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','acceptance',this.value)">${this.esc(c.acceptance||'')}</textarea></label><label class="field wide">驗收證據<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','acceptanceEvidence',this.value)">${this.esc(c.acceptanceEvidence||'')}</textarea></label>
+      </div>
+      <details><summary>歷史事實（唯讀）</summary><div class="desc">實際開始：${this.esc(this.actualStart(c)||'—')}｜實際最後紀錄：${this.esc(this.actualEnd(c)||'—')}｜工作紀錄：${(Array.isArray(c.entries)?c.entries:[]).length} 筆。Scenario 不修改歷史事實。</div>${this.renderWorkLogs(c)}</details>
+    </div>`;
+  },
+  renderDiff(diff){ const fld={title:'標題',content:'內容',category:'分類',status:'狀態',progress:'進度',dateStart:'預計開始',dateEnd:'預計完成',plannedMinutes:'預估工時(分鐘)',deliverable:'預期產出',acceptance:'驗收條件',acceptanceEvidence:'驗收證據',planningMaturity:'規劃成熟度',nextAction:'下一步',decisionPoint:'下一判斷點',breakdownDraft:'拆解草稿',dependencyNote:'依賴',isMemo:'卡片型態'}; return `<div class="diff-group"><strong>＋ 新增 ${diff.added.length}</strong>${diff.added.map(c=>`<div class="diff-row">${this.esc(c.title||'未命名')}</div>`).join('')}</div><div class="diff-group"><strong>－ 移除 ${diff.removed.length}</strong>${diff.removed.map(c=>`<div class="diff-row">${this.esc(c.title||'未命名')}</div>`).join('')}</div><div class="diff-group"><strong>✏️ 修改 ${diff.modified.length}</strong>${diff.modified.map(m=>`<div class="diff-row"><strong>${this.esc(m.card.title||'未命名')}</strong>${Object.entries(m.changes).map(([k,v])=>`<div><code>${this.esc(fld[k]||k)}</code>：${this.esc(v.from)} → ${this.esc(v.to)}</div>`).join('')}</div>`).join('')}</div>`; },
+  toggleDiff(id){document.getElementById(`diff-${id}`)?.classList.toggle('hidden');},
 
-                        <!-- 工作紀錄：與時間軸卡片共用同一份 card.entries，預設收合避免干擾心流 -->
-                        <div id="sb-entry-context" style="display:none;"></div>
+  scenarioSchemaExample(){ return {schemaVersion:'1.1',type:'project_lab_scenario',projectId:this.state.activeProjectId,baseSnapshotId:'請填入提示詞提供的 Snapshot ID',scenario:{name:'方案名稱',notes:'此方案的核心取捨',cards:[{id:'既有卡片請保留原 card id；新增卡片用 temp_001',originId:'既有卡片填原 card id；新增卡片留空',isNew:false,isDeleted:false,title:'',content:'',category:'',isMemo:false,dateMode:'range',dateStart:'YYYY-MM-DD',dateEnd:'YYYY-MM-DD',plannedMinutes:120,planningMaturity:'planned',nextAction:'',decisionPoint:'',breakdownDraft:'',dependencyNote:'',deliverable:'',acceptance:'',acceptanceEvidence:''}]}}; },
+  buildScenarioPrompt(){ const ctx=this.selectedContext(); const findings=this.projectFindings().filter(x=>x.status!=='closed'&&x.status!=='ignored'); const decisions=this.projectDecisions().filter(x=>x.status==='accepted'||x.status==='proposed'); const reviews=this.projectReviews().slice(0,5).map(r=>({template:r.templateLabel,question:r.customQuestion,response:r.response,userReflection:r.userReflection})); const prompt=`請把目前已形成的討論共識整理成一份「完整可推演 Scenario」。\n\n重要：這不是要求你重新分析，而是把已有討論轉成一個可實際試排的完整候選專案版本。若仍存在未解決且會影響結構的未知，請不要硬做 Scenario，改以文字列出還缺什麼。\n\n【規則】\n1. 回傳完整 Scenario，不只回傳變動 Delta。\n2. 既有卡片保留原 card id 與 originId。新增卡片使用 temp_001、temp_002...，originId 留空，isNew=true。\n3. 若某既有卡片要移除，保留卡片並設 isDeleted=true。\n4. 不要在回傳 JSON 中放入 workLogs、entries，既有卡片的目前狀態與進度也不要自行改寫；這些歷史事實會由 Project Lab 依 baseSnapshotId 自動補回。\n5. 規劃時必須參考目的、期限內目標、目前做法，以及實際工時／工作紀錄。手段可以改，但要說明為什麼更能解決原問題或達到目標。\n6. 只能使用以下 JSON 結構。請只輸出 JSON，不要 Markdown code fence。\n7. projectId 必須為 ${this.state.activeProjectId}。\n8. baseSnapshotId 必須為 ${ctx.id}。\n\n【JSON Schema 範例】\n${JSON.stringify(this.scenarioSchemaExample(),null,2)}\n\n【目前專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}\n\n【目前 Findings】\n${JSON.stringify(findings,null,2)}\n\n【目前 Decisions】\n${JSON.stringify(decisions,null,2)}\n\n【近期 Reviews】\n${JSON.stringify(reviews,null,2)}`; this.state.lastScenarioPrompt=prompt; this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt; },
+  copyScenarioSchema(){ this.copyText(JSON.stringify(this.scenarioSchemaExample(),null,2),'已複製 Scenario JSON 範例。'); },
 
-                        <div class="sb-template-bar">
-                            <span style="font-size: 0.85rem; color: #666;">⚡ 快捷：</span>
-                            <button class="sb-btn-outline" onclick="app.sandbox.insertPrefix('- [ ] ')">✅ 待辦</button>
-                            <button class="sb-btn-outline" onclick="app.sandbox.insertTemplate('bug')">🐛 Bug</button>
-                            <button class="sb-btn-outline" onclick="app.sandbox.insertTemplate('dissect')">🔍 拆解</button>
-                            <button class="sb-btn-outline" onclick="app.sandbox.insertTemplate('review')">📝 覆盤</button>
-                            
-                            <span style="color: #ccc; margin: 0 5px;">|</span>
-                            <span style="font-size: 0.85rem; color: #666;">MD：</span>
-                            <button class="sb-btn-md" onclick="app.sandbox.wrapMarkdown('**', '**')"><b>B</b></button>
-                            <button class="sb-btn-md" onclick="app.sandbox.wrapMarkdown('*', '*')"><i>I</i></button>
-                            <button class="sb-btn-md" onclick="app.sandbox.wrapMarkdown('`', '`')">`code`</button>
-                        </div>
+  extractJson(text){ const t=String(text||'').trim(); if(!t)throw new Error('內容是空的'); const fenced=t.match(/```(?:json)?\s*([\s\S]*?)```/i); return JSON.parse(fenced?fenced[1].trim():t); },
+  basePayloadForScenario(baseSnapshotId){
+    if(baseSnapshotId==='current') return this.snapshotPayload();
+    return this.state.snapshots.find(x=>x.id===baseSnapshotId)?.payload || null;
+  },
+  validateScenarioImport(obj){
+    const errs=[];
+    if(obj?.schemaVersion!=='1.1')errs.push('schemaVersion 必須是 1.1');
+    if(obj?.type!=='project_lab_scenario')errs.push('type 必須是 project_lab_scenario');
+    if(obj?.projectId!==this.state.activeProjectId)errs.push('projectId 與目前專案不一致');
+    if(!obj?.baseSnapshotId)errs.push('缺少 baseSnapshotId');
+    if(!obj?.scenario||!Array.isArray(obj.scenario.cards))errs.push('缺少 scenario.cards');
+    const payload=this.basePayloadForScenario(obj?.baseSnapshotId);
+    if(!payload)errs.push('找不到 baseSnapshotId 對應的基準資料');
+    const baseIds=new Set((payload?.cards||[]).map(x=>x.card.id));
+    (obj?.scenario?.cards||[]).forEach((c,i)=>{
+      if(!c.id)errs.push(`cards[${i}] 缺少 id`);
+      if(c.isNew){
+        if(!String(c.id).startsWith('temp_'))errs.push(`cards[${i}] 新卡 id 應使用 temp_ 前綴`);
+      }else{
+        const origin=c.originId||c.id;
+        if(payload&&!baseIds.has(origin))errs.push(`cards[${i}] 找不到對應既有卡片 ${origin}`);
+      }
+      if('workLogs' in c || 'entries' in c) errs.push(`cards[${i}] 不應包含 workLogs / entries；歷史事實由 Project Lab 自動補回`);
+    });
+    return errs;
+  },
+  tryImportScenarioFromResponse(){
+    const box=document.getElementById('import-status');
+    try{
+      const obj=this.extractJson(document.getElementById('ai-response').value);
+      const errs=this.validateScenarioImport(obj);
+      if(errs.length){
+        box.innerHTML=`<div class="notice bad"><strong>格式尚不能匯入：</strong><br>${errs.map(e=>'• '+this.esc(e)).join('<br>')}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyRepairPrompt()">複製修復提示詞</button></div>`;
+        return;
+      }
+      const payload=this.basePayloadForScenario(obj.baseSnapshotId);
+      const baseMap=new Map((payload?.cards||[]).map(x=>[x.card.id,x.card]));
+      const cards=obj.scenario.cards.map(raw=>{
+        const c=structuredClone(raw);
+        if(c.isNew){
+          return {...c,status:Number(c.status||0),progress:c.progress??null,workLogs:[],entries:[]};
+        }
+        const origin=c.originId||c.id;
+        const baseCard=baseMap.get(origin);
+        return {
+          ...c,
+          originId:origin,
+          status:Number(baseCard?.status||0),
+          progress:baseCard?.progress??null,
+          workLogs:structuredClone(baseCard?.workLogs||[]),
+          entries:structuredClone(baseCard?.entries||[])
+        };
+      });
+      const s={id:this.uid('scenario'),projectId:obj.projectId,baseSnapshotId:obj.baseSnapshotId,name:obj.scenario.name||'AI Scenario',status:'candidate',createdAt:this.now(),updatedAt:this.now(),cards,notes:obj.scenario.notes||''};
+      this.state.scenarios.push(s); this.saveState();
+      box.innerHTML='<div class="notice ok">Scenario JSON 驗證通過並已匯入。既有卡片的實際工時與工作紀錄已由基準 Snapshot 自動補回，AI 無法改寫。</div>';
+      this.renderScenarios(); this.showView('scenarios');
+    }catch(e){
+      box.innerHTML=`<div class="notice bad"><strong>JSON 解析失敗：</strong>${this.esc(e.message)}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyRepairPrompt()">複製修復提示詞</button></div>`;
+    }
+  },
+  copyRepairPrompt(){ const example=JSON.stringify(this.scenarioSchemaExample(),null,2); const txt=`你剛才回傳的內容無法被我的 Project Lab 匯入。請不要改變方案內容，只修復格式，並只回傳合法 JSON，不要加 Markdown code fence 或說明文字。\n\n必須符合以下範例結構：\n${example}`; this.copyText(txt,'已複製修復提示詞。'); },
+  exportScenario(id){ const s=this.state.scenarios.find(x=>x.id===id); if(!s)return; const obj={schemaVersion:'1.1',type:'project_lab_scenario',projectId:s.projectId,baseSnapshotId:s.baseSnapshotId,scenario:{name:s.name,notes:s.notes,cards:s.cards}}; const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json;charset=utf-8'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${(s.name||'scenario').replace(/[\\/:*?"<>|]/g,'_')}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href); },
 
-                        <textarea id="sb-activeNoteArea" placeholder="選擇左側卡片並點擊「📝聚焦」，或直接在此處記錄全域靈感...&#10;&#10;✨ 提示：在此處輸入「- [ ] 事項」，左側面板會自動為你產生獨立的子任務按鈕！" oninput="app.sandbox.saveActiveNote()"></textarea>
+  deleteEntity(key,id){ if(!confirm('確定刪除？'))return; this.state[key]=this.state[key].filter(x=>x.id!==id); this.saveState(); this.renderAll(); }
+};
 
-                        <div style="display: flex; gap: 8px; margin-top: 10px;">
-                            <button class="sb-btn sb-btn-success" style="pointer-events: none;">閃念</button>
-                            <input type="text" id="sb-quickLogInput" placeholder="輸入短語或進度，按 Enter 自動打上時間戳..." style="flex:1; padding:8px; border:2px solid var(--success); border-radius:4px;" onkeypress="if(event.key === 'Enter') app.sandbox.addQuickLog()">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <!-- 模態彈窗：全域筆記本 -->
-        <div id="modal-notebook" class="modal-overlay">
-            <div class="modal-content">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <h3 style="margin: 0; color: #1e293b; font-size: 1.3rem;">📖 全域筆記本</h3>
-                    <button class="icon-btn" style="width:36px; height:36px;" onclick="app.closeNotebook()">×</button>
-                </div>
-                <select id="nb-template" onchange="app.actions.updateNotebookTemplate(this.value)" style="margin-bottom: 15px; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 1rem; width: 100%;">
-                    <option value="free">📝 自由筆記區</option>
-                    <option value="matrix">⚖️ 艾森豪四象限</option>
-                </select>
-                <div id="notebook-render-target"></div>
-            </div>
-        </div>
-
-        <!-- 🎲 獨立浮動詰棋視窗 -->
-        <div id="tsumego-widget-btn" onclick="app.toggleTsumego()">🎲</div>
-        <div id="tsumego-panel" class="tsumego-panel">
-            <div class="tsumego-header" id="tsumego-header">
-                <span>🎲 休息區：19x19 詰棋</span>
-                <button class="icon-btn" style="width:28px; height:28px; border:none; background:transparent;" onclick="app.toggleTsumego()">×</button>
-            </div>
-            <div class="tsumego-board-container">
-                <div class="go-board-surface" style="width:100%; aspect-ratio:1/1;" id="tsumego-board" onclick="app.actions.placeTsumegoStone(event)">
-                    <div class="go-grid-lines" id="tsumego-grid-lines"></div>
-                </div>
-            </div>
-            <div class="tsumego-controls">
-                <button class="tsumego-tool-btn active" id="ts-btn-black" onclick="app.actions.setTsumegoColor('black')">⚫</button>
-                <button class="tsumego-tool-btn" id="ts-btn-white" onclick="app.actions.setTsumegoColor('white')">⚪</button>
-                <button class="tsumego-tool-btn" id="ts-btn-clear" onclick="app.actions.setTsumegoColor('clear')">🧹</button>
-                <button class="tsumego-tool-btn" style="color:#ef4444; border-color:#fca5a5;" onclick="app.actions.resetTsumego()">🗑️ 清盤</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 引用大腦檔案 -->
-    <script src="app.js"></script>
+auth.onAuthStateChanged(user=>{
+  if(user){ lab.user=user; document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); lab.init(); }
+  else{ lab.user=null; document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('app').classList.add('hidden'); }
+});
+</script>
 </body>
 </html>
