@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Lab v1.4｜聚焦規劃與檢討</title>
+  <title>Project Lab v1.6.2｜練習導向資訊處理</title>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
   <style>
     :root{
       --bg:#f6f7fb;--panel:#fff;--text:#1f2937;--muted:#64748b;--line:#dbe2ea;
@@ -111,123 +112,269 @@
     .time-bar > span.over{background:#dc2626}
     @media(max-width:1180px){.layout{grid-template-columns:280px minmax(0,1fr)}.right-panel{grid-column:1/-1}.summary-grid{grid-template-columns:repeat(3,1fr)}}
     @media(max-width:760px){.time-compare{grid-template-columns:1fr 1fr}.management-grid{grid-template-columns:1fr}.management-grid .wide{grid-column:auto}.topbar{flex-wrap:wrap}.topbar select{min-width:0;flex:1}.layout{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,1fr)}.meta-grid,.scenario-fields{grid-template-columns:1fr}.meta-grid .wide,.scenario-fields .wide{grid-column:auto}.template-grid{grid-template-columns:1fr}.milestone{grid-template-columns:1fr}}
+
+    /* === v1.6：資訊處理導向介面 === */
+    .shell{max-width:1440px}
+    .main-nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;position:sticky;top:64px;z-index:12;background:rgba(246,247,251,.94);backdrop-filter:blur(8px);padding:8px 0}
+    .main-nav-btn{border:1px solid var(--line);background:#fff;color:#475569;padding:9px 14px;border-radius:10px;font-weight:900;cursor:pointer}
+    .main-nav-btn.active{background:#172033;color:#fff;border-color:#172033}
+    .main-group{display:none}.main-group.active{display:block}
+    .group-panel{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 3px 10px rgba(15,23,42,.05);overflow:hidden}
+    .group-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px;align-items:center;background:#fbfcfe}
+    .group-body{padding:16px}
+    .project-core{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .project-core label{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px}
+    .project-advanced{margin-top:12px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#fff}
+    .focus-strip{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 12px;margin-bottom:12px;background:#fff;border:1px solid #dbeafe;border-radius:12px}
+    .focus-strip .focus-label{font-weight:900;color:#312e81}
+    .focus-strip .focus-question{color:#64748b;flex:1;min-width:240px;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .focus-action{border:1px solid #a5b4fc;background:#eef2ff;color:#3730a3;border-radius:8px;padding:7px 10px;font-weight:900;cursor:pointer}
+    .analysis-drawer{position:fixed;top:0;right:0;bottom:0;width:min(540px,96vw);background:#fff;z-index:3000;box-shadow:-10px 0 30px rgba(15,23,42,.2);transform:translateX(105%);transition:.22s ease;overflow-y:auto}
+    .analysis-drawer.open{transform:translateX(0)}
+    .drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.36);z-index:2990;display:none}.drawer-overlay.open{display:block}
+    .drawer-head{position:sticky;top:0;z-index:2;background:#172033;color:#fff;padding:14px 16px;display:flex;gap:10px;align-items:center}
+    .drawer-head strong{font-size:1.03rem}.drawer-head .spacer{flex:1}.drawer-close{border:1px solid #64748b;background:transparent;color:#fff;border-radius:8px;padding:6px 9px}
+    .drawer-body{padding:14px;display:flex;flex-direction:column;gap:12px}
+    .drawer-section{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#fff}
+    .drawer-section h4{margin:0 0 8px}.drawer-section .sub{font-size:.78rem;color:#64748b;line-height:1.55;margin-bottom:8px}
+    .help-box{font-size:.84rem;line-height:1.65;color:#334155;background:#f8fafc;border-radius:9px;padding:10px}
+    .suggested-prompts{display:flex;flex-direction:column;gap:6px;margin-top:8px}.suggested-prompts button{text-align:left;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;padding:8px;font-weight:800}
+    .context-chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;background:#eef2ff;color:#4338ca;padding:4px 8px;font-size:.72rem;font-weight:900}
+    .context-preview{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.72rem;white-space:pre-wrap;background:#0f172a;color:#dbeafe;border-radius:8px;padding:9px;max-height:220px;overflow:auto}
+    .api-grid{display:grid;grid-template-columns:1fr;gap:7px}.api-key-row{display:grid;grid-template-columns:72px 1fr;gap:7px;align-items:center}.api-key-row span{font-size:.78rem;font-weight:900;color:#475569}
+    .analysis-response{white-space:pre-wrap;line-height:1.65;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;padding:10px;min-height:90px}
+    .analysis-meta{font-size:.73rem;color:#64748b;margin-top:7px}
+    .scope-options{display:flex;gap:10px;flex-wrap:wrap;font-size:.75rem;color:#475569}.scope-options label{display:flex;align-items:center;gap:4px}
+    .advanced-tools{margin-top:14px;border:1px dashed #cbd5e1;border-radius:10px;padding:10px;background:#f8fafc}
+    .advanced-tools > summary{border:0;margin:0;padding:0;font-size:.85rem}
+    .focus-select-btn{margin-left:auto}
+    .inquiry-output,.deep-output{white-space:pre-wrap;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;min-height:70px;font-size:.83rem;line-height:1.6}
+    .mini-note{font-size:.72rem;color:#64748b;line-height:1.5}
+    .compat-hidden{display:none!important}
+    @media(max-width:900px){.project-core{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,1fr)}.topbar{flex-wrap:wrap}.topbar .status{display:none}.main-nav{top:112px}.time-compare{grid-template-columns:1fr 1fr}}
+
+    /* === v1.6.2：練習導航與拆解練習 === */
+    .practice-hero{background:linear-gradient(135deg,#eef2ff,#f8fafc);border:1px solid #c7d2fe;border-radius:14px;padding:18px;margin-bottom:14px}
+    .practice-hero h2{margin:0 0 7px;font-size:1.22rem;color:#312e81}.practice-hero p{margin:0;color:#64748b;line-height:1.65}
+    .practice-current{margin-top:10px;font-size:.8rem;color:#475569;background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:9px}
+    .practice-route-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .practice-route{border:1px solid #dbe2ea;background:#fff;border-radius:12px;padding:13px;text-align:left;cursor:pointer;transition:.15s;min-height:128px}
+    .practice-route:hover{border-color:#818cf8;box-shadow:0 4px 14px rgba(79,70,229,.08);transform:translateY(-1px)}
+    .practice-route .route-title{font-weight:900;color:#1f2937;margin-bottom:5px}.practice-route .route-when{font-size:.78rem;color:#64748b;line-height:1.55}.practice-route .route-go{font-size:.75rem;color:#4f46e5;font-weight:900;margin-top:8px}
+    .practice-unknown{margin-top:12px;border:1px dashed #a5b4fc;background:#fafaff;border-radius:12px;padding:12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .breakdown-layout{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:12px;align-items:start}
+    .breakdown-source{border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;padding:12px;position:sticky;top:126px}
+    .breakdown-source h4{margin:0 0 6px}.breakdown-source .fact{font-size:.78rem;color:#475569;line-height:1.6;padding:7px 0;border-bottom:1px dashed #dbe2ea}.breakdown-source .fact:last-child{border-bottom:0}
+    .breakdown-practice{border:1px solid #dbeafe;border-radius:12px;background:#fff;padding:14px}.breakdown-practice h3{margin:0 0 5px;color:#1e3a8a}.breakdown-step{border-left:4px solid #c7d2fe;padding:8px 10px;margin:10px 0;background:#fbfdff;border-radius:0 9px 9px 0}
+    .breakdown-step .step-title{font-weight:900;color:#334155;margin-bottom:5px}.breakdown-hint{font-size:.74rem;color:#64748b;line-height:1.5;margin-bottom:6px}
+    .breakdown-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}.autosave-note{font-size:.72rem;color:#64748b;margin-top:5px}
+    .practice-label{display:inline-block;border-radius:999px;background:#eef2ff;color:#4338ca;font-weight:900;font-size:.7rem;padding:3px 7px;margin-right:5px}
+    @media(max-width:820px){.practice-route-grid{grid-template-columns:1fr}.breakdown-layout{grid-template-columns:1fr}.breakdown-source{position:static}}
+
   </style>
 </head>
 <body>
 <div id="login-screen">
   <div class="login-card">
     <h1>🔬 Project Lab</h1>
-    <p>讀取正式白板，建立 Snapshot、Review、Finding、Decision 與 Scenario。<br>這裡可以亂想，正式白板保持安靜。</p>
+    <p>讀取正式白板，練習把資訊整理成問題、判斷與下一步。<br>正式白板負責執行，這裡負責理解與檢討。</p>
     <button class="btn primary" onclick="lab.login()">使用 Google 登入</button>
   </div>
 </div>
 
+
 <div id="app" class="app hidden">
   <div class="topbar">
-    <div class="brand">🔬 Project Lab <span style="font-size:.72rem;opacity:.75">v1.4</span></div>
+    <div class="brand">🔬 Project Lab <span style="font-size:.72rem;opacity:.75">v1.6.2</span></div>
     <select id="project-select" onchange="lab.changeProject(this.value)"></select>
     <button class="btn small" onclick="lab.reloadSource()">↻ 重新讀取白板</button>
-    <button class="btn small" onclick="location.href='whiteboard.html'">↗ 打開正式白板</button>
-    <button class="btn small success" onclick="lab.createSnapshot()">📸 建立 Snapshot</button>
+    <button class="btn small" onclick="location.href='whiteboard.html'">↗ 正式白板</button>
+    <button class="btn small success" onclick="lab.createSnapshot()">📸 保存目前狀態</button>
+    <button class="btn small" onclick="lab.saveCloud()">☁️ 備份練習資料</button>
+    <button class="btn small" onclick="lab.loadCloud()">📥 載入練習資料</button>
     <div class="spacer"></div>
     <div id="source-status" class="status"></div>
+    <div id="cloud-status" class="status">☁️ 檢查中…</div>
+    <button class="btn small" onclick="lab.openAssist()">？說明與分析</button>
     <button class="btn small" onclick="lab.logout()">登出</button>
   </div>
 
   <div class="shell">
-    <div id="summary-grid" class="summary-grid"></div>
-
-    <div class="layout">
-      <section class="panel">
-        <div class="panel-head"><h3>🧭 Project</h3><span class="tiny">專案邊界與限制</span></div>
-        <div class="panel-body stack">
-          <div id="project-id-view" class="notice info"></div>
-          <div class="meta-grid">
-            <label class="field wide">專案名稱<input id="pm-name" type="text"></label>
-            <div class="purpose-chain wide">
-              <label class="field">目的｜為什麼做？真正想解決什麼？<textarea id="pm-purpose" placeholder="描述要改善的問題或希望改變的狀態"></textarea></label>
-              <label class="field">目標｜在這個期限內，要達到什麼狀態？<textarea id="pm-goal" placeholder="可以被判斷的階段目標，不要只寫手段"></textarea></label>
-              <label class="field">目前做法｜現在打算怎麼達成？<textarea id="pm-approach" placeholder="目前方案，可隨新資訊調整"></textarea></label>
-            </div>
-            <label class="field">專案期限<input id="pm-deadline" type="date"></label>
-            <label class="field">期限性質<select id="pm-deadlineType"><option value="hard">硬性期限</option><option value="target">目標日期</option><option value="none">未設定</option></select></label>
-            <label class="field wide">完成定義 Definition of Done<textarea id="pm-dod" placeholder="做到什麼程度，這一階段可以算完成？"></textarea></label>
-            <label class="field wide">固定限制 Constraints<textarea id="pm-constraints" placeholder="不能改、不能犧牲、必須遵守的條件"></textarea></label>
-            <label class="field">下次規劃檢討日<input id="pm-reviewDate" type="date"></label>
-            <label class="field">近期詳細規劃視野（天）<input id="pm-horizon" type="number" min="1" step="1"></label>
-          </div>
-          <div>
-            <div class="section-title">里程碑</div>
-            <div id="milestone-list"></div>
-            <button class="btn small" onclick="lab.addMilestone()">＋ 新增里程碑</button>
-          </div>
-          <button class="btn primary" onclick="lab.saveProjectMeta()">儲存 Project 資料</button>
-          <div class="notice warn">Project Lab 的專案資料與「管理事項」獨立保存在瀏覽器，不會寫回正式白板。正式白板負責執行；這裡負責釐清、推進、追蹤與決策。</div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head"><h3>🧪 工作區</h3><span id="center-subtitle" class="tiny"></span></div>
-        <div class="panel-body">
-          <div class="nav-tabs" id="center-tabs">
-            <button class="tab-btn active" data-view="source" onclick="lab.showView('source')">正式資料</button>
-            <button class="tab-btn" data-view="management" onclick="lab.showView('management')">管理事項</button>
-            <button class="tab-btn" data-view="snapshots" onclick="lab.showView('snapshots')">Snapshots</button>
-            <button class="tab-btn" data-view="reviews" onclick="lab.showView('reviews')">Reviews</button>
-            <button class="tab-btn" data-view="patches" onclick="lab.showView('patches')">批改</button>
-            <button class="tab-btn" data-view="findings" onclick="lab.showView('findings')">Findings</button>
-            <button class="tab-btn" data-view="decisions" onclick="lab.showView('decisions')">Decisions</button>
-            <button class="tab-btn" data-view="scenarios" onclick="lab.showView('scenarios')">Scenarios</button>
-          </div>
-          <div id="view-source" class="view active"></div>
-          <div id="view-management" class="view"></div>
-          <div id="view-snapshots" class="view"></div>
-          <div id="view-reviews" class="view"></div>
-          <div id="view-patches" class="view"></div>
-          <div id="view-findings" class="view"></div>
-          <div id="view-decisions" class="view"></div>
-          <div id="view-scenarios" class="view"></div>
-        </div>
-      </section>
-
-      <section class="panel right-panel">
-        <div class="panel-head"><h3>🤖 AI 協作</h3><span class="tiny">手動複製 / 貼上｜先討論，再結構化</span></div>
-        <div class="panel-body stack">
-          <div>
-            <div class="section-title" style="margin-top:0">AI 教練｜先問再改</div>
-            <div id="review-template-grid" class="template-grid"></div>
-          </div>
-          <label class="field">這次我特別想問<textarea id="ai-custom-question" placeholder="例如：我不確定這張卡是否拆太大，先問我最重要的 1～3 個問題。"></textarea></label>
-          <div class="row">
-            <select id="ai-snapshot-select" style="flex:1"></select>
-            <button class="btn" onclick="lab.buildReviewPrompt()">產生教練提問</button>
-            <button class="btn" onclick="lab.copyPrompt()">複製</button>
-          </div>
-          <div class="ai-mode-row">
-            <div class="ai-mode-card"><strong>✏️ 小幅批改</strong><select id="ai-target-card-select"></select><div class="row" style="margin-top:6px"><button class="btn small" onclick="lab.buildPatchPrompt()">產生批改提示</button><button class="btn small" onclick="lab.copyPatchSchema()">Patch Schema</button></div></div>
-            <div class="ai-mode-card"><strong>🧩 大幅重排</strong><div class="tiny">只有整個規劃結構要重做時才用 Scenario。</div><button class="btn small" style="margin-top:6px" onclick="lab.buildScenarioPrompt()">產生 Scenario 提示</button></div>
-          </div>
-          <div class="notice info"><strong>手動 AI 模式：</strong>複製 Prompt 到你使用的 AI，再把回答貼回。教練模式用正常文字；批改與 Scenario 才要求 JSON。正式白板與歷史工時不會被 AI 自動改寫。</div><div id="prompt-preview" class="codebox">尚未產生提問。</div>
-          <div class="divider"></div>
-          <label class="field">貼上 AI 回覆<textarea id="ai-response" placeholder="一般討論可存 Review；Patch / Scenario JSON 可直接解析。"></textarea></label>
-          <div class="row">
-            <button class="btn success" onclick="lab.saveReview()">💬 儲存 Review</button>
-            <button class="btn" onclick="lab.tryImportPatchFromResponse()">✏️ 解析 Patch</button>
-            <button class="btn" onclick="lab.tryImportScenarioFromResponse()">🧩 解析 Scenario</button>
-          </div>
-          <div id="import-status"></div>
-          <div class="divider"></div>
-          <div class="section-title" style="margin:0">Scenario 結構化</div>
-          <div class="notice info">當討論已經形成可試排方案時，再要求 AI 回傳完整 Scenario。不是每一輪對話都需要 JSON。</div>
-          <button class="btn" onclick="lab.copyScenarioSchema()">複製 Scenario JSON Schema 範例</button>
-        </div>
-      </section>
+    <div class="main-nav">
+      <button class="main-nav-btn" data-group="start" onclick="lab.showGroup('start')">練習導航</button>
+      <button class="main-nav-btn" data-group="project" onclick="lab.showGroup('project')">釐清專案</button>
+      <button class="main-nav-btn" data-group="work" onclick="lab.showView('source')">拆解工作</button>
+      <button class="main-nav-btn" data-group="advance" onclick="lab.showView('management')">推進與詢問</button>
+      <button class="main-nav-btn" data-group="review" onclick="lab.showView('reviews')">檢討與決策</button>
+      <button class="main-nav-btn" data-group="versions" onclick="lab.showView('snapshots')">版本與方案</button>
     </div>
+
+    <div class="focus-strip">
+      <span class="tiny">目前情境</span>
+      <span id="focus-label" class="focus-label">專案整體</span>
+      <span id="focus-question" class="focus-question">尚未寫目前問題</span>
+      <button class="focus-action" onclick="lab.openAssist()">？說明／快速分析</button>
+    </div>
+
+    <section id="group-start" class="main-group">
+      <div class="practice-hero">
+        <h2>我現在最值得練哪一件事？</h2>
+        <p>先依你卡住的位置選入口。這裡不是考試，不必照順序走；目標是把混亂資訊轉成下一個可處理的問題。</p>
+        <div id="practice-current" class="practice-current"></div>
+      </div>
+      <div class="practice-route-grid">
+        <button class="practice-route" onclick="lab.goPractice('project')"><div class="route-title">① 釐清專案</div><div class="route-when">我還不確定真正要解決什麼、期限內要到哪裡，或目的／目標／做法混在一起。</div><div class="route-go">前往：釐清專案 →</div></button>
+        <button class="practice-route" onclick="lab.goPractice('breakdown')"><div class="route-title">② 拆解工作</div><div class="route-when">事情太大、太模糊，不知道哪些值得獨立成工項，哪些只是步驟或探索。</div><div class="route-go">前往：拆解練習 →</div></button>
+        <button class="practice-route" onclick="lab.goPractice('advance')"><div class="route-title">③ 推進與詢問</div><div class="route-when">我缺資訊、要找人問、在等別人、需要追蹤，或不知道現在球在誰手上。</div><div class="route-go">前往：管理事項 →</div></button>
+        <button class="practice-route" onclick="lab.goPractice('decision')"><div class="route-title">④ 判斷與選擇</div><div class="route-when">我已經有幾種做法，但不知道怎麼比較取捨，或不確定還缺什麼資訊才能決定。</div><div class="route-go">前往：管理事項的「判斷」 →</div></button>
+        <button class="practice-route" onclick="lab.goPractice('review')"><div class="route-title">⑤ 檢討結果</div><div class="route-when">事情做過一段時間或已完成，想比較原本設想、實際結果、工時差異與新資訊。</div><div class="route-go">前往：檢討與決策 →</div></button>
+        <button class="practice-route" onclick="lab.goPractice('versions')"><div class="route-title">⑥ 重新規劃</div><div class="route-when">不是單一卡片的問題，而是整體時程、拆法或方案可能需要重排。</div><div class="route-go">前往：版本與方案 →</div></button>
+      </div>
+      <div class="practice-unknown"><div><strong>還是不知道該去哪？</strong><div class="tiny">寫下你現在卡住的情況，讓快速分析只判斷「現在應該先練哪一類」。</div></div><button class="btn primary" onclick="lab.openNavigationHelp()">幫我判斷現在聚焦哪裡</button></div>
+    </section>
+
+    <section id="group-project" class="main-group">
+      <div id="summary-grid" class="summary-grid"></div>
+      <div class="group-panel">
+        <div class="group-head"><div><strong>釐清專案</strong><div class="tiny">練習分開「為什麼做、期限內要到哪裡、目前怎麼做」。其他資料真的會影響判斷時再展開。</div></div><button class="btn small" onclick="lab.focusObject('project','','專案整體');lab.openAssist()">以專案整體為情境</button></div>
+        <div class="group-body stack">
+          <div id="project-id-view" class="notice info"></div>
+          <label class="field">專案名稱<input id="pm-name" type="text"></label>
+          <div class="project-core">
+            <label class="field">目的｜真正想解決什麼？<textarea id="pm-purpose" placeholder="描述問題或希望改變的狀態"></textarea></label>
+            <label class="field">目標｜期限內要到什麼狀態？<textarea id="pm-goal" placeholder="可以被判斷的階段目標"></textarea></label>
+            <label class="field">目前做法｜現在打算怎麼達成？<textarea id="pm-approach" placeholder="目前方案，可隨新資訊調整"></textarea></label>
+          </div>
+          <details class="project-advanced">
+            <summary>展開期限、完成定義、限制與里程碑</summary>
+            <div class="meta-grid" style="margin-top:10px">
+              <label class="field">專案期限<input id="pm-deadline" type="date"></label>
+              <label class="field">期限性質<select id="pm-deadlineType"><option value="hard">硬性期限</option><option value="target">目標日期</option><option value="none">未設定</option></select></label>
+              <label class="field wide">完成定義<textarea id="pm-dod" placeholder="做到什麼程度，這一階段可以算完成？"></textarea></label>
+              <label class="field wide">固定限制<textarea id="pm-constraints" placeholder="不能改、不能犧牲、必須遵守的條件"></textarea></label>
+              <label class="field">下次規劃檢討日<input id="pm-reviewDate" type="date"></label>
+              <label class="field">近期詳細規劃視野（天）<input id="pm-horizon" type="number" min="1" step="1"></label>
+            </div>
+            <div class="section-title">里程碑</div><div id="milestone-list"></div>
+            <button class="btn small" onclick="lab.addMilestone()">＋ 新增里程碑</button>
+          </details>
+          <button class="btn primary" onclick="lab.saveProjectMeta()">儲存專案資料</button>
+          <div class="notice warn">正式白板負責執行；Project Lab 保存你的練習、理解、檢討與決策。AI 不會自動改寫正式白板。</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="group-work" class="main-group">
+      <div class="group-panel"><div class="group-head"><div><strong>拆解工作</strong><div id="center-subtitle" class="tiny"></div></div><button class="btn small" onclick="lab.showGroup('start')">← 回練習導航</button></div>
+        <div class="group-body"><div class="nav-tabs">
+          <button class="tab-btn" data-view="source" onclick="lab.showView('source')">工作總覽</button>
+          <button class="tab-btn" data-view="breakdown" onclick="lab.showView('breakdown')">拆解練習</button>
+        </div><div id="view-source" class="view"></div><div id="view-breakdown" class="view"></div></div>
+      </div>
+    </section>
+
+    <section id="group-advance" class="main-group">
+      <div class="group-panel"><div class="group-head"><div><strong>推進與詢問</strong><div class="tiny">練習把卡住的事情分成：自己做、找人問、交辦、等待、追蹤或待決策。</div></div><button class="btn small" onclick="lab.showGroup('start')">← 回練習導航</button></div>
+        <div class="group-body"><div class="nav-tabs">
+          <button class="tab-btn" data-view="management" onclick="lab.showView('management')">管理事項</button>
+        </div><div id="view-management" class="view"></div></div>
+      </div>
+    </section>
+
+    <section id="group-review" class="main-group">
+      <div class="group-panel"><div class="group-head"><div><strong>檢討與決策</strong><div class="tiny">把討論、重要發現與真正形成的選擇分開保存。</div></div></div>
+        <div class="group-body"><div class="nav-tabs">
+          <button class="tab-btn" data-view="reviews" onclick="lab.showView('reviews')">檢討紀錄</button>
+          <button class="tab-btn" data-view="findings" onclick="lab.showView('findings')">重要發現</button>
+          <button class="tab-btn" data-view="decisions" onclick="lab.showView('decisions')">決策紀錄</button>
+        </div><div id="view-reviews" class="view"></div><div id="view-findings" class="view"></div><div id="view-decisions" class="view"></div></div>
+      </div>
+    </section>
+
+    <section id="group-versions" class="main-group">
+      <div class="group-panel"><div class="group-head"><div><strong>版本與方案</strong><div class="tiny">保存當時狀態、小幅修改建議與需要大幅重排的候選方案。</div></div></div>
+        <div class="group-body"><div class="nav-tabs">
+          <button class="tab-btn" data-view="snapshots" onclick="lab.showView('snapshots')">歷史狀態</button>
+          <button class="tab-btn" data-view="patches" onclick="lab.showView('patches')">修改建議</button>
+          <button class="tab-btn" data-view="scenarios" onclick="lab.showView('scenarios')">重新規劃方案</button>
+        </div><div id="view-snapshots" class="view"></div><div id="view-patches" class="view"></div><div id="view-scenarios" class="view"></div>
+
+        <details class="advanced-tools">
+          <summary>進階手動 AI 匯入工具（修改建議／重新規劃）</summary>
+          <div class="stack" style="margin-top:10px">
+            <div id="review-template-grid" class="compat-hidden"></div>
+            <label class="field">資料基準<select id="ai-snapshot-select"></select></label>
+            <label class="field">目標工作卡<select id="ai-target-card-select"></select></label>
+            <label class="field">補充問題<textarea id="ai-custom-question" placeholder="只有需要產生修改建議或重新規劃提示時使用。"></textarea></label>
+            <div class="row"><button class="btn" onclick="lab.buildPatchPrompt()">產生修改建議提示</button><button class="btn" onclick="lab.buildScenarioPrompt()">產生重新規劃提示</button><button class="btn" onclick="lab.copyPrompt()">複製提示</button></div>
+            <div id="prompt-preview" class="codebox">尚未產生提示。</div>
+            <label class="field">貼上外部 AI 回覆<textarea id="ai-response"></textarea></label>
+            <div class="row"><button class="btn" onclick="lab.tryImportPatchFromResponse()">解析修改建議</button><button class="btn" onclick="lab.tryImportScenarioFromResponse()">解析重新規劃方案</button><button class="btn success" onclick="lab.saveReview()">存成檢討紀錄</button></div>
+            <div id="import-status"></div>
+          </div>
+        </details>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 
+<div id="drawer-overlay" class="drawer-overlay" onclick="lab.closeAssist()"></div>
+<aside id="analysis-drawer" class="analysis-drawer" aria-label="說明與分析">
+  <div class="drawer-head"><strong>說明／快速分析</strong><span id="drawer-focus-label" class="tiny" style="color:#cbd5e1"></span><div class="spacer"></div><button class="drawer-close" onclick="lab.closeAssist()">關閉</button></div>
+  <div class="drawer-body">
+    <section class="drawer-section"><h4>使用說明</h4><div id="static-help" class="help-box"></div><div class="row" style="margin-top:8px"><button class="btn small" onclick="lab.runInterfaceInterpretation()">AI 解讀目前情境</button></div></section>
+
+    <section class="drawer-section"><h4>資料保存說明</h4>
+      <div class="help-box"><strong>自動保存在本機：</strong>你的專案理解、目前問題、補充情境、目前看法、管理事項、拆解練習、檢討、重要發現、決策與候選方案。<br><br><strong>按「備份練習資料」才上雲：</strong>上述 Project Lab 資料會備份到 Firebase 的 ProjectLab_Data。<br><br><strong>只有主動保存才留下：</strong>AI 快速分析與手動貼回的 AI 回覆，只有按「存成檢討紀錄」後才會進入歷史資料。<br><br><strong>永不保存：</strong>Gemini API Key、尚未採用的快速分析輸出、整理詢問輸出、深入討論輸出，以及產生 AI 呼叫用的暫時提示內容。</div>
+    </section>
+
+    <section class="drawer-section"><h4>我現在想處理什麼？</h4><div class="sub">先留下你的問題與目前理解。這些會跟著專案保存，但不會寫回正式白板。</div>
+      <label class="field">我的問題<textarea id="analysis-question" placeholder="例如：我不知道這張卡現在應該先拆解，還是先試做。" onchange="lab.updateAnalysisField('question',this.value)"></textarea></label>
+      <label class="field">補充情境<textarea id="analysis-context" placeholder="只補你認為會影響判斷的背景。" onchange="lab.updateAnalysisField('contextNote',this.value)"></textarea></label>
+      <label class="field">我目前怎麼看（選填）<textarea id="analysis-viewpoint" placeholder="例如：我目前傾向先做小規模測試，因為還不知道問題是不是同一類。" onchange="lab.updateAnalysisField('viewpoint',this.value)"></textarea></label>
+      <div id="suggested-prompts" class="suggested-prompts"></div>
+    </section>
+
+    <section class="drawer-section"><h4>本次使用資料</h4><div id="context-scope-summary" class="sub"></div>
+      <div class="scope-options"><label><input id="scope-history" type="checkbox" checked onchange="lab.renderContextUI()"> 最近工作紀錄</label><label><input id="scope-related" type="checkbox" checked onchange="lab.renderContextUI()"> 相關管理／決策</label><label><input id="scope-other" type="checkbox" onchange="lab.renderContextUI()"> 其他工作卡</label></div>
+      <details style="margin-top:8px"><summary>查看實際會送出的資料</summary><div id="context-preview" class="context-preview"></div></details>
+    </section>
+
+    <section class="drawer-section"><h4>AI 快速分析設定</h4><div class="sub">API Key 只存在目前頁面。重新整理或關閉分頁後消失，不會寫入 localStorage、Firebase 或 GitHub。三組依序輪換。</div>
+      <div class="api-grid">
+        <label class="api-key-row"><span>第一組</span><input id="gemini-key-1" type="password" autocomplete="off" placeholder="貼上 API Key"></label>
+        <label class="api-key-row"><span>第二組</span><input id="gemini-key-2" type="password" autocomplete="off" placeholder="貼上 API Key"></label>
+        <label class="api-key-row"><span>第三組</span><input id="gemini-key-3" type="password" autocomplete="off" placeholder="貼上 API Key"></label>
+        <label class="field">模型<input id="gemini-model" type="text" value="gemini-3.1-flash-lite"></label>
+      </div>
+      <div class="row"><button class="btn small" onclick="lab.checkGeminiModel()">檢查模型／連線</button><span id="api-rotation-status" class="mini-note">尚未呼叫</span></div>
+    </section>
+
+    <section class="drawer-section"><h4>快速分析</h4><div class="sub">目標是看清楚問題、資訊缺口與下一個更好的問題，不替你接管整個專案。</div>
+      <button id="quick-analyze-btn" class="btn primary" onclick="lab.runQuickAnalysis()">分析目前問題</button>
+      <div id="quick-status" class="mini-note" style="margin-top:7px"></div>
+      <div id="quick-response" class="analysis-response">尚未分析。</div>
+      <div id="quick-meta" class="analysis-meta"></div>
+      <div class="row" style="margin-top:8px"><button class="btn small success" onclick="lab.saveQuickAsReview()">存成檢討紀錄</button><button class="btn small" onclick="lab.copyQuickResponse()">複製</button><button class="btn small" onclick="lab.buildDeepDiscussion()">準備深入討論</button></div>
+    </section>
+
+    <section class="drawer-section"><h4>整理詢問</h4><div class="sub">不是把完整專案丟給別人，而是留下對方回答這一題最少需要的資訊。</div>
+      <label class="field">我想問誰<input id="inquiry-audience" type="text" placeholder="例如：熟悉 Word 自動化的同事、主管、親近朋友" onchange="lab.updateAnalysisField('audience',this.value)"></label>
+      <label class="field">希望這次對話怎麼進行<select id="inquiry-mode" onchange="lab.updateAnalysisField('inquiryMode',this.value)"><option value="specific">回答一個具體問題</option><option value="experience">分享你的經驗</option><option value="challenge">幫我檢查目前想法</option><option value="together">跟我一起把問題想清楚</option></select></label>
+      <label class="field">我最希望得到什麼<input id="inquiry-help" type="text" placeholder="例如：只想知道他過去怎麼判斷，不是請他替我決定" onchange="lab.updateAnalysisField('desiredHelp',this.value)"></label>
+      <div class="row"><button class="btn" onclick="lab.runInquiryDraft()">整理成詢問內容</button><button class="btn small" onclick="lab.copyInquiry()">複製</button></div><div id="inquiry-output" class="inquiry-output">尚未整理。</div>
+    </section>
+
+    <section class="drawer-section"><h4>深入討論</h4><div class="sub">當問題需要重新定義、比較取捨或多輪推敲時，整理成完整脈絡再帶到你使用的付費對話環境。</div>
+      <label class="field">這次希望深入討論幫我做什麼<input id="deep-goal" type="text" placeholder="例如：不要替我選，先挑戰我是不是漏了重要立場" onchange="lab.updateAnalysisField('deepGoal',this.value)"></label>
+      <div class="row"><button class="btn" onclick="lab.buildDeepDiscussion()">產生深入討論資料</button><button class="btn small" onclick="lab.copyDeepDiscussion()">複製</button></div><div id="deep-output" class="deep-output">尚未產生。</div>
+    </section>
+  </div>
+</aside>
+
 <script>
-// Firebase Web 設定只用於既有登入 / 使用者識別；本頁不含、也不呼叫任何生成式 AI API Key。
+// Firebase 用於既有登入與 Project Lab 雲端備份；Gemini API Key 只存在目前頁面記憶體，不寫入 localStorage / Firebase / GitHub。
 const firebaseConfig = {
   apiKey: "AIzaSyAIY9PU-bDLktkTpLSmFKRe1uepvWCKEiU",
   authDomain: "maplestoryboss.firebaseapp.com",
@@ -238,6 +385,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+const db = firebase.firestore();
 const provider = new firebase.auth.GoogleAuthProvider();
 
 const REVIEW_TEMPLATES = [
@@ -283,8 +431,10 @@ const OUTCOME_STATUSES = [
 const lab = {
   user:null,
   source:{raw:null,cards:[],nodes:[],tabs:[],loadedAt:null},
-  state:{projects:{},projectNameMap:{},snapshots:[],reviews:[],patches:[],findings:[],decisions:[],scenarios:[],managementItems:[],activeProjectId:'',activeView:'source',activeTemplate:'health',lastPrompt:'',lastScenarioPrompt:'',lastPatchPrompt:''},
+  state:{projects:{},projectNameMap:{},snapshots:[],reviews:[],patches:[],findings:[],decisions:[],scenarios:[],managementItems:[],activeProjectId:'',activeView:'source',activeTemplate:'health'},
   managementUi:{},
+  cloudBusy:false,
+  lastCloudBackupAt:'',
 
   login(){ auth.signInWithPopup(provider).catch(e=>alert('登入失敗：'+e.message)); },
   logout(){ auth.signOut(); },
@@ -322,6 +472,15 @@ const lab = {
   statusLabel(s){ return ['未開始','進行中','完成','阻塞'][Number(s)||0] || `狀態${s}`; },
   planningMaturityLabel(v){ return ({idea:'想法',actionable:'可行動',planned:'已規劃',committed:'已承諾'})[v] || '想法'; },
 
+  sanitizePersistentState(input=this.state){
+    const clean=structuredClone(input||{});
+    delete clean.lastPrompt;
+    delete clean.lastPatchPrompt;
+    delete clean.lastScenarioPrompt;
+    if(Array.isArray(clean.reviews)) clean.reviews.forEach(r=>{ if(r&&typeof r==='object') delete r.prompt; });
+    return clean;
+  },
+
   loadState(){
     try{
       const raw=localStorage.getItem(this.key());
@@ -335,15 +494,97 @@ const lab = {
           if(p.currentApproach===undefined) p.currentApproach='';
         });
         (this.state.managementItems||[]).forEach(m=>{ if(!m.thinkingState) m.thinkingState=this.defaultThinkingState(m.status); });
+        this.state=this.sanitizePersistentState(this.state);
+        localStorage.setItem(this.key(),JSON.stringify(this.state));
       }
     }catch(e){console.warn(e)}
   },
-  saveState(){ localStorage.setItem(this.key(),JSON.stringify(this.state)); },
+  saveState(){ localStorage.setItem(this.key(),JSON.stringify(this.sanitizePersistentState(this.state))); },
+
+  cloudRef(){ return this.user ? db.collection('ProjectLab_Data').doc(this.user.uid) : null; },
+  renderCloudStatus(message=''){
+    const el=document.getElementById('cloud-status'); if(!el)return;
+    if(message){ el.innerText=message; return; }
+    if(this.cloudBusy){ el.innerText='☁️ 處理中…'; return; }
+    el.innerText=this.lastCloudBackupAt?`本機自動儲存 · ☁️ 上次備份 ${this.lastCloudBackupAt}`:'本機自動儲存 · ☁️ 尚無備份';
+  },
+  async fetchCloudMeta(){
+    if(!this.user)return;
+    try{
+      const doc=await this.cloudRef().get();
+      if(!doc.exists){ this.lastCloudBackupAt=''; this.renderCloudStatus(); return; }
+      const ts=doc.data()?.updatedAt;
+      const d=ts?.toDate ? ts.toDate() : null;
+      this.lastCloudBackupAt=d?d.toLocaleString('zh-TW',{hour12:false}):'已存在';
+      this.renderCloudStatus();
+    }catch(e){
+      console.warn('Project Lab cloud meta failed',e);
+      this.renderCloudStatus('☁️ 無法讀取備份狀態');
+    }
+  },
+  async saveCloud(){
+    if(!this.user || this.cloudBusy)return;
+    this.cloudBusy=true; this.renderCloudStatus();
+    try{
+      const payload={
+        uid:this.user.uid,
+        schemaVersion:'1.6.2',
+        state:this.sanitizePersistentState(this.state),
+        sourceOrigin:location.origin,
+        sourcePath:location.pathname,
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+      };
+      await this.cloudRef().set(payload,{merge:true});
+      // 清掉舊版曾寫入雲端 state map 的暫時提示欄位。reviews 陣列已由 sanitized state 整體覆寫。
+      await this.cloudRef().update({
+        'state.lastPrompt':firebase.firestore.FieldValue.delete(),
+        'state.lastPatchPrompt':firebase.firestore.FieldValue.delete(),
+        'state.lastScenarioPrompt':firebase.firestore.FieldValue.delete()
+      }).catch(()=>{});
+      await this.fetchCloudMeta();
+      alert('✅ 練習資料已備份到 Firebase。');
+    }catch(e){
+      console.error(e);
+      this.renderCloudStatus('☁️ 備份失敗');
+      alert('練習資料雲端備份失敗：'+e.message+'\n\n若訊息包含 permission-denied，請確認 Firestore Rules 已加入 ProjectLab_Data 規則並發布。');
+    }finally{ this.cloudBusy=false; this.renderCloudStatus(); }
+  },
+  async loadCloud(){
+    if(!this.user || this.cloudBusy)return;
+    if(!confirm('⚠️ 從 Firebase 載入練習資料？這會覆蓋這個瀏覽器目前的 Project Lab 本機資料。正式白板不受影響。'))return;
+    this.cloudBusy=true; this.renderCloudStatus();
+    try{
+      const doc=await this.cloudRef().get();
+      if(!doc.exists){ alert('Firebase 尚無 Project Lab 練習資料備份。'); return; }
+      const data=doc.data();
+      if(!data?.state || typeof data.state!=='object') throw new Error('雲端文件缺少 state 資料');
+      this.state={...this.state,...data.state};
+      if(!Array.isArray(this.state.managementItems))this.state.managementItems=[];
+      if(!Array.isArray(this.state.patches))this.state.patches=[];
+      Object.values(this.state.projects||{}).forEach(p=>{
+        if(p.purpose===undefined){p.purpose=p.goal||'';p.goal='';}
+        if(p.currentApproach===undefined)p.currentApproach='';
+      });
+      (this.state.managementItems||[]).forEach(m=>{if(!m.thinkingState)m.thinkingState=this.defaultThinkingState(m.status);});
+      this.state=this.sanitizePersistentState(this.state);
+      localStorage.setItem(this.key(),JSON.stringify(this.state));
+      this.reloadSource(false);
+      const ts=data.updatedAt; const d=ts?.toDate?ts.toDate():null;
+      this.lastCloudBackupAt=d?d.toLocaleString('zh-TW',{hour12:false}):'已載入';
+      this.renderAll(); this.renderCloudStatus();
+      alert('📥 練習資料已從 Firebase 載入。');
+    }catch(e){
+      console.error(e);
+      this.renderCloudStatus('☁️ 載入失敗');
+      alert('練習資料雲端載入失敗：'+e.message+'\n\n若訊息包含 permission-denied，請確認 Firestore Rules 已加入 ProjectLab_Data 規則並發布。');
+    }finally{ this.cloudBusy=false; this.renderCloudStatus(); }
+  },
 
   init(){
     this.loadState();
     this.renderTemplateButtons();
     this.reloadSource(false);
+    this.fetchCloudMeta();
   },
 
   reloadSource(showAlert=true){
@@ -430,7 +671,7 @@ const lab = {
 
   renderProjectMeta(){
     const p=this.activeProject(); if(!p)return;
-    document.getElementById('project-id-view').innerHTML=`<strong>Project ID</strong><br><code>${this.esc(p.id)}</code><br><span class="tiny">來源名稱：${this.esc(p.sourceName)}</span>`;
+    document.getElementById('project-id-view').innerHTML=`<strong>專案識別碼</strong><br><code>${this.esc(p.id)}</code><br><span class="tiny">來源名稱：${this.esc(p.sourceName)}</span>`;
     ['name','goal','deadline','deadlineType','definitionOfDone','constraints','nextReviewDate','planningHorizonDays'].forEach(()=>{});
     document.getElementById('pm-name').value=p.name||'';
     document.getElementById('pm-purpose').value=p.purpose||'';
@@ -468,7 +709,7 @@ const lab = {
     const cards=this.projectCards(); const root=document.getElementById('view-source'); if(!root)return;
     document.getElementById('center-subtitle').innerText=this.activeProject()?.name||'';
     if(!cards.length){root.innerHTML='<div class="list-empty">目前專案沒有卡片。</div>';return;}
-    root.innerHTML=`<div class="notice info">此區為正式白板唯讀資料。工時明細同樣視為歷史事實，會進入 Snapshot 與 AI Context，但 Scenario 不可改寫。</div>
+    root.innerHTML=`<div class="notice info">此區為正式白板唯讀資料。工時明細同樣視為歷史事實，會進入「保存的歷史狀態」與 AI 分析脈絡，但重新規劃方案不可改寫。</div>
       <div class="section-title">規劃 vs 實際工時總覽</div>
       ${this.renderProjectTimeOverview(cards)}
       <div class="section-title">正式卡片</div>
@@ -675,7 +916,7 @@ const lab = {
     else if(thinking==='clarify') focused=`<div class="focus-box"><label class="field"><span><span class="focus-number">1</span>真正希望得到什麼結果？</span><textarea onchange="lab.updateManagementItem('${m.id}','desiredOutcome',this.value)">${this.esc(m.desiredOutcome)}</textarea></label><label class="field"><span><span class="focus-number">2</span>目前最重要的不知道是什麼？</span><textarea onchange="lab.updateManagementItem('${m.id}','unknowns',this.value)">${this.esc(m.unknowns)}</textarea></label><div class="management-grid"><label class="field">誰可能知道？<input value="${this.esc(m.askWho)}" onchange="lab.updateManagementItem('${m.id}','askWho',this.value)"></label><label class="field">真正想問什麼？<textarea onchange="lab.updateManagementItem('${m.id}','askQuestion',this.value)">${this.esc(m.askQuestion)}</textarea></label></div><div class="row"><button class="btn small" onclick="lab.prepareManagementQuestion('${m.id}')">整理成問同事的問題</button><button class="btn small" onclick="lab.copyManagementQuestion('${m.id}')">複製</button></div>${prepared?`<div class="question-preview">${this.esc(prepared)}</div>`:''}</div>`;
     else if(thinking==='decide') focused=`<div class="focus-box"><label class="field"><span><span class="focus-number">1</span>有哪些做法？</span><textarea onchange="lab.updateManagementItem('${m.id}','options',this.value)">${this.esc(m.options)}</textarea></label><label class="field"><span><span class="focus-number">2</span>各自犧牲什麼／有什麼取捨？</span><textarea onchange="lab.updateManagementItem('${m.id}','tradeoffs',this.value)">${this.esc(m.tradeoffs)}</textarea></label><label class="field"><span><span class="focus-number">3</span>我目前暫時傾向什麼？</span><textarea onchange="lab.updateManagementItem('${m.id}','recommendation',this.value)">${this.esc(m.recommendation)}</textarea></label></div>`;
     else if(thinking==='advance') focused=`<div class="focus-box"><div class="management-grid"><label class="field">誰有權決定<input value="${this.esc(m.decisionOwner)}" onchange="lab.updateManagementItem('${m.id}','decisionOwner',this.value)"></label><label class="field">誰執行／承接<input value="${this.esc(m.assignee)}" onchange="lab.updateManagementItem('${m.id}','assignee',this.value)"></label></div><label class="field"><span><span class="focus-number">2</span>現在球在誰手上／下一步</span><textarea class="focus-important" onchange="lab.updateManagementItem('${m.id}','nextAction',this.value);lab.renderManagement()">${this.esc(m.nextAction)}</textarea></label><div class="management-grid"><label class="field">目前狀態<select onchange="lab.updateManagementItem('${m.id}','status',this.value)">${MANAGEMENT_STATUSES.map(([v,l])=>`<option value="${v}" ${m.status===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="field">下次追蹤日<input type="date" value="${this.esc(m.followUpDate)}" onchange="lab.updateManagementItem('${m.id}','followUpDate',this.value);lab.renderManagement()"></label></div></div>`;
-    else focused=`<div class="focus-box"><label class="field"><span><span class="focus-number">1</span>最後怎麼處理／得到什麼結果？</span><textarea onchange="lab.updateManagementItem('${m.id}','result',this.value)">${this.esc(m.result)}</textarea></label><label class="field"><span><span class="focus-number">2</span>原本問題解決了嗎？</span><select onchange="lab.updateManagementItem('${m.id}','outcomeStatus',this.value)">${OUTCOME_STATUSES.map(([v,l])=>`<option value="${v}" ${(m.outcomeStatus||'unknown')===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="field"><span><span class="focus-number">3</span>正式計畫需要因此改嗎？</span><textarea placeholder="不一定要改。若要改，先記要改什麼，再自己回白板處理。" onchange="lab.updateManagementItem('${m.id}','recommendation',this.value)">${this.esc(m.recommendation)}</textarea></label><div class="row"><button class="btn small" onclick="lab.createOutcomeFromManagement('${m.id}')">建立 Outcome Review</button><button class="btn small" onclick="lab.managementToFinding('${m.id}')">轉 Finding</button></div></div>`;
+    else focused=`<div class="focus-box"><label class="field"><span><span class="focus-number">1</span>最後怎麼處理／得到什麼結果？</span><textarea onchange="lab.updateManagementItem('${m.id}','result',this.value)">${this.esc(m.result)}</textarea></label><label class="field"><span><span class="focus-number">2</span>原本問題解決了嗎？</span><select onchange="lab.updateManagementItem('${m.id}','outcomeStatus',this.value)">${OUTCOME_STATUSES.map(([v,l])=>`<option value="${v}" ${(m.outcomeStatus||'unknown')===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="field"><span><span class="focus-number">3</span>正式計畫需要因此改嗎？</span><textarea placeholder="不一定要改。若要改，先記要改什麼，再自己回白板處理。" onchange="lab.updateManagementItem('${m.id}','recommendation',this.value)">${this.esc(m.recommendation)}</textarea></label><div class="row"><button class="btn small" onclick="lab.createOutcomeFromManagement('${m.id}')">建立結果回顧</button><button class="btn small" onclick="lab.managementToFinding('${m.id}')">轉成重要發現</button></div></div>`;
     const full=showAll?`<details open><summary>完整管理資料</summary><div class="management-grid"><label class="field">來源<input value="${this.esc(m.source)}" onchange="lab.updateManagementItem('${m.id}','source',this.value)"></label><label class="field">我的角色<select onchange="lab.updateManagementItem('${m.id}','myRole',this.value)">${MANAGEMENT_ROLES.map(([v,l])=>`<option value="${v}" ${m.myRole===v?'selected':''}>${l}</option>`).join('')}</select></label><label class="field wide">背景／情境<textarea onchange="lab.updateManagementItem('${m.id}','context',this.value)">${this.esc(m.context)}</textarea></label><label class="field wide">已知事實<textarea onchange="lab.updateManagementItem('${m.id}','knownFacts',this.value)">${this.esc(m.knownFacts)}</textarea></label><label class="field wide">連結正式執行卡<select onchange="lab.updateManagementItem('${m.id}','linkedCardId',this.value)"><option value="">未連結</option>${cardOptions}</select></label></div></details>`:'';
     return `<div class="management-item ${statusClass}"><div class="management-top"><input id="mgmt-title-${m.id}" class="management-title" type="text" value="${this.esc(m.title)}" placeholder="這件事情一句話叫什麼？" onchange="lab.updateManagementItem('${m.id}','title',this.value)"><span class="tiny">${this.fmt(m.updatedAt)}</span></div><div class="management-next ${next?'':'missing'}"><div class="label">▶ 現在下一步</div><div class="value">${this.esc(next||'尚未寫。先留一個現在可做的最小動作。')}</div></div>${linked?`<div class="linked-card" style="margin-top:7px">🔗 ${this.esc(linked)}</div>`:''}<div class="thinking-tabs">${tabs}<button class="thinking-btn" onclick="lab.toggleManagementAll('${m.id}')">${showAll?'收起完整資料':'展開完整資料'}</button></div>${focused}${full}<div class="row" style="margin-top:9px"><button class="btn small" onclick="lab.sendManagementToAI('${m.id}')">拿這筆問 AI</button><button class="btn small danger" onclick="lab.deleteManagementItem('${m.id}')">刪除</button></div></div>`;
   },
@@ -690,11 +931,11 @@ const lab = {
   createSnapshot(){
     const p=this.activeProject(); if(!p)return;
     const snap={id:this.uid('snap'),projectId:p.id,createdAt:this.now(),label:`${p.name} ${new Date().toLocaleString('zh-TW',{hour12:false})}`,payload:this.snapshotPayload()};
-    this.state.snapshots.push(snap); this.saveState(); this.renderAll(); this.showView('snapshots'); alert('Snapshot 已建立。');
+    this.state.snapshots.push(snap); this.saveState(); this.renderAll(); this.showView('snapshots'); alert('目前狀態已保存。');
   },
   projectSnapshots(){ return this.state.snapshots.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); },
-  renderSnapshots(){ const root=document.getElementById('view-snapshots'); const list=this.projectSnapshots(); if(!list.length){root.innerHTML='<div class="list-empty">還沒有 Snapshot。開始重要檢討前建立一份即可。</div>';return;} root.innerHTML=`<div class="card-list">${list.map(s=>`<div class="snapshot-item"><div class="row"><strong>${this.esc(s.label)}</strong><span class="pill free">${this.esc(s.id)}</span></div><div class="meta">${this.fmt(s.createdAt)}｜${s.payload.cards.length} 張卡片｜${(s.payload.managementItems||[]).length} 筆管理事項</div><div class="row" style="margin-top:8px"><button class="btn small" onclick="lab.createScenarioFromSnapshot('${s.id}')">從此 Snapshot 建 Scenario</button><button class="btn small" onclick="lab.useSnapshotForAI('${s.id}')">用於 AI</button><button class="btn small danger" onclick="lab.deleteSnapshot('${s.id}')">刪除</button></div></div>`).join('')}</div>`; },
-  deleteSnapshot(id){ if(!confirm('刪除這份 Snapshot？相關 Review / Scenario 不會自動刪除。'))return; this.state.snapshots=this.state.snapshots.filter(x=>x.id!==id); this.saveState(); this.renderAll(); },
+  renderSnapshots(){ const root=document.getElementById('view-snapshots'); const list=this.projectSnapshots(); if(!list.length){root.innerHTML='<div class="list-empty">還沒有歷史狀態。重要檢討、方向調整或階段結束前保存一份即可。</div>';return;} root.innerHTML=`<div class="card-list">${list.map(s=>`<div class="snapshot-item"><div class="row"><strong>${this.esc(s.label)}</strong><span class="pill free">${this.esc(s.id)}</span></div><div class="meta">${this.fmt(s.createdAt)}｜${s.payload.cards.length} 張卡片｜${(s.payload.managementItems||[]).length} 筆管理事項</div><div class="row" style="margin-top:8px"><button class="btn small" onclick="lab.createScenarioFromSnapshot('${s.id}')">用此狀態建立重新規劃方案</button><button class="btn small" onclick="lab.useSnapshotForAI('${s.id}')">用於進階提示</button><button class="btn small danger" onclick="lab.deleteSnapshot('${s.id}')">刪除</button></div></div>`).join('')}</div>`; },
+  deleteSnapshot(id){ if(!confirm('刪除這份歷史狀態？相關檢討紀錄與重新規劃方案不會自動刪除。'))return; this.state.snapshots=this.state.snapshots.filter(x=>x.id!==id); this.saveState(); this.renderAll(); },
   useSnapshotForAI(id){ document.getElementById('ai-snapshot-select').value=id; this.buildReviewPrompt(); },
 
   renderTemplateButtons(){ const root=document.getElementById('review-template-grid'); root.innerHTML=REVIEW_TEMPLATES.map(t=>`<button class="template-btn ${this.state.activeTemplate===t.id?'active':''}" data-id="${t.id}" onclick="lab.selectTemplate('${t.id}')">${t.label}</button>`).join(''); },
@@ -793,51 +1034,51 @@ const lab = {
 
   buildReviewPrompt(){
     const ctx=this.selectedContext(); const t=REVIEW_TEMPLATES.find(x=>x.id===this.state.activeTemplate)||REVIEW_TEMPLATES[0]; const q=document.getElementById('ai-custom-question').value.trim();
-    const prompt=`你是我的專案思考教練。這一輪不要替我重寫整個計畫，也不要一次丟出大量框架。你的工作是幫我找出「現在最值得我自己判斷的 1～3 件事」。\n\n【本次焦點】\n${t.text}\n\n【我的額外問題】\n${q||'無。請依本次焦點進行。'}\n\n【教練規則】\n1. 最多先提出 3 個關鍵問題或判斷點，依重要性排序。\n2. 若現有資訊已足以開始，請明確說「目前先不用補更多規劃」，並指出最小下一步。\n3. 區分目的、目標與目前手段。若我把手段當成目標，先用問題讓我辨識，不要直接替我改答案。\n4. 對工作卡，優先判斷：下一步是否清楚、是否真的需要拆、產出／驗收是否足以判斷。\n5. 對管理事項，區分：我自己做、找人問、交辦、等待、追蹤、待決策。不要把所有事情都變成我的執行卡。\n6. 把原本估算與實際工時／工作紀錄一起看；若工作未完成，不要只看工時百分比下結論。\n7. 資訊不足時指出缺口，不要補成事實。\n8. 只有真正影響期限、成果、決策或下一步的風險才優先。\n9. 用正常文字回答，不需要 JSON。\n\n【資料基準】\n${ctx.label} (${ctx.id})\n\n【專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}`;
-    this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt;
+    const prompt=`請協助我檢查目前的專案資訊與判斷。這一輪不要替我重寫整個計畫，也不要一次丟出大量框架。請找出「現在最值得我自己判斷的 1～3 件事」。\n\n【本次焦點】\n${t.text}\n\n【我的額外問題】\n${q||'無。請依本次焦點進行。'}\n\n【分析規則】\n1. 最多先提出 3 個關鍵問題或判斷點，依重要性排序。\n2. 若現有資訊已足以開始，請明確說「目前先不用補更多規劃」，並指出最小下一步。\n3. 區分目的、目標與目前手段。若我把手段當成目標，先用問題讓我辨識，不要直接替我改答案。\n4. 對工作卡，優先判斷：下一步是否清楚、是否真的需要拆、產出／驗收是否足以判斷。\n5. 對管理事項，區分：我自己做、找人問、交辦、等待、追蹤、待決策。不要把所有事情都變成我的執行卡。\n6. 把原本估算與實際工時／工作紀錄一起看；若工作未完成，不要只看工時百分比下結論。\n7. 資訊不足時指出缺口，不要補成事實。\n8. 只有真正影響期限、成果、決策或下一步的風險才優先。\n9. 用正常文字回答，不需要 JSON。\n\n【資料基準】\n${ctx.label} (${ctx.id})\n\n【專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}`;
+    this.aiRuntime.lastPrompt=prompt; document.getElementById('prompt-preview').innerText=prompt; return prompt;
   },
   async copyText(text,msg='已複製'){ try{await navigator.clipboard.writeText(text); alert(msg);}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(msg);} },
-  copyPrompt(){ const p=this.state.lastPrompt||this.buildReviewPrompt(); this.copyText(p,'已複製完整 AI 提問。'); },
+  copyPrompt(){ const p=this.aiRuntime.lastPrompt||this.buildReviewPrompt(); this.copyText(p,'已複製完整 AI 提問。'); },
 
   saveReview(){
     const response=document.getElementById('ai-response').value.trim(); if(!response)return alert('請先貼上 AI 回覆。'); const ctx=this.selectedContext(); const t=REVIEW_TEMPLATES.find(x=>x.id===this.state.activeTemplate)||REVIEW_TEMPLATES[0];
-    const review={id:this.uid('review'),reviewType:'discussion',projectId:this.state.activeProjectId,snapshotId:ctx.id==='current'?'':ctx.id,contextLabel:ctx.label,templateId:t.id,templateLabel:t.label,customQuestion:document.getElementById('ai-custom-question').value.trim(),prompt:this.state.lastPrompt||this.buildReviewPrompt(),response,userReflection:'',createdAt:this.now()};
-    this.state.reviews.push(review); this.saveState(); document.getElementById('ai-response').value=''; this.renderReviews(); this.showView('reviews'); alert('已儲存為 Review。');
+    const review={id:this.uid('review'),reviewType:'discussion',projectId:this.state.activeProjectId,snapshotId:ctx.id==='current'?'':ctx.id,contextLabel:ctx.label,templateId:t.id,templateLabel:t.label,customQuestion:document.getElementById('ai-custom-question').value.trim(),response,userReflection:'',createdAt:this.now()};
+    this.state.reviews.push(review); this.saveState(); document.getElementById('ai-response').value=''; this.renderReviews(); this.showView('reviews'); alert('已存成檢討紀錄。');
   },
   projectReviews(){ return this.state.reviews.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); },
   updateReviewReflection(id,value){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; r.userReflection=value; this.saveState(); },
   updateReviewField(id,field,value){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; r[field]=value; r.updatedAt=this.now(); this.saveState(); },
-  reviewToFinding(id){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; this.addFinding({sourceReviewId:id,title:`來自 ${r.templateLabel||'Outcome Review'} 的發現`,detail:'',type:'decision_candidate'}); this.showView('findings'); },
-  addOutcomeReview(seed={}){ const r={id:this.uid('review'),reviewType:'outcome',projectId:this.state.activeProjectId,templateLabel:'Outcome Review',problem:seed.problem||'',outcomeStatus:seed.outcomeStatus||'unknown',originalApproach:seed.originalApproach||'',actualApproach:seed.actualApproach||'',changeReason:seed.changeReason||'',lesson:seed.lesson||'',transferable:false,transferableRule:'',sourceManagementId:seed.sourceManagementId||'',createdAt:this.now(),updatedAt:this.now()}; this.state.reviews.push(r); this.saveState(); this.renderReviews(); this.showView('reviews'); },
+  reviewToFinding(id){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; this.addFinding({sourceReviewId:id,title:`來自 ${r.templateLabel||'結果回顧'} 的發現`,detail:'',type:'decision_candidate'}); this.showView('findings'); },
+  addOutcomeReview(seed={}){ const r={id:this.uid('review'),reviewType:'outcome',projectId:this.state.activeProjectId,templateLabel:'結果回顧',problem:seed.problem||'',outcomeStatus:seed.outcomeStatus||'unknown',originalApproach:seed.originalApproach||'',actualApproach:seed.actualApproach||'',changeReason:seed.changeReason||'',lesson:seed.lesson||'',transferable:false,transferableRule:'',sourceManagementId:seed.sourceManagementId||'',createdAt:this.now(),updatedAt:this.now()}; this.state.reviews.push(r); this.saveState(); this.renderReviews(); this.showView('reviews'); },
   createOutcomeFromManagement(id){ const m=this.state.managementItems.find(x=>x.id===id); if(!m)return; this.addOutcomeReview({problem:m.desiredOutcome||m.title,outcomeStatus:m.outcomeStatus||'unknown',originalApproach:m.options||m.recommendation,actualApproach:m.result,changeReason:'',lesson:'',sourceManagementId:m.id}); },
-  renderOutcomeReview(r){ return `<div class="review-item"><div class="row"><strong>Outcome Review</strong><span class="tiny">${this.fmt(r.createdAt)}</span></div><label class="field">原本要解決的問題<textarea onchange="lab.updateReviewField('${r.id}','problem',this.value)">${this.esc(r.problem||'')}</textarea></label><label class="field">問題最後解決了嗎？<select onchange="lab.updateReviewField('${r.id}','outcomeStatus',this.value)">${OUTCOME_STATUSES.map(([v,l])=>`<option value="${v}" ${(r.outcomeStatus||'unknown')===v?'selected':''}>${l}</option>`).join('')}</select></label><div class="management-grid"><label class="field">原本打算怎麼解<textarea onchange="lab.updateReviewField('${r.id}','originalApproach',this.value)">${this.esc(r.originalApproach||'')}</textarea></label><label class="field">實際最後怎麼解<textarea onchange="lab.updateReviewField('${r.id}','actualApproach',this.value)">${this.esc(r.actualApproach||'')}</textarea></label></div><label class="field">為什麼不同／出現了什麼新資訊<textarea onchange="lab.updateReviewField('${r.id}','changeReason',this.value)">${this.esc(r.changeReason||'')}</textarea></label><label class="field">本次經驗<textarea onchange="lab.updateReviewField('${r.id}','lesson',this.value)">${this.esc(r.lesson||'')}</textarea></label><label class="tiny"><input type="checkbox" ${r.transferable?'checked':''} onchange="lab.updateReviewField('${r.id}','transferable',this.checked);lab.renderReviews()"> 值得帶到其他專案</label>${r.transferable?`<label class="field">可遷移原則<textarea onchange="lab.updateReviewField('${r.id}','transferableRule',this.value)">${this.esc(r.transferableRule||'')}</textarea></label>`:''}<div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉 Finding</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`; },
-  renderReviews(){ const root=document.getElementById('view-reviews'); const list=this.projectReviews(); const add=`<button class="btn primary" onclick="lab.addOutcomeReview()">＋ Outcome Review</button>`; if(!list.length){root.innerHTML=`${add}<div style="height:10px"></div><div class="list-empty">尚無 Review。討論原文與事情結束後的 Outcome Review 都放在這裡。</div>`;return;} root.innerHTML=add+'<div style="height:10px"></div>'+list.map(r=>r.reviewType==='outcome'?this.renderOutcomeReview(r):`<div class="review-item"><div class="row"><strong>${this.esc(r.templateLabel)}</strong><span class="pill free">${this.esc(r.contextLabel||'')}</span><span class="tiny">${this.fmt(r.createdAt)}</span></div>${r.customQuestion?`<div class="desc"><strong>我的問題：</strong>${this.esc(r.customQuestion)}</div>`:''}<details><summary>AI 回覆原文</summary><div class="desc">${this.esc(r.response||'').replace(/\n/g,'<br>')}</div></details><label class="field" style="margin-top:8px">我的後續想法<textarea onchange="lab.updateReviewReflection('${r.id}',this.value)">${this.esc(r.userReflection||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉 Finding</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`).join(''); },
+  renderOutcomeReview(r){ return `<div class="review-item"><div class="row"><strong>結果回顧</strong><span class="tiny">${this.fmt(r.createdAt)}</span></div><label class="field">原本要解決的問題<textarea onchange="lab.updateReviewField('${r.id}','problem',this.value)">${this.esc(r.problem||'')}</textarea></label><label class="field">問題最後解決了嗎？<select onchange="lab.updateReviewField('${r.id}','outcomeStatus',this.value)">${OUTCOME_STATUSES.map(([v,l])=>`<option value="${v}" ${(r.outcomeStatus||'unknown')===v?'selected':''}>${l}</option>`).join('')}</select></label><div class="management-grid"><label class="field">原本打算怎麼解<textarea onchange="lab.updateReviewField('${r.id}','originalApproach',this.value)">${this.esc(r.originalApproach||'')}</textarea></label><label class="field">實際最後怎麼解<textarea onchange="lab.updateReviewField('${r.id}','actualApproach',this.value)">${this.esc(r.actualApproach||'')}</textarea></label></div><label class="field">為什麼不同／出現了什麼新資訊<textarea onchange="lab.updateReviewField('${r.id}','changeReason',this.value)">${this.esc(r.changeReason||'')}</textarea></label><label class="field">本次經驗<textarea onchange="lab.updateReviewField('${r.id}','lesson',this.value)">${this.esc(r.lesson||'')}</textarea></label><label class="tiny"><input type="checkbox" ${r.transferable?'checked':''} onchange="lab.updateReviewField('${r.id}','transferable',this.checked);lab.renderReviews()"> 值得帶到其他專案</label>${r.transferable?`<label class="field">可遷移原則<textarea onchange="lab.updateReviewField('${r.id}','transferableRule',this.value)">${this.esc(r.transferableRule||'')}</textarea></label>`:''}<div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉成重要發現</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`; },
+  renderReviews(){ const root=document.getElementById('view-reviews'); const list=this.projectReviews(); const add=`<button class="btn primary" onclick="lab.addOutcomeReview()">＋ 結果回顧</button>`; if(!list.length){root.innerHTML=`${add}<div style="height:10px"></div><div class="list-empty">尚無檢討紀錄。一般討論與事情結束後的結果回顧都放在這裡。</div>`;return;} root.innerHTML=add+'<div style="height:10px"></div>'+list.map(r=>r.reviewType==='outcome'?this.renderOutcomeReview(r):`<div class="review-item"><div class="row"><strong>${this.esc(r.templateLabel)}</strong><span class="pill free">${this.esc(r.contextLabel||'')}</span><span class="tiny">${this.fmt(r.createdAt)}</span></div>${r.customQuestion?`<div class="desc"><strong>我的問題：</strong>${this.esc(r.customQuestion)}</div>`:''}<details><summary>AI 回覆原文</summary><div class="desc">${this.esc(r.response||'').replace(/\n/g,'<br>')}</div></details><label class="field" style="margin-top:8px">我的後續想法<textarea onchange="lab.updateReviewReflection('${r.id}',this.value)">${this.esc(r.userReflection||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉成重要發現</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`).join(''); },
 
   renderAiTargetSelect(){ const el=document.getElementById('ai-target-card-select'); if(!el)return; const cards=this.projectCards(); const prev=el.value; el.innerHTML=cards.map(({card})=>`<option value="${this.esc(card.id)}">${this.esc(card.title||'未命名')}</option>`).join('')||'<option value="">沒有卡片</option>'; if(cards.some(({card})=>card.id===prev))el.value=prev; },
   patchAllowedFields(){ return ['title','content','category','nextAction','decisionPoint','breakdownDraft','dependencyNote','deliverable','acceptance','acceptanceEvidence','reviewNote']; },
   patchableCardView(card){ const out={}; this.patchAllowedFields().forEach(k=>out[k]=String(card?.[k]??'')); return out; },
   patchSchemaExample(){ const id=document.getElementById('ai-target-card-select')?.value||'card_xxx'; return {schemaVersion:'1.0',type:'project_lab_patch',baseSnapshotId:this.selectedContext().id,targetType:'card',targetId:id,summary:'主要問題',edits:[{field:'deliverable',expectedOriginal:'原文',proposedValue:'建議文字',reason:'為什麼值得改',changeType:'clarify'}],questions:[]}; },
-  buildPatchPrompt(){ const ctx=this.selectedContext(); const id=document.getElementById('ai-target-card-select')?.value; const currentHit=this.projectCards().find(x=>x.card.id===id); if(!currentHit)return alert('請先選擇要批改的卡片。'); const hit=(ctx.payload?.cards||[]).find(x=>x.card?.id===id)||currentHit; const card=hit.card; const q=document.getElementById('ai-custom-question').value.trim(); const prompt=`請像批改作業一樣檢查這張工作卡。整體方向若合理，請保留原規劃，只指出真正影響可理解性、可執行性、目的／目標連結或可驗收性的地方。\n\n【規則】\n1. 最多提出 3 項修改；沒有必要改的欄位不要動。\n2. 不要重新規劃整個專案；若需要大幅重構，questions 裡明確說應改用 Scenario。\n3. 特別檢查：是否把手段當目標、下一步是否具體、下一判斷點是否合理、產出／驗收是否可判斷。\n4. expectedOriginal 必須逐字等於提供資料中的現值，讓系統檢查這份批改是否已過期。\n5. 只能修改以下文字欄位：${this.patchAllowedFields().join(', ')}。\n6. 只輸出合法 JSON，不要 Markdown code fence 或其他文字。\n\n【我的額外問題】\n${q||'無'}\n\n【資料基準】\n${ctx.label} (${ctx.id})\n\n【目標卡片完整脈絡】\n${JSON.stringify(this.compactContext({project:ctx.payload.project,cards:[hit],managementItems:[]}).cards[0],null,2)}\n\n【可批改欄位現值｜expectedOriginal 必須從這裡逐字取值】\n${JSON.stringify(this.patchableCardView(card),null,2)}\n\n【專案目的／目標／目前做法】\n${JSON.stringify({purpose:this.activeProject()?.purpose||'',goal:this.activeProject()?.goal||'',currentApproach:this.activeProject()?.currentApproach||'',deadline:this.activeProject()?.deadline||''},null,2)}\n\n【回傳格式】\n${JSON.stringify(this.patchSchemaExample(),null,2)}`; this.state.lastPatchPrompt=prompt; this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt; },
-  copyPatchSchema(){ this.copyText(JSON.stringify(this.patchSchemaExample(),null,2),'已複製 Patch JSON Schema。'); },
+  buildPatchPrompt(){ const ctx=this.selectedContext(); const id=document.getElementById('ai-target-card-select')?.value; const currentHit=this.projectCards().find(x=>x.card.id===id); if(!currentHit)return alert('請先選擇要批改的卡片。'); const hit=(ctx.payload?.cards||[]).find(x=>x.card?.id===id)||currentHit; const card=hit.card; const q=document.getElementById('ai-custom-question').value.trim(); const prompt=`請像批改作業一樣檢查這張工作卡。整體方向若合理，請保留原規劃，只指出真正影響可理解性、可執行性、目的／目標連結或可驗收性的地方。\n\n【規則】\n1. 最多提出 3 項修改；沒有必要改的欄位不要動。\n2. 不要重新規劃整個專案；若需要大幅重構，請在 questions 裡明確說應改用「重新規劃方案」。\n3. 特別檢查：是否把手段當目標、下一步是否具體、下一判斷點是否合理、產出／驗收是否可判斷。\n4. expectedOriginal 必須逐字等於提供資料中的現值，讓系統檢查這份批改是否已過期。\n5. 只能修改以下文字欄位：${this.patchAllowedFields().join(', ')}。\n6. 只輸出合法 JSON，不要 Markdown code fence 或其他文字。\n\n【我的額外問題】\n${q||'無'}\n\n【資料基準】\n${ctx.label} (${ctx.id})\n\n【目標卡片完整脈絡】\n${JSON.stringify(this.compactContext({project:ctx.payload.project,cards:[hit],managementItems:[]}).cards[0],null,2)}\n\n【可批改欄位現值｜expectedOriginal 必須從這裡逐字取值】\n${JSON.stringify(this.patchableCardView(card),null,2)}\n\n【專案目的／目標／目前做法】\n${JSON.stringify({purpose:this.activeProject()?.purpose||'',goal:this.activeProject()?.goal||'',currentApproach:this.activeProject()?.currentApproach||'',deadline:this.activeProject()?.deadline||''},null,2)}\n\n【回傳格式】\n${JSON.stringify(this.patchSchemaExample(),null,2)}`; this.aiRuntime.lastPatchPrompt=prompt; this.aiRuntime.lastPrompt=prompt; document.getElementById('prompt-preview').innerText=prompt; return prompt; },
+  copyPatchSchema(){ this.copyText(JSON.stringify(this.patchSchemaExample(),null,2),'已複製修改建議 JSON 格式範例。'); },
   projectPatches(){ return (this.state.patches||[]).filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); },
   currentCardField(cardId,field){ const c=this.projectCards().find(x=>x.card.id===cardId)?.card; return c?String(c[field]??''):null; },
   validatePatchImport(obj){ const e=[]; if(obj?.schemaVersion!=='1.0')e.push('schemaVersion 必須是 1.0'); if(obj?.type!=='project_lab_patch')e.push('type 必須是 project_lab_patch'); if(obj?.targetType!=='card')e.push('targetType 必須是 card'); if(!obj?.baseSnapshotId)e.push('缺少 baseSnapshotId'); else if(obj.baseSnapshotId!=='current'&&!this.state.snapshots.some(x=>x.id===obj.baseSnapshotId))e.push('baseSnapshotId 找不到對應 Snapshot'); if(!obj?.targetId)e.push('缺少 targetId'); if(!Array.isArray(obj?.edits))e.push('缺少 edits'); if((obj?.edits||[]).length>3)e.push('edits 不應超過 3 項'); const allowed=new Set(this.patchAllowedFields()); (obj?.edits||[]).forEach((x,i)=>{ if(!allowed.has(x.field))e.push(`edits[${i}] 不允許修改欄位 ${x.field}`); if(x.expectedOriginal===undefined)e.push(`edits[${i}] 缺少 expectedOriginal`); if(x.proposedValue===undefined)e.push(`edits[${i}] 缺少 proposedValue`); if(!x.reason)e.push(`edits[${i}] 缺少 reason`); }); if(!this.projectCards().some(x=>x.card.id===obj?.targetId))e.push('targetId 不存在於目前專案'); return e; },
-  tryImportPatchFromResponse(){ const box=document.getElementById('import-status'); try{ const obj=this.extractJson(document.getElementById('ai-response').value); const errs=this.validatePatchImport(obj); if(errs.length){box.innerHTML=`<div class="notice bad"><strong>Patch 格式不能匯入：</strong><br>${errs.map(x=>'• '+this.esc(x)).join('<br>')}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyPatchRepairPrompt()">複製 Patch 修復提示詞</button></div>`;return;} const edits=obj.edits.map(x=>({...x,stale:this.currentCardField(obj.targetId,x.field)!==String(x.expectedOriginal??''),decision:'pending',finalValue:''})); const p={id:this.uid('patch'),projectId:this.state.activeProjectId,baseSnapshotId:obj.baseSnapshotId||'',targetType:'card',targetId:obj.targetId,summary:obj.summary||'',questions:obj.questions||[],edits,createdAt:this.now()}; this.state.patches.push(p); this.saveState(); box.innerHTML='<div class="notice ok">Patch 已匯入。採用／保留只記錄你的判斷，不會直接改正式白板。</div>'; this.renderPatches(); this.showView('patches'); }catch(e){box.innerHTML=`<div class="notice bad"><strong>Patch JSON 解析失敗：</strong>${this.esc(e.message)}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyPatchRepairPrompt()">複製 Patch 修復提示詞</button></div>`;} },
-  copyPatchRepairPrompt(){ const txt=`你剛才的批改內容無法被 Project Lab 匯入。不要改變建議，只修正格式。請只輸出合法 JSON，並符合：\n${JSON.stringify(this.patchSchemaExample(),null,2)}`; this.copyText(txt,'已複製 Patch 修復提示詞。'); },
+  tryImportPatchFromResponse(){ const box=document.getElementById('import-status'); try{ const obj=this.extractJson(document.getElementById('ai-response').value); const errs=this.validatePatchImport(obj); if(errs.length){box.innerHTML=`<div class="notice bad"><strong>修改建議格式不能匯入：</strong><br>${errs.map(x=>'• '+this.esc(x)).join('<br>')}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyPatchRepairPrompt()">複製 修改建議格式修復提示</button></div>`;return;} const edits=obj.edits.map(x=>({...x,stale:this.currentCardField(obj.targetId,x.field)!==String(x.expectedOriginal??''),decision:'pending',finalValue:''})); const p={id:this.uid('patch'),projectId:this.state.activeProjectId,baseSnapshotId:obj.baseSnapshotId||'',targetType:'card',targetId:obj.targetId,summary:obj.summary||'',questions:obj.questions||[],edits,createdAt:this.now()}; this.state.patches.push(p); this.saveState(); box.innerHTML='<div class="notice ok">修改建議已匯入。採用／保留只記錄你的判斷，不會直接改正式白板。</div>'; this.renderPatches(); this.showView('patches'); }catch(e){box.innerHTML=`<div class="notice bad"><strong>修改建議 JSON 解析失敗：</strong>${this.esc(e.message)}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyPatchRepairPrompt()">複製 修改建議格式修復提示</button></div>`;} },
+  copyPatchRepairPrompt(){ const txt=`你剛才的批改內容無法被 Project Lab 匯入。不要改變建議，只修正格式。請只輸出合法 JSON，並符合：\n${JSON.stringify(this.patchSchemaExample(),null,2)}`; this.copyText(txt,'已複製修改建議格式修復提示。'); },
   updatePatchEdit(pid,index,field,value){ const p=this.state.patches.find(x=>x.id===pid); if(!p||!p.edits[index])return; p.edits[index][field]=value; this.saveState(); this.renderPatches(); },
-  renderPatches(){ const root=document.getElementById('view-patches'); if(!root)return; const list=this.projectPatches(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 AI 批改。選一張卡產生「批改提示」，把 JSON 貼回後會以刪除線／紅字方式顯示。</div>';return;} const labels={title:'標題',content:'內容',category:'分類',nextAction:'下一步',decisionPoint:'下一判斷點',breakdownDraft:'拆解草稿',dependencyNote:'依賴',deliverable:'預期產出',acceptance:'驗收條件',acceptanceEvidence:'驗收證據',reviewNote:'回顧'}; root.innerHTML=list.map(p=>{const title=this.projectCards().find(x=>x.card.id===p.targetId)?.card?.title||p.targetId; return `<div class="patch-item"><div class="row"><strong>✏️ ${this.esc(title)}</strong><span class="tiny">${this.fmt(p.createdAt)}</span></div>${p.summary?`<div class="desc">${this.esc(p.summary)}</div>`:''}${p.edits.map((e,i)=>`<div class="patch-edit ${e.stale?'stale':''}"><strong>${i+1}/${p.edits.length} ${this.esc(labels[e.field]||e.field)}</strong>${e.stale?'<div class="stale-note">⚠ 正式白板目前值已和 AI 批改時的原文不同，請先人工確認。</div>':''}<div class="redline-old">${this.esc(e.expectedOriginal||'（空白）')}</div><div class="redline-new">${this.esc(e.proposedValue||'（空白）')}</div><div class="patch-reason">理由：${this.esc(e.reason||'')}</div><div class="row" style="margin-top:7px"><button class="btn small ${e.decision==='accepted'?'success':''}" onclick="lab.updatePatchEdit('${p.id}',${i},'decision','accepted')">採用這項</button><button class="btn small" onclick="lab.updatePatchEdit('${p.id}',${i},'decision','kept')">保留原文</button><button class="btn small" onclick="lab.updatePatchEdit('${p.id}',${i},'decision','edited')">自己修改</button></div>${e.decision==='edited'?`<label class="field" style="margin-top:6px">我最後想怎麼寫<textarea onchange="lab.updatePatchEdit('${p.id}',${i},'finalValue',this.value)">${this.esc(e.finalValue||e.proposedValue||'')}</textarea></label>`:''}<div class="tiny">目前選擇：${e.decision==='accepted'?'採用建議':e.decision==='kept'?'保留原文':e.decision==='edited'?'自己修改':'尚未判斷'}</div></div>`).join('')}${(p.questions||[]).length?`<details><summary>AI 留下的問題</summary><div class="desc">${p.questions.map(x=>'• '+this.esc(x)).join('<br>')}</div></details>`:''}<button class="btn small danger" onclick="lab.deleteEntity('patches','${p.id}')">刪除批改</button></div>`;}).join(''); },
+  renderPatches(){ const root=document.getElementById('view-patches'); if(!root)return; const list=this.projectPatches(); if(!list.length){root.innerHTML='<div class="list-empty">尚無修改建議。選一張卡產生提示，把 JSON 貼回後會以刪除線／紅字方式顯示。</div>';return;} const labels={title:'標題',content:'內容',category:'分類',nextAction:'下一步',decisionPoint:'下一判斷點',breakdownDraft:'拆解草稿',dependencyNote:'依賴',deliverable:'預期產出',acceptance:'驗收條件',acceptanceEvidence:'驗收證據',reviewNote:'回顧'}; root.innerHTML=list.map(p=>{const title=this.projectCards().find(x=>x.card.id===p.targetId)?.card?.title||p.targetId; return `<div class="patch-item"><div class="row"><strong>✏️ ${this.esc(title)}</strong><span class="tiny">${this.fmt(p.createdAt)}</span></div>${p.summary?`<div class="desc">${this.esc(p.summary)}</div>`:''}${p.edits.map((e,i)=>`<div class="patch-edit ${e.stale?'stale':''}"><strong>${i+1}/${p.edits.length} ${this.esc(labels[e.field]||e.field)}</strong>${e.stale?'<div class="stale-note">⚠ 正式白板目前值已和 產生修改建議時的原文不同，請先人工確認。</div>':''}<div class="redline-old">${this.esc(e.expectedOriginal||'（空白）')}</div><div class="redline-new">${this.esc(e.proposedValue||'（空白）')}</div><div class="patch-reason">理由：${this.esc(e.reason||'')}</div><div class="row" style="margin-top:7px"><button class="btn small ${e.decision==='accepted'?'success':''}" onclick="lab.updatePatchEdit('${p.id}',${i},'decision','accepted')">採用這項</button><button class="btn small" onclick="lab.updatePatchEdit('${p.id}',${i},'decision','kept')">保留原文</button><button class="btn small" onclick="lab.updatePatchEdit('${p.id}',${i},'decision','edited')">自己修改</button></div>${e.decision==='edited'?`<label class="field" style="margin-top:6px">我最後想怎麼寫<textarea onchange="lab.updatePatchEdit('${p.id}',${i},'finalValue',this.value)">${this.esc(e.finalValue||e.proposedValue||'')}</textarea></label>`:''}<div class="tiny">目前選擇：${e.decision==='accepted'?'採用建議':e.decision==='kept'?'保留原文':e.decision==='edited'?'自己修改':'尚未判斷'}</div></div>`).join('')}${(p.questions||[]).length?`<details><summary>AI 留下的問題</summary><div class="desc">${p.questions.map(x=>'• '+this.esc(x)).join('<br>')}</div></details>`:''}<button class="btn small danger" onclick="lab.deleteEntity('patches','${p.id}')">刪除批改</button></div>`;}).join(''); },
 
   addFinding(seed={}){ const f={id:this.uid('find'),projectId:this.state.activeProjectId,type:seed.type||'risk',title:seed.title||'',detail:seed.detail||'',impact:'',validation:'',status:'open',sourceReviewId:seed.sourceReviewId||'',createdAt:this.now(),updatedAt:this.now()}; this.state.findings.push(f); this.saveState(); this.renderFindings(); },
   updateFinding(id,field,value){ const f=this.state.findings.find(x=>x.id===id); if(!f)return; f[field]=value; f.updatedAt=this.now(); this.saveState(); },
   projectFindings(){return this.state.findings.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));},
-  renderFindings(){ const root=document.getElementById('view-findings'); const list=this.projectFindings(); const add=`<button class="btn primary" onclick="lab.addFinding()">＋ 新增 Finding</button>`; if(!list.length){root.innerHTML=`${add}<div style="height:10px"></div><div class="list-empty">沒有 Finding。只把值得持續追蹤的未知、風險、問題、依賴或待決策事項放進來。</div>`;return;} root.innerHTML=`${add}<div style="height:10px"></div>`+list.map(f=>`<div class="finding-item"><div class="row"><select style="max-width:170px" onchange="lab.updateFinding('${f.id}','type',this.value)">${FINDING_TYPES.map(([v,l])=>`<option value="${v}" ${v===f.type?'selected':''}>${l}</option>`).join('')}</select><select style="max-width:120px" onchange="lab.updateFinding('${f.id}','status',this.value)"><option value="open" ${f.status==='open'?'selected':''}>待處理</option><option value="validated" ${f.status==='validated'?'selected':''}>已確認</option><option value="closed" ${f.status==='closed'?'selected':''}>已關閉</option><option value="ignored" ${f.status==='ignored'?'selected':''}>不處理</option></select></div><input type="text" value="${this.esc(f.title)}" placeholder="一句話描述" onchange="lab.updateFinding('${f.id}','title',this.value)" style="margin-top:8px"><label class="field" style="margin-top:8px">內容<textarea onchange="lab.updateFinding('${f.id}','detail',this.value)">${this.esc(f.detail)}</textarea></label><label class="field">影響<textarea onchange="lab.updateFinding('${f.id}','impact',this.value)">${this.esc(f.impact)}</textarea></label><label class="field">驗證 / 處理方式<textarea onchange="lab.updateFinding('${f.id}','validation',this.value)">${this.esc(f.validation)}</textarea></label><div class="row"><button class="btn small" onclick="lab.findingToDecision('${f.id}')">形成 Decision</button><button class="btn small danger" onclick="lab.deleteEntity('findings','${f.id}')">刪除</button></div></div>`).join(''); },
+  renderFindings(){ const root=document.getElementById('view-findings'); const list=this.projectFindings(); const add=`<button class="btn primary" onclick="lab.addFinding()">＋ 新增重要發現</button>`; if(!list.length){root.innerHTML=`${add}<div style="height:10px"></div><div class="list-empty">沒有重要發現。只把值得持續追蹤的未知、風險、問題、依賴或待決策事項放進來。</div>`;return;} root.innerHTML=`${add}<div style="height:10px"></div>`+list.map(f=>`<div class="finding-item"><div class="row"><select style="max-width:170px" onchange="lab.updateFinding('${f.id}','type',this.value)">${FINDING_TYPES.map(([v,l])=>`<option value="${v}" ${v===f.type?'selected':''}>${l}</option>`).join('')}</select><select style="max-width:120px" onchange="lab.updateFinding('${f.id}','status',this.value)"><option value="open" ${f.status==='open'?'selected':''}>待處理</option><option value="validated" ${f.status==='validated'?'selected':''}>已確認</option><option value="closed" ${f.status==='closed'?'selected':''}>已關閉</option><option value="ignored" ${f.status==='ignored'?'selected':''}>不處理</option></select></div><input type="text" value="${this.esc(f.title)}" placeholder="一句話描述" onchange="lab.updateFinding('${f.id}','title',this.value)" style="margin-top:8px"><label class="field" style="margin-top:8px">內容<textarea onchange="lab.updateFinding('${f.id}','detail',this.value)">${this.esc(f.detail)}</textarea></label><label class="field">影響<textarea onchange="lab.updateFinding('${f.id}','impact',this.value)">${this.esc(f.impact)}</textarea></label><label class="field">驗證 / 處理方式<textarea onchange="lab.updateFinding('${f.id}','validation',this.value)">${this.esc(f.validation)}</textarea></label><div class="row"><button class="btn small" onclick="lab.findingToDecision('${f.id}')">形成決策紀錄</button><button class="btn small danger" onclick="lab.deleteEntity('findings','${f.id}')">刪除</button></div></div>`).join(''); },
 
   findingToDecision(id){ const f=this.state.findings.find(x=>x.id===id); if(!f)return; const d={id:this.uid('decision'),projectId:f.projectId,question:f.title,context:f.detail,options:'',decision:'',reason:'',tradeoffs:'',confidence:'medium',status:'proposed',sourceFindingId:f.id,createdAt:this.now(),updatedAt:this.now()}; this.state.decisions.push(d); this.saveState(); this.renderDecisions(); this.showView('decisions'); },
   updateDecision(id,field,value){ const d=this.state.decisions.find(x=>x.id===id); if(!d)return; d[field]=value; d.updatedAt=this.now(); this.saveState(); },
   projectDecisions(){return this.state.decisions.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));},
-  renderDecisions(){ const root=document.getElementById('view-decisions'); const list=this.projectDecisions(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 Decision。只有真正形成選擇時才留下決策紀錄。</div>';return;} root.innerHTML=list.map(d=>`<div class="decision-item"><div class="row"><span class="pill">Decision</span><select style="max-width:140px" onchange="lab.updateDecision('${d.id}','status',this.value)"><option value="proposed" ${d.status==='proposed'?'selected':''}>Proposed</option><option value="accepted" ${d.status==='accepted'?'selected':''}>Accepted</option><option value="superseded" ${d.status==='superseded'?'selected':''}>Superseded</option><option value="rejected" ${d.status==='rejected'?'selected':''}>Rejected</option></select><select style="max-width:120px" onchange="lab.updateDecision('${d.id}','confidence',this.value)"><option value="low" ${d.confidence==='low'?'selected':''}>低信心</option><option value="medium" ${d.confidence==='medium'?'selected':''}>中信心</option><option value="high" ${d.confidence==='high'?'selected':''}>高信心</option></select></div><label class="field">問題<input type="text" value="${this.esc(d.question)}" onchange="lab.updateDecision('${d.id}','question',this.value)"></label><label class="field">背景<textarea onchange="lab.updateDecision('${d.id}','context',this.value)">${this.esc(d.context)}</textarea></label><label class="field">考慮過的選項<textarea onchange="lab.updateDecision('${d.id}','options',this.value)">${this.esc(d.options)}</textarea></label><label class="field">決定<textarea onchange="lab.updateDecision('${d.id}','decision',this.value)">${this.esc(d.decision)}</textarea></label><label class="field">理由<textarea onchange="lab.updateDecision('${d.id}','reason',this.value)">${this.esc(d.reason)}</textarea></label><label class="field">代價 / 取捨<textarea onchange="lab.updateDecision('${d.id}','tradeoffs',this.value)">${this.esc(d.tradeoffs)}</textarea></label><button class="btn small danger" onclick="lab.deleteEntity('decisions','${d.id}')">刪除</button></div>`).join(''); },
+  renderDecisions(){ const root=document.getElementById('view-decisions'); const list=this.projectDecisions(); if(!list.length){root.innerHTML='<div class="list-empty">尚無決策紀錄。只有真正形成選擇時才留下。</div>';return;} root.innerHTML=list.map(d=>`<div class="decision-item"><div class="row"><span class="pill">決策</span><select style="max-width:140px" onchange="lab.updateDecision('${d.id}','status',this.value)"><option value="proposed" ${d.status==='proposed'?'selected':''}>待確認</option><option value="accepted" ${d.status==='accepted'?'selected':''}>已採用</option><option value="superseded" ${d.status==='superseded'?'selected':''}>已被新決策取代</option><option value="rejected" ${d.status==='rejected'?'selected':''}>不採用</option></select><select style="max-width:120px" onchange="lab.updateDecision('${d.id}','confidence',this.value)"><option value="low" ${d.confidence==='low'?'selected':''}>低信心</option><option value="medium" ${d.confidence==='medium'?'selected':''}>中信心</option><option value="high" ${d.confidence==='high'?'selected':''}>高信心</option></select></div><label class="field">問題<input type="text" value="${this.esc(d.question)}" onchange="lab.updateDecision('${d.id}','question',this.value)"></label><label class="field">背景<textarea onchange="lab.updateDecision('${d.id}','context',this.value)">${this.esc(d.context)}</textarea></label><label class="field">考慮過的選項<textarea onchange="lab.updateDecision('${d.id}','options',this.value)">${this.esc(d.options)}</textarea></label><label class="field">決定<textarea onchange="lab.updateDecision('${d.id}','decision',this.value)">${this.esc(d.decision)}</textarea></label><label class="field">理由<textarea onchange="lab.updateDecision('${d.id}','reason',this.value)">${this.esc(d.reason)}</textarea></label><label class="field">代價 / 取捨<textarea onchange="lab.updateDecision('${d.id}','tradeoffs',this.value)">${this.esc(d.tradeoffs)}</textarea></label><button class="btn small danger" onclick="lab.deleteEntity('decisions','${d.id}')">刪除</button></div>`).join(''); },
 
-  createScenarioFromSnapshot(snapshotId){ const s=this.state.snapshots.find(x=>x.id===snapshotId); if(!s)return; const scenario={id:this.uid('scenario'),projectId:s.projectId,baseSnapshotId:s.id,name:`Scenario ${this.projectScenarios().length+1}`,status:'draft',createdAt:this.now(),updatedAt:this.now(),cards:s.payload.cards.map(({card,tabId,tabName})=>({id:card.id||this.uid('temp'),originId:card.id||'',isNew:false,isDeleted:false,tabId,tabName,...structuredClone(card)})),notes:''}; this.state.scenarios.push(scenario); this.saveState(); this.renderScenarios(); this.showView('scenarios'); },
+  createScenarioFromSnapshot(snapshotId){ const s=this.state.snapshots.find(x=>x.id===snapshotId); if(!s)return; const scenario={id:this.uid('scenario'),projectId:s.projectId,baseSnapshotId:s.id,name:`重新規劃方案 ${this.projectScenarios().length+1}`,status:'draft',createdAt:this.now(),updatedAt:this.now(),cards:s.payload.cards.map(({card,tabId,tabName})=>({id:card.id||this.uid('temp'),originId:card.id||'',isNew:false,isDeleted:false,tabId,tabName,...structuredClone(card)})),notes:''}; this.state.scenarios.push(scenario); this.saveState(); this.renderScenarios(); this.showView('scenarios'); },
   projectScenarios(){return this.state.scenarios.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));},
   updateScenario(id,field,value){const s=this.state.scenarios.find(x=>x.id===id);if(!s)return;s[field]=value;s.updatedAt=this.now();this.saveState();},
   updateScenarioCard(sid,cid,field,value){const s=this.state.scenarios.find(x=>x.id===sid);const c=s?.cards.find(x=>x.id===cid);if(!c)return; if(['plannedMinutes','progress','status'].includes(field) && value!=='') value=Number(value); c[field]=value; if(field==='dateStart'||field==='dateEnd') c.dateMode='range'; s.updatedAt=this.now();this.saveState();},
@@ -849,8 +1090,8 @@ const lab = {
     s.cards.forEach(c=>{ if(c.isDeleted)return; if(c.isNew||!c.originId||!baseCards.has(c.originId)){added.push(c);return;} const b=baseCards.get(c.originId); const fields=['title','content','category','status','progress','dateStart','dateEnd','plannedMinutes','deliverable','acceptance','isMemo']; const changes={}; fields.forEach(f=>{const bv=f==='plannedMinutes'?this.plannedMinutes(b):(b[f]??'');const cv=f==='plannedMinutes'?this.plannedMinutes(c):(c[f]??'');if(JSON.stringify(bv)!==JSON.stringify(cv))changes[f]={from:bv,to:cv};}); if(Object.keys(changes).length)modified.push({card:c,changes}); });
     (base?.payload?.cards||[]).forEach(x=>{const c=s.cards.find(sc=>sc.originId===x.card.id);if(!c||c.isDeleted)removed.push(x.card);}); return {added,removed,modified};
   },
-  renderScenarios(){ const root=document.getElementById('view-scenarios'); const list=this.projectScenarios(); if(!list.length){root.innerHTML='<div class="list-empty">尚無 Scenario。先從 Snapshot 建立一份完整候選規劃，再自由調整。</div>';return;} root.innerHTML=list.map(s=>this.renderScenario(s)).join(''); },
-  renderScenario(s){ const diff=this.scenarioDiff(s); const cards=s.cards.filter(c=>!c.isDeleted); return `<div class="scenario-item"><div class="row"><input type="text" style="flex:1;font-weight:900" value="${this.esc(s.name)}" onchange="lab.updateScenario('${s.id}','name',this.value)"><select style="max-width:150px" onchange="lab.updateScenario('${s.id}','status',this.value)"><option value="draft" ${s.status==='draft'?'selected':''}>草稿</option><option value="candidate" ${s.status==='candidate'?'selected':''}>候選</option><option value="adopted" ${s.status==='adopted'?'selected':''}>決定採用</option><option value="rejected" ${s.status==='rejected'?'selected':''}>不採用</option></select></div><div class="tiny">Base: ${this.esc(s.baseSnapshotId)}｜${this.fmt(s.createdAt)}</div><label class="field" style="margin-top:8px">Scenario 說明<textarea onchange="lab.updateScenario('${s.id}','notes',this.value)">${this.esc(s.notes||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.addScenarioCard('${s.id}')">＋ 新增卡片</button><button class="btn small" onclick="lab.toggleDiff('${s.id}')">比較 Snapshot</button><button class="btn small" onclick="lab.exportScenario('${s.id}')">匯出 JSON</button><button class="btn small danger" onclick="lab.deleteEntity('scenarios','${s.id}')">刪除 Scenario</button></div><div id="diff-${s.id}" class="hidden" style="margin-top:10px">${this.renderDiff(diff)}</div><div class="section-title">候選規劃（${cards.length} 張）</div><div class="card-list">${cards.map(c=>this.renderScenarioCard(s,c,diff)).join('')}</div></div>`; },
+  renderScenarios(){ const root=document.getElementById('view-scenarios'); const list=this.projectScenarios(); if(!list.length){root.innerHTML='<div class="list-empty">尚無重新規劃方案。先從一份保存的歷史狀態建立完整候選規劃，再自由調整。</div>';return;} root.innerHTML=list.map(s=>this.renderScenario(s)).join(''); },
+  renderScenario(s){ const diff=this.scenarioDiff(s); const cards=s.cards.filter(c=>!c.isDeleted); return `<div class="scenario-item"><div class="row"><input type="text" style="flex:1;font-weight:900" value="${this.esc(s.name)}" onchange="lab.updateScenario('${s.id}','name',this.value)"><select style="max-width:150px" onchange="lab.updateScenario('${s.id}','status',this.value)"><option value="draft" ${s.status==='draft'?'selected':''}>草稿</option><option value="candidate" ${s.status==='candidate'?'selected':''}>候選</option><option value="adopted" ${s.status==='adopted'?'selected':''}>決定採用</option><option value="rejected" ${s.status==='rejected'?'selected':''}>不採用</option></select></div><div class="tiny">基準狀態：${this.esc(s.baseSnapshotId)}｜${this.fmt(s.createdAt)}</div><label class="field" style="margin-top:8px">方案說明<textarea onchange="lab.updateScenario('${s.id}','notes',this.value)">${this.esc(s.notes||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.addScenarioCard('${s.id}')">＋ 新增卡片</button><button class="btn small" onclick="lab.toggleDiff('${s.id}')">比較歷史狀態</button><button class="btn small" onclick="lab.exportScenario('${s.id}')">匯出 JSON</button><button class="btn small danger" onclick="lab.deleteEntity('scenarios','${s.id}')">刪除方案</button></div><div id="diff-${s.id}" class="hidden" style="margin-top:10px">${this.renderDiff(diff)}</div><div class="section-title">候選規劃（${cards.length} 張）</div><div class="card-list">${cards.map(c=>this.renderScenarioCard(s,c,diff)).join('')}</div></div>`; },
   renderScenarioCard(s,c,diff){
     const isMod=diff.modified.some(x=>x.card.id===c.id), isAdd=diff.added.some(x=>x.id===c.id);
     const factStatus = c.isNew
@@ -874,15 +1115,15 @@ const lab = {
         <label class="field wide">預期產出<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','deliverable',this.value)">${this.esc(c.deliverable||'')}</textarea></label>
         <label class="field wide">驗收條件<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','acceptance',this.value)">${this.esc(c.acceptance||'')}</textarea></label><label class="field wide">驗收證據<textarea onchange="lab.updateScenarioCard('${s.id}','${c.id}','acceptanceEvidence',this.value)">${this.esc(c.acceptanceEvidence||'')}</textarea></label>
       </div>
-      <details><summary>歷史事實（唯讀）</summary><div class="desc">實際開始：${this.esc(this.actualStart(c)||'—')}｜實際最後紀錄：${this.esc(this.actualEnd(c)||'—')}｜工作紀錄：${(Array.isArray(c.entries)?c.entries:[]).length} 筆。Scenario 不修改歷史事實。</div>${this.renderWorkLogs(c)}</details>
+      <details><summary>歷史事實（唯讀）</summary><div class="desc">實際開始：${this.esc(this.actualStart(c)||'—')}｜實際最後紀錄：${this.esc(this.actualEnd(c)||'—')}｜工作紀錄：${(Array.isArray(c.entries)?c.entries:[]).length} 筆。重新規劃方案不修改歷史事實。</div>${this.renderWorkLogs(c)}</details>
     </div>`;
   },
   renderDiff(diff){ const fld={title:'標題',content:'內容',category:'分類',status:'狀態',progress:'進度',dateStart:'預計開始',dateEnd:'預計完成',plannedMinutes:'預估工時(分鐘)',deliverable:'預期產出',acceptance:'驗收條件',acceptanceEvidence:'驗收證據',planningMaturity:'規劃成熟度',nextAction:'下一步',decisionPoint:'下一判斷點',breakdownDraft:'拆解草稿',dependencyNote:'依賴',isMemo:'卡片型態'}; return `<div class="diff-group"><strong>＋ 新增 ${diff.added.length}</strong>${diff.added.map(c=>`<div class="diff-row">${this.esc(c.title||'未命名')}</div>`).join('')}</div><div class="diff-group"><strong>－ 移除 ${diff.removed.length}</strong>${diff.removed.map(c=>`<div class="diff-row">${this.esc(c.title||'未命名')}</div>`).join('')}</div><div class="diff-group"><strong>✏️ 修改 ${diff.modified.length}</strong>${diff.modified.map(m=>`<div class="diff-row"><strong>${this.esc(m.card.title||'未命名')}</strong>${Object.entries(m.changes).map(([k,v])=>`<div><code>${this.esc(fld[k]||k)}</code>：${this.esc(v.from)} → ${this.esc(v.to)}</div>`).join('')}</div>`).join('')}</div>`; },
   toggleDiff(id){document.getElementById(`diff-${id}`)?.classList.toggle('hidden');},
 
   scenarioSchemaExample(){ return {schemaVersion:'1.1',type:'project_lab_scenario',projectId:this.state.activeProjectId,baseSnapshotId:'請填入提示詞提供的 Snapshot ID',scenario:{name:'方案名稱',notes:'此方案的核心取捨',cards:[{id:'既有卡片請保留原 card id；新增卡片用 temp_001',originId:'既有卡片填原 card id；新增卡片留空',isNew:false,isDeleted:false,title:'',content:'',category:'',isMemo:false,dateMode:'range',dateStart:'YYYY-MM-DD',dateEnd:'YYYY-MM-DD',plannedMinutes:120,planningMaturity:'planned',nextAction:'',decisionPoint:'',breakdownDraft:'',dependencyNote:'',deliverable:'',acceptance:'',acceptanceEvidence:''}]}}; },
-  buildScenarioPrompt(){ const ctx=this.selectedContext(); const findings=this.projectFindings().filter(x=>x.status!=='closed'&&x.status!=='ignored'); const decisions=this.projectDecisions().filter(x=>x.status==='accepted'||x.status==='proposed'); const reviews=this.projectReviews().slice(0,5).map(r=>({template:r.templateLabel,question:r.customQuestion,response:r.response,userReflection:r.userReflection})); const prompt=`請把目前已形成的討論共識整理成一份「完整可推演 Scenario」。\n\n重要：這不是要求你重新分析，而是把已有討論轉成一個可實際試排的完整候選專案版本。若仍存在未解決且會影響結構的未知，請不要硬做 Scenario，改以文字列出還缺什麼。\n\n【規則】\n1. 回傳完整 Scenario，不只回傳變動 Delta。\n2. 既有卡片保留原 card id 與 originId。新增卡片使用 temp_001、temp_002...，originId 留空，isNew=true。\n3. 若某既有卡片要移除，保留卡片並設 isDeleted=true。\n4. 不要在回傳 JSON 中放入 workLogs、entries，既有卡片的目前狀態與進度也不要自行改寫；這些歷史事實會由 Project Lab 依 baseSnapshotId 自動補回。\n5. 規劃時必須參考目的、期限內目標、目前做法，以及實際工時／工作紀錄。手段可以改，但要說明為什麼更能解決原問題或達到目標。\n6. 只能使用以下 JSON 結構。請只輸出 JSON，不要 Markdown code fence。\n7. projectId 必須為 ${this.state.activeProjectId}。\n8. baseSnapshotId 必須為 ${ctx.id}。\n\n【JSON Schema 範例】\n${JSON.stringify(this.scenarioSchemaExample(),null,2)}\n\n【目前專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}\n\n【目前 Findings】\n${JSON.stringify(findings,null,2)}\n\n【目前 Decisions】\n${JSON.stringify(decisions,null,2)}\n\n【近期 Reviews】\n${JSON.stringify(reviews,null,2)}`; this.state.lastScenarioPrompt=prompt; this.state.lastPrompt=prompt; this.saveState(); document.getElementById('prompt-preview').innerText=prompt; return prompt; },
-  copyScenarioSchema(){ this.copyText(JSON.stringify(this.scenarioSchemaExample(),null,2),'已複製 Scenario JSON 範例。'); },
+  buildScenarioPrompt(){ const ctx=this.selectedContext(); const findings=this.projectFindings().filter(x=>x.status!=='closed'&&x.status!=='ignored'); const decisions=this.projectDecisions().filter(x=>x.status==='accepted'||x.status==='proposed'); const reviews=this.projectReviews().slice(0,5).map(r=>({template:r.templateLabel,question:r.customQuestion,response:r.response,userReflection:r.userReflection})); const prompt=`請把目前已形成的討論共識整理成一份「完整可推演的重新規劃方案」。\n\n重要：這不是要求你重新分析，而是把已有討論轉成一個可實際試排的完整候選專案版本。若仍存在未解決且會影響結構的未知，請不要硬做重新規劃方案，改以文字列出還缺什麼。\n\n【規則】\n1. 回傳完整重新規劃方案，不只回傳變動差異。\n2. 既有卡片保留原 card id 與 originId。新增卡片使用 temp_001、temp_002...，originId 留空，isNew=true。\n3. 若某既有卡片要移除，保留卡片並設 isDeleted=true。\n4. 不要在回傳 JSON 中放入 workLogs、entries，既有卡片的目前狀態與進度也不要自行改寫；這些歷史事實會由 Project Lab 依 baseSnapshotId 自動補回。\n5. 規劃時必須參考目的、期限內目標、目前做法，以及實際工時／工作紀錄。手段可以改，但要說明為什麼更能解決原問題或達到目標。\n6. 只能使用以下 JSON 結構。請只輸出 JSON，不要 Markdown code fence。\n7. projectId 必須為 ${this.state.activeProjectId}。\n8. baseSnapshotId 必須為 ${ctx.id}。\n\n【JSON 格式範例】\n${JSON.stringify(this.scenarioSchemaExample(),null,2)}\n\n【目前專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}\n\n【目前重要發現】\n${JSON.stringify(findings,null,2)}\n\n【目前決策紀錄】\n${JSON.stringify(decisions,null,2)}\n\n【近期檢討紀錄】\n${JSON.stringify(reviews,null,2)}`; this.aiRuntime.lastScenarioPrompt=prompt; this.aiRuntime.lastPrompt=prompt; document.getElementById('prompt-preview').innerText=prompt; return prompt; },
+  copyScenarioSchema(){ this.copyText(JSON.stringify(this.scenarioSchemaExample(),null,2),'已複製重新規劃方案 JSON 範例。'); },
 
   extractJson(text){ const t=String(text||'').trim(); if(!t)throw new Error('內容是空的'); const fenced=t.match(/```(?:json)?\s*([\s\S]*?)```/i); return JSON.parse(fenced?fenced[1].trim():t); },
   basePayloadForScenario(baseSnapshotId){
@@ -938,9 +1179,9 @@ const lab = {
           entries:structuredClone(baseCard?.entries||[])
         };
       });
-      const s={id:this.uid('scenario'),projectId:obj.projectId,baseSnapshotId:obj.baseSnapshotId,name:obj.scenario.name||'AI Scenario',status:'candidate',createdAt:this.now(),updatedAt:this.now(),cards,notes:obj.scenario.notes||''};
+      const s={id:this.uid('scenario'),projectId:obj.projectId,baseSnapshotId:obj.baseSnapshotId,name:obj.scenario.name||'AI 重新規劃方案',status:'candidate',createdAt:this.now(),updatedAt:this.now(),cards,notes:obj.scenario.notes||''};
       this.state.scenarios.push(s); this.saveState();
-      box.innerHTML='<div class="notice ok">Scenario JSON 驗證通過並已匯入。既有卡片的實際工時與工作紀錄已由基準 Snapshot 自動補回，AI 無法改寫。</div>';
+      box.innerHTML='<div class="notice ok">重新規劃方案的 JSON 驗證通過並已匯入。既有卡片的實際工時與工作紀錄已由基準歷史狀態自動補回，AI 無法改寫。</div>';
       this.renderScenarios(); this.showView('scenarios');
     }catch(e){
       box.innerHTML=`<div class="notice bad"><strong>JSON 解析失敗：</strong>${this.esc(e.message)}<br><button class="btn small" style="margin-top:8px" onclick="lab.copyRepairPrompt()">複製修復提示詞</button></div>`;
@@ -951,6 +1192,343 @@ const lab = {
 
   deleteEntity(key,id){ if(!confirm('確定刪除？'))return; this.state[key]=this.state[key].filter(x=>x.id!==id); this.saveState(); this.renderAll(); }
 };
+
+
+// === v1.6：情境化資訊處理層。保留 v1.5 資料結構，新增欄位皆為 optional。 ===
+// === v1.6.2：練習導航／拆解練習。沿用 v1.6 狀態，新增 breakdownPractices 為 optional。 ===
+const v16base = {
+  renderAll: lab.renderAll.bind(lab),
+  showView: lab.showView.bind(lab),
+  renderSourceCard: lab.renderSourceCard.bind(lab),
+  renderManagementItem: lab.renderManagementItem.bind(lab),
+  renderSnapshots: lab.renderSnapshots.bind(lab),
+  renderReviews: lab.renderReviews.bind(lab),
+  renderFindings: lab.renderFindings.bind(lab),
+  renderDecisions: lab.renderDecisions.bind(lab),
+  renderScenarios: lab.renderScenarios.bind(lab)
+};
+
+lab.aiRuntime={nextKeyIndex:0,lastResponse:'',lastPrompt:'',lastPatchPrompt:'',lastScenarioPrompt:'',lastContextLabel:'',lastModel:'',lastKeySlot:null,lastUsage:null,lastInquiry:''};
+
+Object.assign(lab,{
+  analysisDefaults(){ return {mainGroup:'start',question:'',contextNote:'',viewpoint:'',audience:'',inquiryMode:'specific',desiredHelp:'',deepGoal:'',breakdownCardId:'',practiceNavVersion:'',activeObject:{type:'project',id:'',label:'專案整體'}}; },
+  analysisState(){
+    if(!this.state.analysisByProject || typeof this.state.analysisByProject!=='object') this.state.analysisByProject={};
+    const pid=this.state.activeProjectId||'_none';
+    if(!this.state.analysisByProject[pid]) this.state.analysisByProject[pid]=this.analysisDefaults();
+    const a=this.state.analysisByProject[pid];
+    const d=this.analysisDefaults(); Object.keys(d).forEach(k=>{ if(a[k]===undefined)a[k]=structuredClone(d[k]); });
+    if(!a.activeObject || typeof a.activeObject!=='object') a.activeObject=structuredClone(d.activeObject);
+    if(!a.practiceNavVersion){ a.practiceNavVersion='1.6.2'; a.mainGroup='start'; }
+    return a;
+  },
+  renderPracticeHome(){
+    const el=document.getElementById('practice-current'); if(!el)return; const a=this.analysisState(), f=this.currentFocus();
+    el.innerHTML=`<strong>目前專案：</strong>${this.esc(this.activeProject()?.name||'尚無專案')}　｜　<strong>目前焦點：</strong>${this.esc(f.label||'專案整體')}<br><strong>目前問題：</strong>${this.esc(a.question||'尚未寫。可以先選一個練習入口，或按「幫我判斷現在聚焦哪裡」。')}`;
+  },
+  goPractice(kind){
+    if(kind==='project'){ this.focusObject('project','','專案整體'); this.showGroup('project'); return; }
+    if(kind==='breakdown'){ this.showView('breakdown'); return; }
+    if(kind==='advance'){ this.showView('management'); return; }
+    if(kind==='decision'){ this.showView('management'); return; }
+    if(kind==='review'){ this.showView('reviews'); return; }
+    if(kind==='versions'){ this.showView('snapshots'); return; }
+  },
+  openNavigationHelp(){
+    const a=this.analysisState(); a.activeObject={type:'navigation',id:'',label:'練習導航'};
+    if(!String(a.question||'').trim()) a.question='我現在卡住的情況適合先去哪一個練習區？請先判斷是釐清專案、拆解工作、推進／詢問、判斷、檢討，還是重新規劃。';
+    this.saveState(); this.openAssist();
+  },
+  breakdownPractice(cardId){
+    if(!this.state.breakdownPractices || typeof this.state.breakdownPractices!=='object') this.state.breakdownPractices={};
+    const pid=this.state.activeProjectId||'_none'; if(!this.state.breakdownPractices[pid]) this.state.breakdownPractices[pid]={};
+    if(!this.state.breakdownPractices[pid][cardId]){
+      const hit=this.projectCards().find(x=>x.card.id===cardId);
+      this.state.breakdownPractices[pid][cardId]={cardId,why:'',draft:hit?.card?.breakdownDraft||'',boundary:'',firstAction:'',updatedAt:this.now()}; this.saveState();
+    }
+    return this.state.breakdownPractices[pid][cardId];
+  },
+  changeBreakdownCard(cardId){ const a=this.analysisState(); a.breakdownCardId=cardId; this.saveState(); this.renderBreakdownPractice(); },
+  updateBreakdownPractice(field,value){
+    const id=this.analysisState().breakdownCardId; if(!id)return; const p=this.breakdownPractice(id); p[field]=value; p.updatedAt=this.now(); this.saveState();
+    const st=document.getElementById('breakdown-save-status'); if(st)st.textContent='已自動儲存在 Project Lab';
+  },
+  renderBreakdownPractice(){
+    const root=document.getElementById('view-breakdown'); if(!root)return;
+    const cards=this.projectCards().filter(x=>!x.card.isMemo);
+    if(!cards.length){ root.innerHTML='<div class="list-empty">這個專案目前沒有排程卡。自由卡先保留探索性，等形成可管理成果後再進拆解練習。</div>'; return; }
+    const a=this.analysisState(); if(!cards.some(x=>x.card.id===a.breakdownCardId)) a.breakdownCardId=cards[0].card.id;
+    const hit=cards.find(x=>x.card.id===a.breakdownCardId)||cards[0], c=hit.card, p=this.breakdownPractice(c.id);
+    const opt=cards.map(x=>`<option value="${this.esc(x.card.id)}" ${x.card.id===c.id?'selected':''}>${this.esc(x.card.title||'未命名')}</option>`).join('');
+    root.innerHTML=`<div class="notice info"><strong>拆解練習不是請 AI 代拆。</strong>你先提出自己的拆法，再讓 AI 檢查粒度、成果邊界、依賴與未知。最後是否真的新增／修改正式卡片，仍回白板手動決定。</div>
+      <label class="field" style="margin:10px 0">選擇要練習拆解的排程卡<select id="breakdown-card-select" onchange="lab.changeBreakdownCard(this.value)">${opt}</select></label>
+      <div class="breakdown-layout">
+        <aside class="breakdown-source"><span class="practice-label">正式資料唯讀</span><h4>${this.esc(c.title||'未命名')}</h4>
+          <div class="fact"><strong>內容</strong><br>${this.esc(c.content||'—')}</div>
+          <div class="fact"><strong>預期產出</strong><br>${this.esc(c.deliverable||'—')}</div>
+          <div class="fact"><strong>驗收條件</strong><br>${this.esc(c.acceptance||'—')}</div>
+          <div class="fact"><strong>下一步</strong><br>${this.esc(c.nextAction||'—')}</div>
+          <div class="fact"><strong>下一判斷點</strong><br>${this.esc(c.decisionPoint||'—')}</div>
+          <div class="fact"><strong>白板既有拆解草稿</strong><br>${this.esc(c.breakdownDraft||'—')}</div>
+        </aside>
+        <div class="breakdown-practice"><h3>我的拆解練習</h3><div class="tiny">不要追求一次拆對。先練習判斷「什麼值得獨立管理」。</div>
+          <div class="breakdown-step"><div class="step-title">1. 為什麼這張卡現在需要拆？</div><div class="breakdown-hint">例如：太大無法估時、產出其實有幾塊、不同部分有不同依賴；如果只是做法還不知道，可能應先探索而不是繼續切碎。</div><textarea oninput="lab.updateBreakdownPractice('why',this.value)" placeholder="我認為需要拆的原因……">${this.esc(p.why||'')}</textarea></div>
+          <div class="breakdown-step"><div class="step-title">2. 我會先怎麼拆？</div><div class="breakdown-hint">每行一個候選部分。先寫自己的版本，不要求漂亮。</div><textarea oninput="lab.updateBreakdownPractice('draft',this.value)" placeholder="A. …
+B. …
+C. …">${this.esc(p.draft||'')}</textarea></div>
+          <div class="breakdown-step"><div class="step-title">3. 哪些是獨立成果？哪些只是步驟或探索？</div><div class="breakdown-hint">可獨立產出／驗收／依賴，通常比較值得成卡；「開檔案、跑一次程式」這種通常只是步驟。</div><textarea oninput="lab.updateBreakdownPractice('boundary',this.value)" placeholder="值得成卡：…
+只是步驟：…
+還需要探索：…">${this.esc(p.boundary||'')}</textarea></div>
+          <div class="breakdown-step"><div class="step-title">4. 拆完之後，最先推進哪一塊？</div><div class="breakdown-hint">拆解的目的不是得到漂亮樹狀圖，而是讓下一步更可執行。</div><textarea oninput="lab.updateBreakdownPractice('firstAction',this.value)" placeholder="我會先……">${this.esc(p.firstAction||'')}</textarea></div>
+          <div id="breakdown-save-status" class="autosave-note">已自動儲存在 Project Lab；不會寫回正式白板。</div>
+          <div class="breakdown-actions"><button class="btn primary" onclick="lab.openBreakdownAnalysis()">AI 檢查我的拆解</button><button class="btn" onclick="lab.copyBreakdownPractice()">複製拆解草稿</button><button class="btn" onclick="location.href='whiteboard.html'">打開正式白板</button></div>
+        </div>
+      </div>`;
+    this.saveState();
+  },
+  openBreakdownAnalysis(){
+    const a=this.analysisState(), id=a.breakdownCardId; if(!id)return alert('請先選擇一張工作卡。'); const hit=this.projectCards().find(x=>x.card.id===id);
+    a.activeObject={type:'breakdown',id,label:`拆解練習｜${hit?.card?.title||'工作卡'}`};
+    a.question='請檢查我的拆解，而不是直接替我重拆。優先指出：粒度是否合理、哪些其實只是步驟或探索、是否漏掉獨立產出／驗收／依賴，以及我下一步最值得修正哪一點。';
+    this.saveState(); this.openAssist();
+  },
+  copyBreakdownPractice(){
+    const a=this.analysisState(), id=a.breakdownCardId, hit=this.projectCards().find(x=>x.card.id===id); if(!hit)return; const p=this.breakdownPractice(id);
+    const txt=`【工作】${hit.card.title||'未命名'}
+
+【為什麼需要拆】
+${p.why||'未填'}
+
+【我的拆解草稿】
+${p.draft||'未填'}
+
+【成果／步驟／探索的界線】
+${p.boundary||'未填'}
+
+【拆完後先做什麼】
+${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
+  },
+  updateAnalysisField(field,value){ const a=this.analysisState(); a[field]=value; this.saveState(); this.renderContextUI(false); },
+  groupForView(view){ return ['source','breakdown'].includes(view)?'work':view==='management'?'advance':['reviews','findings','decisions'].includes(view)?'review':['snapshots','patches','scenarios'].includes(view)?'versions':'project'; },
+  showGroup(group,save=true){
+    document.querySelectorAll('.main-group').forEach(el=>el.classList.toggle('active',el.id===`group-${group}`));
+    document.querySelectorAll('.main-nav-btn').forEach(el=>el.classList.toggle('active',el.dataset.group===group));
+    if(save){ const a=this.analysisState(); a.mainGroup=group; this.saveState(); }
+    this.renderContextUI(false);
+  },
+  showView(name){
+    v16base.showView(name);
+    const g=this.groupForView(name); const a=this.analysisState(); a.mainGroup=g; this.saveState(); this.showGroup(g,false); this.decorateFocusButtons(); this.localizeDynamicUI();
+  },
+  renderAll(){
+    this.analysisState(); v16base.renderAll();
+    this.renderPracticeHome(); this.renderBreakdownPractice();
+    const a=this.analysisState(); this.showGroup(a.mainGroup||this.groupForView(this.state.activeView),false);
+    this.decorateFocusButtons(); this.localizeDynamicUI(); this.renderContextUI(false);
+  },
+  focusObject(type,id='',label=''){
+    const a=this.analysisState(); a.activeObject={type,id,label:label||''}; this.saveState(); this.renderContextUI();
+  },
+  currentFocus(){
+    const a=this.analysisState(); const f=a.activeObject||{type:'project',id:'',label:'專案整體'};
+    if(f.type==='navigation') return {type:'navigation',id:'',label:'練習導航',data:{question:a.question,contextNote:a.contextNote,viewpoint:a.viewpoint}};
+    if(f.type==='breakdown'){ const hit=this.projectCards().find(x=>x.card.id===f.id); if(hit)return {type:'breakdown',id:f.id,label:`拆解練習｜${hit.card.title||'未命名工作卡'}`,data:{card:hit.card,practice:this.breakdownPractice(f.id),tabName:hit.tabName}}; }
+    if(f.type==='card'){
+      const hit=this.projectCards().find(x=>x.card.id===f.id); if(hit)return {type:'card',id:f.id,label:hit.card.title||'未命名工作卡',data:hit};
+    }
+    if(f.type==='management'){
+      const m=this.state.managementItems.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(m)return {type:'management',id:f.id,label:m.title||'未命名管理事項',data:m};
+    }
+    if(f.type==='review'){
+      const r=this.state.reviews.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(r)return {type:'review',id:f.id,label:r.problem||r.customQuestion||r.templateLabel||'檢討紀錄',data:r};
+    }
+    if(f.type==='finding'){
+      const x=this.state.findings.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(x)return {type:'finding',id:f.id,label:x.title||'重要發現',data:x};
+    }
+    if(f.type==='decision'){
+      const x=this.state.decisions.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(x)return {type:'decision',id:f.id,label:x.question||'決策紀錄',data:x};
+    }
+    if(f.type==='snapshot'){
+      const x=this.state.snapshots.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(x)return {type:'snapshot',id:f.id,label:x.label||'歷史狀態',data:x};
+    }
+    if(f.type==='scenario'){
+      const x=this.state.scenarios.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(x)return {type:'scenario',id:f.id,label:x.name||'重新規劃方案',data:x};
+    }
+    return {type:'project',id:'',label:this.activeProject()?.name||'專案整體',data:this.activeProject()};
+  },
+  helpForFocus(){
+    const f=this.currentFocus();
+    if(f.type==='navigation') return `<strong>練習導航</strong><br>你不必先知道正確框架。先描述目前卡住的情況，再判斷這比較像：釐清專案、拆解工作、推進／詢問、判斷、檢討，還是整體重新規劃。`;
+    if(f.type==='breakdown') return `<strong>拆解練習</strong><br>先由你自己提出拆法，再檢查粒度與邊界。可獨立產出、驗收或依賴通常比較值得成卡；只是執行步驟或尚待探索的未知，不一定要切成正式卡片。`;
+    if(f.type==='card'){
+      const c=f.data.card;
+      if(c.isMemo) return `<strong>自由卡</strong><br>這裡可以保留探索、背景與還沒成熟的想法。先確認「我到底在觀察什麼、哪裡覺得怪、能不能形成一個值得追的問題」。不用急著補期限、驗收或拆成正式工項。`;
+      return `<strong>排程卡</strong><br>這裡已經是要推進的正式工作。優先看下一步、下一判斷點、依賴、預期產出與驗收是否足以讓你開始；只有卡片太大或有獨立成果時才需要再拆。`;
+    }
+    if(f.type==='management'){
+      const m=f.data, s=m.thinkingState||this.defaultThinkingState(m.status);
+      const msg={capture:'先抓住這件事：我的角色、原始交辦，以及現在最小下一步。',clarify:'現在的重點是釐清真正結果、最重要的未知，以及誰最可能知道。',decide:'現在才需要比較做法與取捨。先保留你的暫時傾向，不必假裝已經有確定答案。',advance:'重點是球在誰手上、誰決定、誰承接，以及何時需要再追。',close:'回到結果：原本問題解了嗎？新資訊改變了什麼？正式計畫需不需要修。'};
+      return `<strong>管理事項｜${this.thinkingStateLabel(s)}</strong><br>${msg[s]||msg.capture}`;
+    }
+    if(f.type==='review') return `<strong>檢討紀錄</strong><br>保留「當時怎麼理解、後來怎麼變」。結果回顧不是寫漂亮心得，而是對照原本設想、實際結果與新資訊。`;
+    if(f.type==='finding') return `<strong>重要發現</strong><br>只留下值得持續追蹤的假設、風險、已發生問題、依賴或待決策事項。重點是它會影響什麼，以及要用什麼資訊確認。`;
+    if(f.type==='decision') return `<strong>決策紀錄</strong><br>保存真正形成選擇的時刻：問題、選項、決定、理由與代價。新資訊若推翻舊決策，建立新的決策並保留舊的脈絡。`;
+    if(f.type==='snapshot') return `<strong>歷史狀態</strong><br>把某個時間點的正式資料固定下來，用來比較「當時怎麼想」與「後來怎麼變」。不需要每天保存，只在重要檢討、方向改變或階段結束前使用。`;
+    if(f.type==='scenario') return `<strong>重新規劃方案</strong><br>只有整體規劃可能需要重排時才使用。它可以調整未來做法，但不應改寫已發生的工時與工作紀錄。`;
+    return `<strong>專案整體</strong><br>先回答三件事：為什麼做、期限內要到哪裡、目前打算怎麼做。其他欄位等它真的會影響判斷時再展開。`;
+  },
+  suggestedQuestions(){
+    const f=this.currentFocus();
+    if(f.type==='navigation') return ['根據我目前描述的問題，我應該先去哪個練習區？','我現在卡的是資訊不清、拆解、判斷、推進還是回顧？','如果現在只能練一件事，最值得練哪一個資訊處理動作？'];
+    if(f.type==='breakdown') return ['我的拆解粒度合理嗎？哪些其實只是步驟或探索？','我有沒有漏掉能獨立產出、驗收或有不同依賴的部分？','拆完之後，我的第一個可執行動作是否更清楚？'];
+    if(f.type==='card') return f.data.card.isMemo?
+      ['這些內容目前是背景、探索，還是已經形成一個值得追的問題？','有沒有哪一部分已經成熟到值得轉成正式工項或管理事項？','依目前資料，我現在最值得問的一個問題是什麼？']:
+      ['這張卡的下一步是否已經足夠具體？目前還缺哪個資訊？','下一判斷點設得合理嗎？我應該看到什麼新資訊才改變做法？','這張卡真的需要再拆，還是已經可以先做？'];
+    if(f.type==='management'){
+      const s=f.data.thinkingState||this.defaultThinkingState(f.data.status);
+      return {capture:['這件事真正是什麼？我目前的角色有沒有理解錯？','現在最小可推進的一步是什麼？','這件事有哪些部分其實不該變成我的執行工作？'],clarify:['目前最關鍵的未知是什麼？','我現在問的問題有沒有問歪？','如果要找人確認，最值得先問哪一題？'],decide:['我目前的選項有沒有漏掉重要做法？','我的暫時傾向有哪些依據仍只是推測？','要做這個判斷，還缺哪個資訊最值得先補？'],advance:['現在球在誰手上？我下一個責任是做、問、等還是追？','什麼時間或條件到了才值得再追？','我是不是承擔了其實應該由別人決定或執行的事？'],close:['原本問題真的解決了嗎？','最後做法和原本設想差在哪，出現了什麼新資訊？','這次有什麼判斷值得帶到下一個專案？']}[s]||[];
+    }
+    if(f.type==='review') return ['原本理解與實際結果最重要的差異是什麼？','哪些新資訊真正改變了做法？','這次經驗哪些只是個案，哪些值得帶到其他專案？'];
+    if(f.type==='finding') return ['這個發現目前是事實、假設還是推論？','它真的會影響期限、成果或下一步嗎？','要確認或關閉它，最少還需要什麼證據？'];
+    if(f.type==='decision') return ['這個決策的依據裡，哪些是已知、哪些仍是推測？','有沒有被忽略的選項或取捨？','什麼新資訊出現時，我應該重新檢查這個決策？'];
+    if(f.type==='snapshot') return ['和現在相比，真正改變的是什麼？','這些變化是因為新資訊，還是原本估計不準？','哪個變化最值得留下作為檢討？'];
+    if(f.type==='scenario') return ['這個方案真正改變了哪個核心假設或做法？','它解決了什麼問題，又犧牲了什麼？','目前還有哪個未知會讓這份重新規劃太早定案？'];
+    return ['目的、期限內目標與目前做法有沒有混在一起？','目前最重要的未知或假設是什麼？','依現有資訊，我已經可以先開始做什麼？'];
+  },
+  setSuggestedQuestion(q){ const a=this.analysisState(); a.question=q; this.saveState(); const el=document.getElementById('analysis-question'); if(el)el.value=q; this.renderContextUI(false); },
+  openAssist(){ document.getElementById('analysis-drawer')?.classList.add('open'); document.getElementById('drawer-overlay')?.classList.add('open'); this.renderContextUI(); },
+  closeAssist(){ document.getElementById('analysis-drawer')?.classList.remove('open'); document.getElementById('drawer-overlay')?.classList.remove('open'); },
+  renderContextUI(fillFields=true){
+    const a=this.analysisState(), f=this.currentFocus();
+    const set=(id,val)=>{ const el=document.getElementById(id); if(el && document.activeElement!==el) el.value=val??''; };
+    const fl=document.getElementById('focus-label'); if(fl)fl.textContent=f.label;
+    const fq=document.getElementById('focus-question'); if(fq)fq.textContent=a.question||'尚未寫目前問題';
+    const dfl=document.getElementById('drawer-focus-label'); if(dfl)dfl.textContent='｜ '+f.label;
+    const sh=document.getElementById('static-help'); if(sh)sh.innerHTML=this.helpForFocus();
+    const sp=document.getElementById('suggested-prompts'); if(sp){ sp.innerHTML=''; this.suggestedQuestions().forEach(q=>{ const b=document.createElement('button'); b.type='button'; b.textContent=q; b.onclick=()=>this.setSuggestedQuestion(q); sp.appendChild(b); }); }
+    if(fillFields){ set('analysis-question',a.question); set('analysis-context',a.contextNote); set('analysis-viewpoint',a.viewpoint); set('inquiry-audience',a.audience); set('inquiry-mode',a.inquiryMode); set('inquiry-help',a.desiredHelp); set('deep-goal',a.deepGoal); }
+    const ctx=this.buildAiContext(); const sum=document.getElementById('context-scope-summary'); if(sum)sum.innerHTML=`<span class="context-chip">${this.esc(f.label)}</span> ${this.esc(ctx.scopeText)}`;
+    const pre=document.getElementById('context-preview'); if(pre)pre.textContent=JSON.stringify(ctx.payload,null,2);
+  },
+  slimProject(){ const p=this.activeProject()||{}; return {name:p.name||'',purpose:p.purpose||'',goal:p.goal||'',currentApproach:p.currentApproach||'',deadline:p.deadline||'',deadlineType:p.deadlineType||'',definitionOfDone:p.definitionOfDone||'',constraints:p.constraints||'',milestones:p.milestones||[]}; },
+  slimCard(card,includeHistory=true){
+    const logs=(Array.isArray(card.workLogs)?card.workLogs:[]).slice().sort((a,b)=>String(b.workDate||'').localeCompare(String(a.workDate||''))).slice(0,3).map(x=>({date:x.workDate||'',minutes:Math.round(this.logMinutes(x)),note:x.note||''}));
+    const notes=(Array.isArray(card.entries)?card.entries:[]).slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,3).map(x=>({title:x.title||'',content:x.content||'',createdAt:x.createdAt||''}));
+    const out={id:card.id,title:card.title||'',type:card.isMemo?'自由卡':'排程卡',content:card.content||'',category:card.category||'',status:this.statusLabel(card.status),planningMaturity:this.planningMaturityLabel(card.planningMaturity),nextAction:card.nextAction||'',decisionPoint:card.decisionPoint||'',dependency:card.dependencyNote||'',plannedMinutes:this.plannedMinutes(card),actualMinutes:Math.round(this.actualMinutes(card)),plannedStart:card.dateStart||card.dateSingle||'',plannedEnd:card.dateEnd||'',deliverable:card.deliverable||'',acceptance:card.acceptance||'',acceptanceEvidence:card.acceptanceEvidence||''};
+    if(includeHistory){out.recentWorkLogs=logs;out.recentWorkNotes=notes;} return out;
+  },
+  buildAiContext(){
+    const includeHistory=document.getElementById('scope-history')?.checked ?? true;
+    const includeRelated=document.getElementById('scope-related')?.checked ?? true;
+    const includeOther=document.getElementById('scope-other')?.checked ?? false;
+    const f=this.currentFocus(), payload={project:this.slimProject(),focus:{type:f.type,label:f.label}}; let scope=['專案摘要'];
+    if(f.type==='navigation'){ payload.focus.navigation={question:this.analysisState().question||'',contextNote:this.analysisState().contextNote||'',viewpoint:this.analysisState().viewpoint||''}; scope.push('目前卡點描述'); }
+    else if(f.type==='breakdown'){ payload.focus.card=this.slimCard(f.data.card,includeHistory); payload.focus.breakdownPractice=structuredClone(f.data.practice||{}); scope.push('目前排程卡','我的拆解練習'); if(includeHistory)scope.push('最近 3 筆工作紀錄／工時'); }
+    else if(f.type==='card'){ payload.focus.card=this.slimCard(f.data.card,includeHistory); scope.push(f.data.card.isMemo?'目前自由卡':'目前排程卡'); if(includeHistory)scope.push('最近 3 筆工作紀錄／工時'); }
+    else if(f.type==='management'){ const m=f.data; payload.focus.management={title:m.title,status:this.managementStatusLabel(m.status),thinkingState:this.thinkingStateLabel(m.thinkingState||this.defaultThinkingState(m.status)),rawRequest:m.rawRequest,context:m.context,desiredOutcome:m.desiredOutcome,myRole:this.managementRoleLabel(m.myRole),knownFacts:m.knownFacts,unknowns:m.unknowns,options:m.options,tradeoffs:m.tradeoffs,recommendation:m.recommendation,nextAction:m.nextAction,askWho:m.askWho,askQuestion:m.askQuestion,followUpDate:m.followUpDate,result:m.result}; scope.push('目前管理事項'); const hit=this.projectCards().find(x=>x.card.id===m.linkedCardId); if(hit){payload.focus.linkedCard=this.slimCard(hit.card,includeHistory);scope.push('連結工作卡');} }
+    else if(f.type==='review'){ payload.focus.review=structuredClone(f.data); scope.push('目前檢討紀錄'); }
+    else if(f.type==='finding'){ payload.focus.finding=structuredClone(f.data); scope.push('目前重要發現'); }
+    else if(f.type==='decision'){ payload.focus.decision=structuredClone(f.data); scope.push('目前決策紀錄'); }
+    else if(f.type==='snapshot'){ const s=f.data; payload.focus.snapshot={id:s.id,label:s.label,createdAt:s.createdAt,project:s.payload?.project,cards:(s.payload?.cards||[]).map(x=>({title:x.card?.title,status:this.statusLabel(x.card?.status),nextAction:x.card?.nextAction||'',decisionPoint:x.card?.decisionPoint||''})),managementCount:(s.payload?.managementItems||[]).length}; scope.push('歷史狀態摘要'); }
+    else if(f.type==='scenario'){ const s=f.data; payload.focus.scenario={name:s.name,status:s.status,notes:s.notes,baseSnapshotId:s.baseSnapshotId,diff:this.scenarioDiff(s),cards:(s.cards||[]).filter(x=>!x.isDeleted).map(c=>({title:c.title,type:c.isMemo?'自由卡':'排程卡',dateStart:c.dateStart,dateEnd:c.dateEnd,nextAction:c.nextAction,deliverable:c.deliverable}))}; scope.push('重新規劃方案'); }
+    else { payload.focus.project=this.slimProject(); scope.push('專案整體'); }
+    if(includeRelated){
+      const cardId=f.type==='card'?f.id:f.type==='management'?f.data.linkedCardId:'';
+      payload.related={openManagement:this.projectManagementItems().filter(m=>m.status!=='closed'&&(!cardId||!m.linkedCardId||m.linkedCardId===cardId)).slice(0,4).map(m=>({title:m.title,status:this.managementStatusLabel(m.status),thinkingState:this.thinkingStateLabel(m.thinkingState||this.defaultThinkingState(m.status)),nextAction:m.nextAction,unknowns:m.unknowns})),recentDecisions:this.projectDecisions().slice(0,3).map(d=>({question:d.question,decision:d.decision,reason:d.reason,status:d.status}))}; scope.push('相關管理／決策');
+    }
+    if(includeOther){ payload.otherCards=this.projectCards().slice(0,8).map(x=>this.slimCard(x.card,false)); scope.push('其他工作卡（最多 8 張）'); }
+    return {payload,scopeText:'本次包含：'+scope.join('＋')};
+  },
+  systemInstruction(kind='analysis'){
+    const common=`使用繁體中文。你的用途是協助使用者練習處理資訊，而不是替使用者接管專案或做所有決定。\n1. 優先區分：已知事實、使用者目前的推論、未知／需要確認的資訊。\n2. 尊重使用者已寫的「我目前怎麼看」，先檢查它的依據與缺口，不要直接用自己的答案覆蓋。\n3. 最多先處理 3 個真正重要的點，不要堆大量框架。\n4. 若資訊已足夠，明確指出可以先行動，不要為完整而繼續製造規劃工作。\n5. 對自由卡保留探索性，不強迫補期限／驗收；對排程卡才檢查下一步、判斷點、依賴、產出與驗收。\n6. 對拆解練習，先檢查使用者自己的拆法，不要直接代拆。優先判斷：可獨立產出／驗收／依賴的成果、只是執行步驟、以及仍需探索的未知。\n7. 對管理事項區分：自己做、找人問、交辦、等待、追蹤、待決策。\n8. 如果情境是練習導航，先判斷使用者此刻最適合去哪一個練習區，不要展開整份專案分析。\n9. 不把推測寫成事實。`;
+    if(kind==='inquiry') return common+`\n你的任務是把目前卡點整理成「別人容易回答的最小必要詢問」。不要傾倒完整專案脈絡，不要把決策責任丟給對方。只保留對方回答這一題需要知道的背景。`;
+    if(kind==='interface') return common+`\n你的任務是幫使用者理解目前這個 Project Lab 情境該怎麼用，以及此刻最值得處理什麼。不要重新規劃整個專案。`;
+    return common+`\n回答最好呈現：目前怎麼看、資訊缺口／需要確認、下一個更好的問題或最小動作。`;
+  },
+  getApiKeys(){ return [1,2,3].map(i=>({slot:i,key:(document.getElementById(`gemini-key-${i}`)?.value||'').trim()})).filter(x=>x.key); },
+  modelName(){ return (document.getElementById('gemini-model')?.value||'gemini-3.1-flash-lite').trim(); },
+  async geminiRequest(prompt,kind='analysis'){
+    const keys=this.getApiKeys(); if(!keys.length)throw new Error('請先貼上至少一組 Gemini API Key。');
+    const model=this.modelName(); if(!model)throw new Error('請填入模型名稱。');
+    const start=this.aiRuntime.nextKeyIndex%keys.length; let lastErr=null;
+    for(let step=0;step<keys.length;step++){
+      const idx=(start+step)%keys.length, item=keys[idx];
+      try{
+        const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':item.key},body:JSON.stringify({systemInstruction:{parts:[{text:this.systemInstruction(kind)}]},contents:[{role:'user',parts:[{text:prompt}]}]})});
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok){ const msg=data?.error?.message||`HTTP ${res.status}`; const err=new Error(msg); err.status=res.status; throw err; }
+        const text=(data.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim();
+        if(!text)throw new Error('模型沒有回傳可顯示文字。');
+        this.aiRuntime.nextKeyIndex=(idx+1)%keys.length; this.aiRuntime.lastKeySlot=item.slot; this.aiRuntime.lastModel=model; this.aiRuntime.lastUsage=data.usageMetadata||null;
+        const st=document.getElementById('api-rotation-status'); if(st)st.textContent=`本次使用第 ${item.slot} 組；下一次從第 ${keys[this.aiRuntime.nextKeyIndex]?.slot||keys[0].slot} 組開始`;
+        return text;
+      }catch(e){
+        lastErr=e; const status=Number(e.status||0); const msg=String(e.message||'');
+        const keySpecific=[401,403,429].includes(status)||(status===400&&/api key|key not valid|quota/i.test(msg));
+        if(status===404 || /model.*not found|not found.*model/i.test(msg)) throw new Error(`模型「${model}」目前不可用或名稱不正確。請修改模型名稱後再試。`);
+        if(!keySpecific) throw e;
+      }
+    }
+    throw new Error(`三組 API Key 都未成功：${lastErr?.message||'未知錯誤'}`);
+  },
+  async checkGeminiModel(){
+    const keys=this.getApiKeys(); if(!keys.length)return alert('請先貼上至少一組 API Key。'); const model=this.modelName();
+    let lastErr='';
+    for(const item of keys){
+      try{ const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models',{headers:{'x-goog-api-key':item.key}}); const data=await res.json(); if(!res.ok)throw new Error(data?.error?.message||`HTTP ${res.status}`); const hit=(data.models||[]).find(m=>m.name===`models/${model}`&&(m.supportedGenerationMethods||[]).includes('generateContent')); if(hit){ document.getElementById('api-rotation-status').textContent=`第 ${item.slot} 組可連線；模型 ${model} 可用`; return; } const suggestions=(data.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')&&/gemini/i.test(m.name||'')).slice(0,10).map(m=>m.name.replace('models/','')); document.getElementById('api-rotation-status').textContent=`可連線，但找不到 ${model}。可用例：${suggestions.join('、')}`; return; }catch(e){lastErr=e.message;}
+    }
+    document.getElementById('api-rotation-status').textContent='連線失敗：'+lastErr;
+  },
+  buildAnalysisPrompt(kind='analysis'){
+    const a=this.analysisState(), f=this.currentFocus(), ctx=this.buildAiContext();
+    const q=a.question||this.suggestedQuestions()[0]||'請幫我確認目前最值得處理的資訊問題。';
+    const instruction=kind==='interface'?'請根據目前畫面情境，說明我現在最值得處理什麼、哪些欄位不必急著補，以及我可能誤解了什麼。':q;
+    return `【目前情境】\n${f.type}｜${f.label}\n\n【我的問題】\n${instruction}\n\n【補充情境】\n${a.contextNote||'未補充'}\n\n【我目前怎麼看】\n${a.viewpoint||'尚未形成明確看法'}\n\n【本次資料】\n${JSON.stringify(ctx.payload,null,2)}`;
+  },
+  async runQuickAnalysis(){
+    const status=document.getElementById('quick-status'), out=document.getElementById('quick-response'); if(status)status.textContent='分析中…';
+    try{ const prompt=this.buildAnalysisPrompt('analysis'); const text=await this.geminiRequest(prompt,'analysis'); this.aiRuntime.lastResponse=text;this.aiRuntime.lastPrompt=prompt;this.aiRuntime.lastContextLabel=this.currentFocus().label; if(out)out.textContent=text; const u=this.aiRuntime.lastUsage||{}; const meta=document.getElementById('quick-meta'); if(meta)meta.textContent=`情境：${this.currentFocus().label}｜模型：${this.aiRuntime.lastModel}｜API：第 ${this.aiRuntime.lastKeySlot} 組${u.totalTokenCount?`｜總 token ${u.totalTokenCount}`:''}`; if(status)status.textContent='完成。回答不會自動保存。'; }
+    catch(e){if(status)status.textContent='失敗：'+e.message;}
+  },
+  async runInterfaceInterpretation(){
+    const status=document.getElementById('quick-status'), out=document.getElementById('quick-response'); if(status)status.textContent='正在解讀目前情境…';
+    try{ const prompt=this.buildAnalysisPrompt('interface'); const text=await this.geminiRequest(prompt,'interface'); this.aiRuntime.lastResponse=text;this.aiRuntime.lastPrompt=prompt;this.aiRuntime.lastContextLabel=this.currentFocus().label;if(out)out.textContent=text;const meta=document.getElementById('quick-meta');if(meta)meta.textContent=`介面情境解讀｜模型：${this.aiRuntime.lastModel}｜API：第 ${this.aiRuntime.lastKeySlot} 組`;if(status)status.textContent='完成。';}
+    catch(e){if(status)status.textContent='失敗：'+e.message;}
+  },
+  saveQuickAsReview(){
+    const response=this.aiRuntime.lastResponse.trim(); if(!response)return alert('目前沒有可保存的快速分析。'); const a=this.analysisState();
+    const review={id:this.uid('review'),reviewType:'discussion',projectId:this.state.activeProjectId,snapshotId:'',contextLabel:this.aiRuntime.lastContextLabel||this.currentFocus().label,templateId:'quick_analysis',templateLabel:'快速分析｜資訊處理',customQuestion:a.question||'',response,userReflection:'',createdAt:this.now(),analysisMeta:{focusType:this.currentFocus().type,model:this.aiRuntime.lastModel}};
+    this.state.reviews.push(review);this.saveState();this.renderReviews();this.showView('reviews');alert('已存成檢討紀錄。');
+  },
+  copyQuickResponse(){ const t=this.aiRuntime.lastResponse||''; if(!t)return alert('目前沒有分析結果。'); this.copyText(t,'已複製分析結果。'); },
+  buildDeepDiscussion(){
+    const a=this.analysisState(), f=this.currentFocus(), ctx=this.buildAiContext();
+    const text=`我想針對以下情境做深入討論。請不要急著替我做決定，先檢查我的問題定義、資訊整理與推論是否合理；需要時再比較方案與取捨。\n\n【我現在的問題】\n${a.question||'尚未寫清楚，請先協助我把問題定義清楚。'}\n\n【我目前怎麼理解】\n${a.viewpoint||'尚未形成明確看法。'}\n\n【補充情境】\n${a.contextNote||'無'}\n\n【我希望這次討論幫我做什麼】\n${a.deepGoal||'先幫我找出最值得釐清的 1～3 個判斷，再和我逐步討論。'}\n\n【目前焦點】\n${f.type}｜${f.label}\n\n【專案與相關事實】\n${JSON.stringify(ctx.payload,null,2)}\n\n【前一輪快速分析】\n${this.aiRuntime.lastResponse||'尚無'}`;
+    const el=document.getElementById('deep-output'); if(el)el.textContent=text; return text;
+  },
+  copyDeepDiscussion(){ const el=document.getElementById('deep-output'); const t=el?.textContent?.trim(); if(!t||t==='尚未產生。')return alert('請先產生深入討論資料。'); this.copyText(t,'已複製深入討論資料。'); },
+  inquiryModeText(v){ return ({specific:'回答一個具體問題',experience:'分享你的經驗',challenge:'幫我檢查目前想法',together:'跟我一起把問題想清楚'})[v]||'回答一個具體問題'; },
+  async runInquiryDraft(){
+    const a=this.analysisState(), f=this.currentFocus(), ctx=this.buildAiContext(); const mode=this.inquiryModeText(a.inquiryMode);
+    const modeRule=a.inquiryMode==='together'?'可以保留尚未整理完的模糊感，但要清楚說明「我希望你跟我一起想哪一塊」。不要硬加工成過度正式的單一問題。':a.inquiryMode==='experience'?'把重點放在詢問對方過去怎麼判斷或處理，不要請對方替我負責整個專案。':a.inquiryMode==='challenge'?'保留我的目前看法，請對方挑戰我可能漏掉的點，不要要求他替我選方案。':'收斂成一個主要問題，必要時最多補一個追問。';
+    const prompt=`請把下面資料整理成我可以直接拿去問人的內容。\n\n【我要問的人】${a.audience||'未指定，請用一般熟識同事／朋友的自然語氣'}\n【希望對話方式】${mode}\n【我最希望得到】${a.desiredHelp||'針對目前卡點的一個可用回覆'}\n【特別規則】${modeRule}\n\n【我的問題】${a.question||'尚未整理清楚'}\n【我目前怎麼看】${a.viewpoint||'尚未形成明確看法'}\n【補充情境】${a.contextNote||'無'}\n【目前焦點】${f.label}\n\n【背景資料（只挑對方回答這一題真正需要知道的，不要全部轉述）】\n${JSON.stringify(ctx.payload,null,2)}\n\n只輸出可直接拿去詢問的文字，不要解釋你的寫作過程。`;
+    const out=document.getElementById('inquiry-output'); if(out)out.textContent='整理中…';
+    try{const text=await this.geminiRequest(prompt,'inquiry');this.aiRuntime.lastInquiry=text;if(out)out.textContent=text;}catch(e){if(out)out.textContent='失敗：'+e.message;}
+  },
+  copyInquiry(){ const t=(document.getElementById('inquiry-output')?.textContent||'').trim(); if(!t||t==='尚未整理。'||t==='整理中…')return alert('目前沒有可複製的詢問內容。'); this.copyText(t,'已複製詢問內容。'); },
+  decorateFocusButtons(){
+    const add=(el,type,id,label)=>{ if(!el||el.querySelector('.focus-select-btn'))return; const host=el.querySelector('.row')||el; const b=document.createElement('button');b.className='btn small focus-select-btn';b.textContent='說明／分析';b.onclick=()=>{this.focusObject(type,id,label);this.openAssist();};host.appendChild(b); };
+    const cards=this.projectCards(), srcEls=[...document.querySelectorAll('#view-source .source-card')]; cards.forEach((x,i)=>{ add(srcEls[i],'card',x.card.id,x.card.title||'未命名工作卡'); if(!x.card.isMemo && srcEls[i] && !srcEls[i].querySelector('.breakdown-open-btn')){ const host=srcEls[i].querySelector('.row')||srcEls[i]; const b=document.createElement('button'); b.className='btn small breakdown-open-btn'; b.textContent='拆解練習'; b.onclick=()=>{ const a=this.analysisState(); a.breakdownCardId=x.card.id; this.saveState(); this.showView('breakdown'); this.renderBreakdownPractice(); }; host.appendChild(b); } });
+    const mg=this.projectManagementItems(), mgEls=[...document.querySelectorAll('#view-management .management-item')]; mg.forEach((x,i)=>{ const old=[...mgEls[i]?.querySelectorAll('button')||[]].find(b=>b.textContent.includes('拿這筆問 AI')); if(old){old.textContent='說明／分析';old.setAttribute('onclick',`lab.focusObject('management','${x.id}',${JSON.stringify(x.title||'管理事項')});lab.openAssist()`);} else add(mgEls[i],'management',x.id,x.title||'管理事項'); });
+    const pairs=[['snapshot',this.projectSnapshots(),'#view-snapshots .snapshot-item',x=>x.label||'歷史狀態'],['review',this.projectReviews(),'#view-reviews .review-item',x=>x.problem||x.customQuestion||x.templateLabel||'檢討紀錄'],['finding',this.projectFindings(),'#view-findings .finding-item',x=>x.title||'重要發現'],['decision',this.projectDecisions(),'#view-decisions .decision-item',x=>x.question||'決策紀錄'],['scenario',this.projectScenarios(),'#view-scenarios .scenario-item',x=>x.name||'重新規劃方案']];
+    pairs.forEach(([type,list,sel,labelFn])=>{const els=[...document.querySelectorAll(sel)];list.forEach((x,i)=>add(els[i],type,x.id,labelFn(x)));});
+  },
+  localizeDynamicUI(){
+    const reps=new Map([['＋ 結果回顧','＋ 結果回顧'],['建立結果回顧','建立結果回顧'],['＋ 新增重要發現','＋ 新增重要發現'],['轉成重要發現','轉成重要發現'],['形成決策紀錄','形成決策紀錄'],['用此狀態建立重新規劃方案','用此狀態建立重新規劃方案'],['用於進階提示','用於進階提示'],['刪除方案','刪除方案'],['比較歷史狀態','比較歷史狀態'],['方案說明','方案說明'],['候選規劃','候選規劃']]);
+    document.querySelectorAll('button').forEach(b=>{const t=b.textContent.trim();if(reps.has(t))b.textContent=reps.get(t);});
+    document.querySelectorAll('#view-decisions .pill').forEach(x=>{if(x.textContent.trim()==='Decision')x.textContent='決策';}); document.querySelectorAll('#view-decisions select option').forEach(o=>{const map={proposed:'待確認',accepted:'已採用',superseded:'已被新決策取代',rejected:'不採用'}; if(map[o.value])o.textContent=map[o.value];}); document.querySelectorAll('#view-reviews strong').forEach(x=>{if(x.textContent.trim()==='Outcome Review')x.textContent='結果回顧';});
+  }
+});
 
 auth.onAuthStateChanged(user=>{
   if(user){ lab.user=user; document.getElementById('login-screen').classList.add('hidden'); document.getElementById('app').classList.remove('hidden'); lab.init(); }
