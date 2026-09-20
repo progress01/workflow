@@ -60,10 +60,20 @@ service cloud.firestore {
     }
 
     // ==========================================
-    // 8. Project Lab 專案檢討系統
+    // 8. Project Lab 規劃與練習系統
     // ==========================================
     match /ProjectLab_Data/{userId} {
       allow read, write: if request.auth != null && userId == request.auth.uid;
+
+      // v1.7：跨專案案例庫。每筆案例獨立成 document，避免主 ProjectLab_Data 文件持續膨脹。
+      match /experiences/{experienceId} {
+        allow read, write: if request.auth != null && userId == request.auth.uid;
+      }
+
+      // v1.7：案例實際被回用時留下的輕量紀錄，用於之後回看「哪些經驗曾被沿用／修正」。
+      match /experienceUses/{useId} {
+        allow read, write: if request.auth != null && userId == request.auth.uid;
+      }
     }
   }
 }

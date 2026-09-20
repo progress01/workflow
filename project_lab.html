@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Project Lab v1.6.2｜練習導向資訊處理</title>
+  <title>Project Lab v1.7｜規劃基礎與練習導向資訊處理</title>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
@@ -29,6 +29,15 @@
     .app{min-height:100vh}
     .topbar{position:sticky;top:0;z-index:20;background:#172033;color:#fff;padding:12px 18px;display:flex;gap:12px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.16)}
     .brand{font-weight:900;white-space:nowrap}.topbar select{min-width:240px;background:#fff;color:#111827;border:0;border-radius:8px;padding:8px}
+    .project-switcher{position:relative;min-width:250px;max-width:380px;flex:0 1 380px;color:#1f2937}
+    .project-switcher-trigger{width:100%;border:1px solid rgba(255,255,255,.2);background:#fff;color:#111827;border-radius:9px;padding:7px 10px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;text-align:left;box-shadow:0 1px 2px rgba(15,23,42,.08)}
+    .project-switcher-trigger:hover{background:#f8fafc}.project-switcher-caption{font-size:.68rem;color:#64748b;font-weight:900;white-space:nowrap}.project-switcher-current{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.project-switcher-arrow{color:#64748b;font-size:.8rem}
+    .project-switcher-menu{position:absolute;top:calc(100% + 8px);left:0;width:min(420px,92vw);max-height:min(70vh,620px);overflow:auto;background:#fff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 18px 45px rgba(15,23,42,.24);padding:10px;z-index:60}
+    .project-switcher-title{font-weight:900;color:#1f2937;margin:2px 2px 8px}.project-search{margin-bottom:10px!important}
+    .project-switch-section{margin-top:8px}.project-switch-section:first-child{margin-top:2px}.project-switch-section-title{font-size:.7rem;color:#64748b;font-weight:900;padding:5px 7px;text-transform:none}
+    .project-switch-option{width:100%;border:0;background:transparent;color:#1f2937;border-radius:8px;padding:8px 9px;text-align:left;display:flex;gap:8px;align-items:center}
+    .project-switch-option:hover{background:#f1f5f9}.project-switch-option.active{background:#eef2ff;color:#3730a3}.project-switch-option .project-option-name{font-weight:850;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.project-switch-option .project-option-mark{font-size:.72rem;color:#6366f1;font-weight:900}
+    .project-switch-empty{padding:18px 8px;text-align:center;color:#94a3b8;font-size:.82rem}
     .topbar .spacer{flex:1}.topbar .status{font-size:.8rem;color:#cbd5e1}
     .shell{max-width:1600px;margin:0 auto;padding:18px}
     .summary-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;margin-bottom:14px}
@@ -102,6 +111,10 @@
     .stale{border-color:#f59e0b!important;background:#fffbeb!important}.stale-note{color:#92400e;font-size:.74rem;font-weight:800;margin-top:5px}
     .outcome-status{display:flex;gap:6px;flex-wrap:wrap}.outcome-status label{font-size:.75rem;border:1px solid #dbe2ea;border-radius:999px;padding:5px 8px;background:#fff;cursor:pointer}
     .purpose-chain{display:grid;grid-template-columns:1fr;gap:8px}
+    .planning-basis{border:1px solid #c7d2fe;background:#f8faff;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+    .planning-basis-head{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}.planning-basis-head strong{color:#3730a3}.planning-basis-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.planning-basis-grid .wide{grid-column:1/-1}
+    .ai-role-grid{display:grid;grid-template-columns:1fr;gap:8px}.ai-role-card{border:1px solid #e2e8f0;border-radius:9px;padding:9px;background:#f8fafc;font-size:.8rem;line-height:1.5}.ai-role-card strong{color:#334155}.ai-role-card .role-note{color:#64748b;margin-top:3px}
+    .replan-check{border:1px solid #fde68a;background:#fffbeb;border-radius:10px;padding:10px;margin-bottom:12px}.replan-check strong{color:#92400e}.replan-check .row{margin-top:8px}
     .purpose-chain .field{padding:9px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
     .ai-mode-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
     .ai-mode-card{border:1px solid #dbe2ea;border-radius:9px;padding:9px;background:#f8fafc}
@@ -111,7 +124,7 @@
     .time-bar > span{display:block;height:100%;background:#6366f1}
     .time-bar > span.over{background:#dc2626}
     @media(max-width:1180px){.layout{grid-template-columns:280px minmax(0,1fr)}.right-panel{grid-column:1/-1}.summary-grid{grid-template-columns:repeat(3,1fr)}}
-    @media(max-width:760px){.time-compare{grid-template-columns:1fr 1fr}.management-grid{grid-template-columns:1fr}.management-grid .wide{grid-column:auto}.topbar{flex-wrap:wrap}.topbar select{min-width:0;flex:1}.layout{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,1fr)}.meta-grid,.scenario-fields{grid-template-columns:1fr}.meta-grid .wide,.scenario-fields .wide{grid-column:auto}.template-grid{grid-template-columns:1fr}.milestone{grid-template-columns:1fr}}
+    @media(max-width:760px){.time-compare{grid-template-columns:1fr 1fr}.management-grid{grid-template-columns:1fr}.management-grid .wide{grid-column:auto}.topbar{flex-wrap:wrap}.topbar select{min-width:0;flex:1}.project-switcher{order:2;min-width:100%;max-width:none;flex:1 0 100%}.project-switcher-menu{width:100%;max-width:none}.layout{grid-template-columns:1fr}.summary-grid{grid-template-columns:repeat(2,1fr)}.meta-grid,.scenario-fields,.planning-basis-grid{grid-template-columns:1fr}.meta-grid .wide,.scenario-fields .wide,.planning-basis-grid .wide{grid-column:auto}.template-grid{grid-template-columns:1fr}.milestone{grid-template-columns:1fr}}
 
     /* === v1.6：資訊處理導向介面 === */
     .shell{max-width:1440px}
@@ -171,7 +184,33 @@
     .practice-label{display:inline-block;border-radius:999px;background:#eef2ff;color:#4338ca;font-weight:900;font-size:.7rem;padding:3px 7px;margin-right:5px}
     @media(max-width:820px){.practice-route-grid{grid-template-columns:1fr}.breakdown-layout{grid-template-columns:1fr}.breakdown-source{position:static}}
 
-  </style>
+  
+    /* === v1.7：經驗回用 === */
+    .experience-hero{padding:16px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:14px;margin-bottom:14px}
+    .experience-hero h3{margin:0 0 6px;color:#1e3a8a}
+    .experience-search-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end}
+    .experience-status{font-size:.82rem;color:#64748b;margin-top:7px}
+    .experience-result-list,.experience-library-list{display:grid;gap:10px;margin-top:10px}
+    .experience-card{border:1px solid #dbe3ee;border-radius:12px;padding:12px;background:#fff}
+    .experience-card.selected{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.08)}
+    .experience-card-head{display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap}
+    .experience-card-head strong{font-size:.98rem}
+    .experience-card .summary{margin-top:7px;color:#334155;line-height:1.55}
+    .experience-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px;font-size:.76rem;color:#64748b}
+    .experience-tag{display:inline-flex;padding:2px 7px;border-radius:999px;background:#f1f5f9;font-size:.72rem;color:#475569}
+    .experience-state-active{background:#fef3c7;color:#92400e}.experience-state-settled{background:#dcfce7;color:#166534}
+    .experience-detail{margin-top:14px;border-top:1px solid #e2e8f0;padding-top:14px}
+    .experience-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .experience-fact{border:1px solid #e2e8f0;border-radius:10px;padding:10px;background:#f8fafc;white-space:pre-wrap}.experience-fact.wide{grid-column:1/-1}
+    .experience-compare{margin-top:14px;padding:14px;border:1px solid #ddd6fe;background:#faf5ff;border-radius:12px}
+    .experience-compare-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+    .experience-create{margin-top:16px;border:1px solid #cbd5e1;border-radius:12px;padding:12px;background:#fff}.experience-create summary{font-weight:800;cursor:pointer}
+    .experience-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.experience-form-grid .wide{grid-column:1/-1}
+    .experience-section-title{font-weight:800;margin-top:16px}.experience-empty{padding:18px;text-align:center;color:#64748b;border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc}
+    .deep-experience-note{margin-top:8px;padding:8px 10px;border-radius:9px;background:#f8fafc;border:1px solid #e2e8f0;font-size:.78rem;color:#475569}
+    @media(max-width:800px){.experience-search-row,.experience-detail-grid,.experience-compare-grid,.experience-form-grid{grid-template-columns:1fr}.experience-fact.wide,.experience-form-grid .wide{grid-column:auto}}
+
+</style>
 </head>
 <body>
 <div id="login-screen">
@@ -185,8 +224,19 @@
 
 <div id="app" class="app hidden">
   <div class="topbar">
-    <div class="brand">🔬 Project Lab <span style="font-size:.72rem;opacity:.75">v1.6.2</span></div>
-    <select id="project-select" onchange="lab.changeProject(this.value)"></select>
+    <div class="brand">🔬 Project Lab <span style="font-size:.72rem;opacity:.75">v1.7</span></div>
+    <div class="project-switcher" id="project-switcher">
+      <button class="project-switcher-trigger" type="button" onclick="lab.toggleProjectSwitcher(event)" aria-haspopup="listbox" aria-expanded="false">
+        <span class="project-switcher-caption">目前專案</span>
+        <span id="project-switcher-current" class="project-switcher-current">尚無專案</span>
+        <span class="project-switcher-arrow">▾</span>
+      </button>
+      <div id="project-switcher-menu" class="project-switcher-menu hidden" onclick="event.stopPropagation()">
+        <div class="project-switcher-title">切換專案</div>
+        <input id="project-search" class="project-search" type="search" placeholder="搜尋專案名稱…" autocomplete="off" oninput="lab.renderProjectSwitcherList(this.value)" onkeydown="if(event.key==='Escape')lab.closeProjectSwitcher()">
+        <div id="project-switcher-list" class="project-switcher-list"></div>
+      </div>
+    </div>
     <button class="btn small" onclick="lab.reloadSource()">↻ 重新讀取白板</button>
     <button class="btn small" onclick="location.href='whiteboard.html'">↗ 正式白板</button>
     <button class="btn small success" onclick="lab.createSnapshot()">📸 保存目前狀態</button>
@@ -205,7 +255,8 @@
       <button class="main-nav-btn" data-group="project" onclick="lab.showGroup('project')">釐清專案</button>
       <button class="main-nav-btn" data-group="work" onclick="lab.showView('source')">拆解工作</button>
       <button class="main-nav-btn" data-group="advance" onclick="lab.showView('management')">推進與詢問</button>
-      <button class="main-nav-btn" data-group="review" onclick="lab.showView('reviews')">檢討與決策</button>
+      <button class="main-nav-btn" data-group="experience" onclick="lab.showGroup('experience')">經驗回用</button>
+      <button class="main-nav-btn" data-group="review" onclick="lab.showView('reviews')">思考與決策</button>
       <button class="main-nav-btn" data-group="versions" onclick="lab.showView('snapshots')">版本與方案</button>
     </div>
 
@@ -223,12 +274,13 @@
         <div id="practice-current" class="practice-current"></div>
       </div>
       <div class="practice-route-grid">
-        <button class="practice-route" onclick="lab.goPractice('project')"><div class="route-title">① 釐清專案</div><div class="route-when">我還不確定真正要解決什麼、期限內要到哪裡，或目的／目標／做法混在一起。</div><div class="route-go">前往：釐清專案 →</div></button>
+        <button class="practice-route" onclick="lab.goPractice('project')"><div class="route-title">① 釐清專案</div><div class="route-when">我還不確定真正要解決什麼、期限內要到哪裡，或擔心把自己的理解／手法當成需求方的目的。</div><div class="route-go">前往：釐清專案 →</div></button>
         <button class="practice-route" onclick="lab.goPractice('breakdown')"><div class="route-title">② 拆解工作</div><div class="route-when">事情太大、太模糊，不知道哪些值得獨立成工項，哪些只是步驟或探索。</div><div class="route-go">前往：拆解練習 →</div></button>
         <button class="practice-route" onclick="lab.goPractice('advance')"><div class="route-title">③ 推進與詢問</div><div class="route-when">我缺資訊、要找人問、在等別人、需要追蹤，或不知道現在球在誰手上。</div><div class="route-go">前往：管理事項 →</div></button>
         <button class="practice-route" onclick="lab.goPractice('decision')"><div class="route-title">④ 判斷與選擇</div><div class="route-when">我已經有幾種做法，但不知道怎麼比較取捨，或不確定還缺什麼資訊才能決定。</div><div class="route-go">前往：管理事項的「判斷」 →</div></button>
-        <button class="practice-route" onclick="lab.goPractice('review')"><div class="route-title">⑤ 檢討結果</div><div class="route-when">事情做過一段時間或已完成，想比較原本設想、實際結果、工時差異與新資訊。</div><div class="route-go">前往：檢討與決策 →</div></button>
-        <button class="practice-route" onclick="lab.goPractice('versions')"><div class="route-title">⑥ 重新規劃</div><div class="route-when">不是單一卡片的問題，而是整體時程、拆法或方案可能需要重排。</div><div class="route-go">前往：版本與方案 →</div></button>
+        <button class="practice-route" onclick="lab.goPractice('experience')"><div class="route-title">⑤ 經驗回用</div><div class="route-when">剛接到事情、做到一半卡住，或想確認以前有沒有處理過類似情況、當時誰做、最後怎麼處理。</div><div class="route-go">前往：找相似經驗 →</div></button>
+        <button class="practice-route" onclick="lab.goPractice('review')"><div class="route-title">⑥ 回頭釐清／檢討</div><div class="route-when">事情做到一半想重新釐清，或已完成想比較原本設想、實際結果、工時差異與新資訊。</div><div class="route-go">前往：思考與決策 →</div></button>
+        <button class="practice-route" onclick="lab.goPractice('versions')"><div class="route-title">⑦ 重新規劃</div><div class="route-when">不是單一卡片的問題，而是整體時程、拆法或方案可能需要重排。</div><div class="route-go">前往：版本與方案 →</div></button>
       </div>
       <div class="practice-unknown"><div><strong>還是不知道該去哪？</strong><div class="tiny">寫下你現在卡住的情況，讓快速分析只判斷「現在應該先練哪一類」。</div></div><button class="btn primary" onclick="lab.openNavigationHelp()">幫我判斷現在聚焦哪裡</button></div>
     </section>
@@ -241,9 +293,18 @@
           <div id="project-id-view" class="notice info"></div>
           <label class="field">專案名稱<input id="pm-name" type="text"></label>
           <div class="project-core">
-            <label class="field">目的｜真正想解決什麼？<textarea id="pm-purpose" placeholder="描述問題或希望改變的狀態"></textarea></label>
-            <label class="field">目標｜期限內要到什麼狀態？<textarea id="pm-goal" placeholder="可以被判斷的階段目標"></textarea></label>
-            <label class="field">目前做法｜現在打算怎麼達成？<textarea id="pm-approach" placeholder="目前方案，可隨新資訊調整"></textarea></label>
+            <label class="field">目的｜真正想解決什麼？<textarea id="pm-purpose" placeholder="描述問題或希望改變的狀態。若仍是你的理解，可以先寫，但在下方標示依據。"></textarea></label>
+            <label class="field">目標｜期限內要到什麼狀態？<textarea id="pm-goal" placeholder="可以被判斷的階段目標，不要直接把手段寫成目標。"></textarea></label>
+            <label class="field">目前做法｜現在打算怎麼達成？<textarea id="pm-approach" placeholder="目前方案，可隨新資訊調整；它不是目的本身。"></textarea></label>
+          </div>
+          <div class="planning-basis">
+            <div class="planning-basis-head"><div><strong>規劃基礎｜先分開「已確認」與「我的理解」</strong><div class="tiny">不是要求你消除主觀，而是避免 AI 和你一起把尚未確認的解讀一路長成完整方案。</div></div><button class="btn small primary" onclick="lab.saveProjectMeta(false);lab.openPlanningBasisCheck()">快速 AI：檢查規劃基礎</button></div>
+            <div class="planning-basis-grid">
+              <label class="field">目前確認程度<select id="pm-basis-status"><option value="confirmed">目的／目標已明確確認</option><option value="partial">部分確認，仍有推定</option><option value="interpretation">目前主要是我的理解</option><option value="unknown">尚待確認</option></select></label>
+              <div class="notice info">AI 會優先問：哪些是需求方／情境已明確支持的？哪些只是你的解讀？目前做法是否偷偷變成目標？不會直接替你展開完整方案。</div>
+              <label class="field wide">已確認的依據｜需求方明確說過、文件已寫明、或已被確認的目的／目標／限制<textarea id="pm-confirmed-basis" placeholder="例如：主管明確要求 9/30 要能展示成果；允許保留一次人工操作。"></textarea></label>
+              <label class="field wide">我的理解／推定｜我目前認為真正問題或目的可能是什麼<textarea id="pm-planning-interpretation" placeholder="例如：我推測真正重點是穩定完成，而不是追求 100% 自動化。這裡可以主觀，但要明確標示為自己的理解。"></textarea></label>
+            </div>
           </div>
           <details class="project-advanced">
             <summary>展開期限、完成定義、限制與里程碑</summary>
@@ -259,7 +320,7 @@
             <button class="btn small" onclick="lab.addMilestone()">＋ 新增里程碑</button>
           </details>
           <button class="btn primary" onclick="lab.saveProjectMeta()">儲存專案資料</button>
-          <div class="notice warn">正式白板負責執行；Project Lab 保存你的練習、理解、檢討與決策。AI 不會自動改寫正式白板。</div>
+          <div class="notice warn">正式白板負責執行；Project Lab 保存你的練習、理解、思考與決策。AI 不會自動改寫正式白板。</div>
         </div>
       </div>
     </section>
@@ -281,10 +342,55 @@
       </div>
     </section>
 
+
+    <section id="group-experience" class="main-group">
+      <div class="group-panel">
+        <div class="group-head"><div><strong>經驗回用</strong><div class="tiny">不是只在結案後使用。剛接到事情、做到一半卡住、需要釐清，或回顧時，都可以先看看過去有沒有類似經驗。</div></div><button class="btn small" onclick="lab.showGroup('start')">← 回練習導航</button></div>
+        <div class="group-body">
+          <div class="experience-hero">
+            <h3>先問：以前有沒有碰過類似情況？</h3>
+            <div class="tiny">快速 AI 先理解你現在遇到的問題，再從精簡案例索引找少量候選；真正要不要沿用，仍由你比較「哪裡像、哪裡不同」。完整歷史不會整包送給模型。</div>
+            <div class="experience-search-row" style="margin-top:10px">
+              <label class="field" style="margin:0">我現在遇到什麼？<textarea id="experience-query" placeholder="例如：需求還沒完全確認，但我們已經開始討論技術方案；我想知道以前有沒有類似情況。" oninput="lab.updateExperienceQuery(this.value)"></textarea></label>
+              <button class="btn" onclick="lab.useCurrentQuestionForExperience()">帶入目前問題</button>
+              <button class="btn primary" onclick="lab.findSimilarExperiences()">找相似經驗</button>
+            </div>
+            <div id="experience-search-status" class="experience-status">一次搜尋最多用兩次快速 AI：先萃取搜尋意圖，再只對少量候選案例摘要做相關性排序。</div>
+          </div>
+          <div class="experience-section-title">相似案例</div>
+          <div id="experience-search-results" class="experience-result-list"><div class="experience-empty">還沒有搜尋。描述現在的情況後按「找相似經驗」。</div></div>
+          <div id="experience-detail-panel"></div>
+          <details class="experience-create">
+            <summary>沉澱目前經驗成案例</summary>
+            <div class="tiny" style="margin-top:7px">案例不必等整件事完全結束。做到一半已經知道「以前誰處理、目前查到什麼、暫時怎麼做」也有價值；請用「處理中」標示，不把暫時做法當成成熟結論。</div>
+            <div class="row" style="margin-top:10px"><button class="btn small" onclick="lab.prefillExperienceDraft()">從目前情境預填</button><button class="btn small" onclick="lab.draftExperienceWithAI()">快速 AI：整理案例草稿</button></div>
+            <div class="experience-form-grid">
+              <label class="field wide">案例標題<input id="exp-title" type="text" oninput="lab.updateExperienceDraft('title',this.value)" placeholder="一句話辨識這個案例"></label>
+              <label class="field">問題類型<select id="exp-problem-type" onchange="lab.updateExperienceDraft('problemType',this.value)"></select></label>
+              <label class="field">狀態<select id="exp-status" onchange="lab.updateExperienceDraft('status',this.value)"><option value="active">處理中</option><option value="settled">已收斂</option></select></label>
+              <label class="field">處理者／可詢問的人<input id="exp-handled-by" type="text" oninput="lab.updateExperienceDraft('handledBy',this.value)" placeholder="例如：我、工程師 A、前任承辦"></label>
+              <label class="field">處理時間<input id="exp-handled-at" type="date" onchange="lab.updateExperienceDraft('handledAt',this.value)"></label>
+              <label class="field wide">標籤（逗號分隔）<input id="exp-tags" type="text" oninput="lab.updateExperienceDraft('tagsText',this.value)" placeholder="例如：需求釐清, 自動化, 主管溝通"></label>
+              <label class="field wide">摘要<textarea id="exp-summary" oninput="lab.updateExperienceDraft('summary',this.value)" placeholder="下次搜尋時，幾秒內能看懂這件事在處理什麼。"></textarea></label>
+              <label class="field wide">目前／最後怎麼處理<textarea id="exp-resolution" oninput="lab.updateExperienceDraft('resolution',this.value)"></textarea></label>
+              <label class="field wide">結果<textarea id="exp-outcome" oninput="lab.updateExperienceDraft('outcome',this.value)" placeholder="處理中可以寫目前結果或尚待確認。"></textarea></label>
+              <label class="field wide">一句話經驗<textarea id="exp-lesson" oninput="lab.updateExperienceDraft('lesson',this.value)" placeholder="不是通則也沒關係，先留下這次真正值得記住的判斷。"></textarea></label>
+              <label class="field">主要取捨<textarea id="exp-tradeoff" oninput="lab.updateExperienceDraft('tradeoff',this.value)"></textarea></label>
+              <label class="field">適用條件<textarea id="exp-applicable" oninput="lab.updateExperienceDraft('applicableWhen',this.value)"></textarea></label>
+              <label class="field wide">不能直接套用的條件<textarea id="exp-not-applicable" oninput="lab.updateExperienceDraft('notApplicableWhen',this.value)"></textarea></label>
+            </div>
+            <div class="row"><button class="btn success" onclick="lab.saveExperience()">保存案例</button><span id="experience-save-status" class="mini-note">草稿會自動存在本機；按「保存案例」才寫入案例庫。</span></div>
+          </details>
+          <div class="experience-section-title">最近案例</div><div class="tiny">跨專案顯示最近更新的案例。只存可搜尋摘要與來源指標，不複製完整工作紀錄。</div>
+          <div id="experience-library-list" class="experience-library-list"><div class="experience-empty">正在讀取案例索引…</div></div>
+        </div>
+      </div>
+    </section>
+
     <section id="group-review" class="main-group">
-      <div class="group-panel"><div class="group-head"><div><strong>檢討與決策</strong><div class="tiny">把討論、重要發現與真正形成的選擇分開保存。</div></div></div>
+      <div class="group-panel"><div class="group-head"><div><strong>思考與決策</strong><div class="tiny">做到一半需要回頭釐清，或事情結束後需要回顧，都可以把討論、重要發現與真正形成的選擇分開保存。</div></div></div>
         <div class="group-body"><div class="nav-tabs">
-          <button class="tab-btn" data-view="reviews" onclick="lab.showView('reviews')">檢討紀錄</button>
+          <button class="tab-btn" data-view="reviews" onclick="lab.showView('reviews')">思考／檢討紀錄</button>
           <button class="tab-btn" data-view="findings" onclick="lab.showView('findings')">重要發現</button>
           <button class="tab-btn" data-view="decisions" onclick="lab.showView('decisions')">決策紀錄</button>
         </div><div id="view-reviews" class="view"></div><div id="view-findings" class="view"></div><div id="view-decisions" class="view"></div></div>
@@ -293,7 +399,9 @@
 
     <section id="group-versions" class="main-group">
       <div class="group-panel"><div class="group-head"><div><strong>版本與方案</strong><div class="tiny">保存當時狀態、小幅修改建議與需要大幅重排的候選方案。</div></div></div>
-        <div class="group-body"><div class="nav-tabs">
+        <div class="group-body">
+        <div class="replan-check"><strong>重新規劃前，先確認這次變動在哪一層</strong><div class="tiny">如果連目的／目標或問題理解都可能改變，不要直接拿舊前提重排工作卡。</div><div class="row"><select id="replan-scope-select" style="flex:1;min-width:240px" onchange="lab.updateReplanScope(this.value)"><option value="approach">只是手段／做法需要調整</option><option value="goal">目標可能需要重新確認</option><option value="problem">對問題／目的的理解可能改變</option></select><button class="btn small" onclick="lab.openReplanCheck()">快速 AI：重新定錨</button></div></div>
+        <div class="nav-tabs">
           <button class="tab-btn" data-view="snapshots" onclick="lab.showView('snapshots')">歷史狀態</button>
           <button class="tab-btn" data-view="patches" onclick="lab.showView('patches')">修改建議</button>
           <button class="tab-btn" data-view="scenarios" onclick="lab.showView('scenarios')">重新規劃方案</button>
@@ -309,7 +417,7 @@
             <div class="row"><button class="btn" onclick="lab.buildPatchPrompt()">產生修改建議提示</button><button class="btn" onclick="lab.buildScenarioPrompt()">產生重新規劃提示</button><button class="btn" onclick="lab.copyPrompt()">複製提示</button></div>
             <div id="prompt-preview" class="codebox">尚未產生提示。</div>
             <label class="field">貼上外部 AI 回覆<textarea id="ai-response"></textarea></label>
-            <div class="row"><button class="btn" onclick="lab.tryImportPatchFromResponse()">解析修改建議</button><button class="btn" onclick="lab.tryImportScenarioFromResponse()">解析重新規劃方案</button><button class="btn success" onclick="lab.saveReview()">存成檢討紀錄</button></div>
+            <div class="row"><button class="btn" onclick="lab.tryImportPatchFromResponse()">解析修改建議</button><button class="btn" onclick="lab.tryImportScenarioFromResponse()">解析重新規劃方案</button><button class="btn success" onclick="lab.saveReview()">存成思考紀錄</button></div>
             <div id="import-status"></div>
           </div>
         </details>
@@ -325,8 +433,14 @@
   <div class="drawer-body">
     <section class="drawer-section"><h4>使用說明</h4><div id="static-help" class="help-box"></div><div class="row" style="margin-top:8px"><button class="btn small" onclick="lab.runInterfaceInterpretation()">AI 解讀目前情境</button></div></section>
 
+    <section class="drawer-section"><h4>AI 怎麼分工？</h4><div class="ai-role-grid">
+      <div class="ai-role-card"><strong>快速 AI｜短迴圈</strong><div class="role-note">使用你貼入的 Gemini API Key。適合介面解讀、判斷去哪個練習區、規劃基礎檢查、拆解回饋、找資訊缺口、整理詢問、找相似案例與比較少量舊經驗。每輪只推進 1～3 個關鍵點；額度與是否計費依你的 Google 帳號／專案設定。</div></div>
+      <div class="ai-role-card"><strong>深入討論｜長迴圈</strong><div class="role-note">Project Lab 不直接呼叫付費 AI，而是整理完整脈絡供你複製到 ChatGPT／Gemini 等完整對話環境。適合重新定義問題、跨立場取捨、目的／目標可能有歧義、跨多個案例看長期思考模式，以及需要多輪推敲的情況。</div></div>
+      <div class="ai-role-card"><strong>結構化匯入｜把共識放回工具</strong><div class="role-note">不是第三個「會幫你思考的 AI」。修改建議／重新規劃 JSON 應在討論已收斂後才產生，再手動貼回 Project Lab；它負責格式化候選版本，不負責替你決定方向。</div></div>
+    </div></section>
+
     <section class="drawer-section"><h4>資料保存說明</h4>
-      <div class="help-box"><strong>自動保存在本機：</strong>你的專案理解、目前問題、補充情境、目前看法、管理事項、拆解練習、檢討、重要發現、決策與候選方案。<br><br><strong>按「備份練習資料」才上雲：</strong>上述 Project Lab 資料會備份到 Firebase 的 ProjectLab_Data。<br><br><strong>只有主動保存才留下：</strong>AI 快速分析與手動貼回的 AI 回覆，只有按「存成檢討紀錄」後才會進入歷史資料。<br><br><strong>永不保存：</strong>Gemini API Key、尚未採用的快速分析輸出、整理詢問輸出、深入討論輸出，以及產生 AI 呼叫用的暫時提示內容。</div>
+      <div class="help-box"><strong>自動保存在本機：</strong>你的專案理解、目前問題、補充情境、目前看法、管理事項、拆解練習、案例草稿、思考／檢討、重要發現、決策與候選方案。<br><br><strong>按「備份練習資料」才上雲：</strong>Project Lab 主狀態會備份到 Firebase 的 ProjectLab_Data。<br><br><strong>案例庫：</strong>只有按「保存案例」後，才把精簡案例寫入獨立的 experiences 子集合；案例回用紀錄也獨立保存，避免主 Project Lab 文件越用越大。<br><br><strong>只有主動保存才留下：</strong>AI 快速分析只有按「保存這次分析」後才會進入思考紀錄。<br><br><strong>永不保存：</strong>Gemini API Key、尚未採用的快速分析輸出、整理詢問輸出、深入討論輸出，以及產生 AI 呼叫用的暫時提示內容。</div>
     </section>
 
     <section class="drawer-section"><h4>我現在想處理什麼？</h4><div class="sub">先留下你的問題與目前理解。這些會跟著專案保存，但不會寫回正式白板。</div>
@@ -356,7 +470,7 @@
       <div id="quick-status" class="mini-note" style="margin-top:7px"></div>
       <div id="quick-response" class="analysis-response">尚未分析。</div>
       <div id="quick-meta" class="analysis-meta"></div>
-      <div class="row" style="margin-top:8px"><button class="btn small success" onclick="lab.saveQuickAsReview()">存成檢討紀錄</button><button class="btn small" onclick="lab.copyQuickResponse()">複製</button><button class="btn small" onclick="lab.buildDeepDiscussion()">準備深入討論</button></div>
+      <div class="row" style="margin-top:8px"><button class="btn small success" onclick="lab.saveQuickAsReview()">保存這次分析</button><button class="btn small" onclick="lab.copyQuickResponse()">複製</button><button class="btn small" onclick="lab.buildDeepDiscussion()">準備深入討論</button></div>
     </section>
 
     <section class="drawer-section"><h4>整理詢問</h4><div class="sub">不是把完整專案丟給別人，而是留下對方回答這一題最少需要的資訊。</div>
@@ -368,6 +482,7 @@
 
     <section class="drawer-section"><h4>深入討論</h4><div class="sub">當問題需要重新定義、比較取捨或多輪推敲時，整理成完整脈絡再帶到你使用的付費對話環境。</div>
       <label class="field">這次希望深入討論幫我做什麼<input id="deep-goal" type="text" placeholder="例如：不要替我選，先挑戰我是不是漏了重要立場" onchange="lab.updateAnalysisField('deepGoal',this.value)"></label>
+      <div id="deep-experience-note" class="deep-experience-note">尚未加入過去案例。你可以在「經驗回用」搜尋後勾選少量案例，再帶進深入討論。</div>
       <div class="row"><button class="btn" onclick="lab.buildDeepDiscussion()">產生深入討論資料</button><button class="btn small" onclick="lab.copyDeepDiscussion()">複製</button></div><div id="deep-output" class="deep-output">尚未產生。</div>
     </section>
   </div>
@@ -428,10 +543,14 @@ const OUTCOME_STATUSES = [
   ['solved','✅ 已解決'],['partial','🟡 部分解決'],['unsolved','❌ 未解決'],['unknown','❓ 尚不能確認']
 ];
 
+const EXPERIENCE_TYPES = [
+  ['requirements','需求釐清'],['planning','規劃基礎'],['breakdown','工作拆解'],['dependency','依賴／等待'],['decision','判斷／決策'],['communication','詢問／溝通'],['schedule','排程／工時'],['technical','技術問題'],['automation','自動化'],['review','回顧／修正'],['other','其他']
+];
+
 const lab = {
   user:null,
   source:{raw:null,cards:[],nodes:[],tabs:[],loadedAt:null},
-  state:{projects:{},projectNameMap:{},snapshots:[],reviews:[],patches:[],findings:[],decisions:[],scenarios:[],managementItems:[],activeProjectId:'',activeView:'source',activeTemplate:'health'},
+  state:{projects:{},projectNameMap:{},snapshots:[],reviews:[],patches:[],findings:[],decisions:[],scenarios:[],managementItems:[],recentProjectIds:[],activeProjectId:'',activeView:'source',activeTemplate:'health'},
   managementUi:{},
   cloudBusy:false,
   lastCloudBackupAt:'',
@@ -489,9 +608,13 @@ const lab = {
         this.state={...this.state,...d};
         if(!Array.isArray(this.state.managementItems)) this.state.managementItems=[];
         if(!Array.isArray(this.state.patches)) this.state.patches=[];
+        if(!Array.isArray(this.state.recentProjectIds)) this.state.recentProjectIds=[];
         Object.values(this.state.projects||{}).forEach(p=>{
           if(p.purpose===undefined){ p.purpose=p.goal||''; p.goal=''; }
           if(p.currentApproach===undefined) p.currentApproach='';
+          if(p.basisStatus===undefined) p.basisStatus='unknown';
+          if(p.confirmedBasis===undefined) p.confirmedBasis='';
+          if(p.planningInterpretation===undefined) p.planningInterpretation='';
         });
         (this.state.managementItems||[]).forEach(m=>{ if(!m.thinkingState) m.thinkingState=this.defaultThinkingState(m.status); });
         this.state=this.sanitizePersistentState(this.state);
@@ -528,7 +651,7 @@ const lab = {
     try{
       const payload={
         uid:this.user.uid,
-        schemaVersion:'1.6.2',
+        schemaVersion:'1.7',
         state:this.sanitizePersistentState(this.state),
         sourceOrigin:location.origin,
         sourcePath:location.pathname,
@@ -561,9 +684,13 @@ const lab = {
       this.state={...this.state,...data.state};
       if(!Array.isArray(this.state.managementItems))this.state.managementItems=[];
       if(!Array.isArray(this.state.patches))this.state.patches=[];
+      if(!Array.isArray(this.state.recentProjectIds))this.state.recentProjectIds=[];
       Object.values(this.state.projects||{}).forEach(p=>{
         if(p.purpose===undefined){p.purpose=p.goal||'';p.goal='';}
         if(p.currentApproach===undefined)p.currentApproach='';
+        if(p.basisStatus===undefined)p.basisStatus='unknown';
+        if(p.confirmedBasis===undefined)p.confirmedBasis='';
+        if(p.planningInterpretation===undefined)p.planningInterpretation='';
       });
       (this.state.managementItems||[]).forEach(m=>{if(!m.thinkingState)m.thinkingState=this.defaultThinkingState(m.status);});
       this.state=this.sanitizePersistentState(this.state);
@@ -585,6 +712,7 @@ const lab = {
     this.renderTemplateButtons();
     this.reloadSource(false);
     this.fetchCloudMeta();
+    this.loadRecentExperiences?.();
   },
 
   reloadSource(showAlert=true){
@@ -624,12 +752,19 @@ const lab = {
       if(!pid){
         pid=this.uid('proj');
         this.state.projectNameMap[name]=pid;
-        this.state.projects[pid]={id:pid,sourceName:name,name,purpose:'',goal:'',currentApproach:'',deadline:'',deadlineType:'none',definitionOfDone:'',constraints:'',nextReviewDate:'',planningHorizonDays:7,milestones:[],createdAt:this.now(),updatedAt:this.now()};
+        this.state.projects[pid]={id:pid,sourceName:name,name,purpose:'',goal:'',currentApproach:'',basisStatus:'unknown',confirmedBasis:'',planningInterpretation:'',deadline:'',deadlineType:'none',definitionOfDone:'',constraints:'',nextReviewDate:'',planningHorizonDays:7,milestones:[],createdAt:this.now(),updatedAt:this.now()};
       }
     });
-    if(!this.state.activeProjectId || !this.state.projects[this.state.activeProjectId]){
-      const firstName=names[0]; this.state.activeProjectId=firstName?this.state.projectNameMap[firstName]:'';
+    const availableIds=names.map(name=>this.state.projectNameMap[name]).filter(Boolean);
+    const urlPid=new URLSearchParams(location.search).get('project')||'';
+    if(urlPid && availableIds.includes(urlPid)) this.state.activeProjectId=urlPid;
+    if(!this.state.activeProjectId || !availableIds.includes(this.state.activeProjectId)){
+      this.state.activeProjectId=availableIds[0]||'';
     }
+    if(!Array.isArray(this.state.recentProjectIds)) this.state.recentProjectIds=[];
+    this.state.recentProjectIds=this.state.recentProjectIds.filter(id=>availableIds.includes(id));
+    if(this.state.activeProjectId) this.recordRecentProject(this.state.activeProjectId);
+    this.updateProjectUrl(this.state.activeProjectId);
     this.saveState();
   },
 
@@ -638,16 +773,70 @@ const lab = {
   projectCards(){ const name=this.activeSourceName(); return this.source.cards.filter(({card})=>this.sourceProjectName(card)===name); },
   projectNodes(){ const name=this.activeSourceName(); return this.source.nodes.filter(({node})=>(String(node.project||'').trim()||'未分類')===name); },
 
-  changeProject(pid){ this.state.activeProjectId=pid; this.saveState(); this.renderAll(); },
+  availableProjects(){
+    return Object.values(this.state.projects)
+      .filter(p=>this.source.cards.some(({card})=>this.sourceProjectName(card)===p.sourceName))
+      .sort((a,b)=>String(a.name||a.sourceName).localeCompare(String(b.name||b.sourceName),'zh-Hant'));
+  },
+  recordRecentProject(pid){
+    if(!pid)return;
+    if(!Array.isArray(this.state.recentProjectIds)) this.state.recentProjectIds=[];
+    this.state.recentProjectIds=[pid,...this.state.recentProjectIds.filter(id=>id!==pid)].slice(0,5);
+  },
+  updateProjectUrl(pid){
+    try{
+      const url=new URL(location.href);
+      if(pid) url.searchParams.set('project',pid); else url.searchParams.delete('project');
+      history.replaceState(null,'',url.pathname+url.search+url.hash);
+    }catch(e){ console.warn('更新專案網址失敗',e); }
+  },
+  changeProject(pid){
+    if(!pid || !this.availableProjects().some(p=>p.id===pid))return;
+    this.state.activeProjectId=pid;
+    this.recordRecentProject(pid);
+    this.updateProjectUrl(pid);
+    this.saveState();
+    this.closeProjectSwitcher();
+    this.renderAll();
+  },
+  toggleProjectSwitcher(event){
+    event?.stopPropagation?.();
+    const menu=document.getElementById('project-switcher-menu'); if(!menu)return;
+    const open=menu.classList.contains('hidden');
+    if(open){
+      menu.classList.remove('hidden');
+      document.querySelector('.project-switcher-trigger')?.setAttribute('aria-expanded','true');
+      const input=document.getElementById('project-search'); if(input){input.value=''; setTimeout(()=>input.focus(),0);}
+      this.renderProjectSwitcherList('');
+    }else this.closeProjectSwitcher();
+  },
+  closeProjectSwitcher(){
+    document.getElementById('project-switcher-menu')?.classList.add('hidden');
+    document.querySelector('.project-switcher-trigger')?.setAttribute('aria-expanded','false');
+  },
+  renderProjectSwitcher(){
+    const current=document.getElementById('project-switcher-current');
+    if(current) current.textContent=this.activeProject()?.name||this.activeProject()?.sourceName||'尚無專案';
+    const menu=document.getElementById('project-switcher-menu');
+    if(menu && !menu.classList.contains('hidden')) this.renderProjectSwitcherList(document.getElementById('project-search')?.value||'');
+  },
+  renderProjectSwitcherList(query=''){
+    const root=document.getElementById('project-switcher-list'); if(!root)return;
+    const all=this.availableProjects(), q=String(query||'').trim().toLocaleLowerCase('zh-TW');
+    const option=p=>`<button type="button" class="project-switch-option ${p.id===this.state.activeProjectId?'active':''}" onclick="lab.changeProject('${this.esc(p.id)}')"><span class="project-option-name">${this.esc(p.name||p.sourceName)}</span>${p.id===this.state.activeProjectId?'<span class="project-option-mark">目前</span>':''}</button>`;
+    if(q){
+      const hit=all.filter(p=>`${p.name||''} ${p.sourceName||''}`.toLocaleLowerCase('zh-TW').includes(q));
+      root.innerHTML=hit.length?`<div class="project-switch-section"><div class="project-switch-section-title">搜尋結果</div>${hit.map(option).join('')}</div>`:'<div class="project-switch-empty">找不到符合的專案。</div>';
+      return;
+    }
+    const recentIds=(this.state.recentProjectIds||[]).slice(0,5), recent=recentIds.map(id=>all.find(p=>p.id===id)).filter(Boolean);
+    const recentHtml=recent.length?`<div class="project-switch-section"><div class="project-switch-section-title">最近使用</div>${recent.map(option).join('')}</div>`:'';
+    const allHtml=all.length?`<div class="project-switch-section"><div class="project-switch-section-title">全部專案</div>${all.map(option).join('')}</div>`:'<div class="project-switch-empty">目前沒有可切換的專案。</div>';
+    root.innerHTML=recentHtml+allHtml;
+  },
   showView(name){ this.state.activeView=name; this.saveState(); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===name)); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${name}`)); },
 
-  renderAll(){ this.renderProjectSelect(); this.renderSummary(); this.renderProjectMeta(); this.renderSource(); this.renderManagement(); this.renderSnapshots(); this.renderReviews(); this.renderPatches(); this.renderFindings(); this.renderDecisions(); this.renderScenarios(); this.renderSnapshotSelect(); this.renderAiTargetSelect(); this.showView(this.state.activeView||'source'); },
-
-  renderProjectSelect(){
-    const el=document.getElementById('project-select'); if(!el)return;
-    const list=Object.values(this.state.projects).filter(p=>this.source.cards.some(({card})=>this.sourceProjectName(card)===p.sourceName));
-    el.innerHTML=list.map(p=>`<option value="${this.esc(p.id)}" ${p.id===this.state.activeProjectId?'selected':''}>${this.esc(p.name||p.sourceName)}</option>`).join('') || '<option value="">尚無專案</option>';
-  },
+  renderAll(){ this.renderProjectSwitcher(); this.renderSummary(); this.renderProjectMeta(); this.renderSource(); this.renderManagement(); this.renderSnapshots(); this.renderReviews(); this.renderPatches(); this.renderFindings(); this.renderDecisions(); this.renderScenarios(); this.renderSnapshotSelect(); this.renderAiTargetSelect(); this.showView(this.state.activeView||'source'); },
 
   renderSummary(){
     const p=this.activeProject(); const cards=this.projectCards(); const sched=cards.filter(x=>!x.card.isMemo); const completed=cards.filter(x=>Number(x.card.status)===2).length;
@@ -677,6 +866,9 @@ const lab = {
     document.getElementById('pm-purpose').value=p.purpose||'';
     document.getElementById('pm-goal').value=p.goal||'';
     document.getElementById('pm-approach').value=p.currentApproach||'';
+    document.getElementById('pm-basis-status').value=p.basisStatus||'unknown';
+    document.getElementById('pm-confirmed-basis').value=p.confirmedBasis||'';
+    document.getElementById('pm-planning-interpretation').value=p.planningInterpretation||'';
     document.getElementById('pm-deadline').value=p.deadline||'';
     document.getElementById('pm-deadlineType').value=p.deadlineType||'none';
     document.getElementById('pm-dod').value=p.definitionOfDone||'';
@@ -686,19 +878,22 @@ const lab = {
     this.renderMilestones();
   },
 
-  saveProjectMeta(){
+  saveProjectMeta(showNotice=true){
     const p=this.activeProject(); if(!p)return;
     p.name=document.getElementById('pm-name').value.trim()||p.sourceName;
     p.purpose=document.getElementById('pm-purpose').value.trim();
     p.goal=document.getElementById('pm-goal').value.trim();
     p.currentApproach=document.getElementById('pm-approach').value.trim();
+    p.basisStatus=document.getElementById('pm-basis-status').value||'unknown';
+    p.confirmedBasis=document.getElementById('pm-confirmed-basis').value.trim();
+    p.planningInterpretation=document.getElementById('pm-planning-interpretation').value.trim();
     p.deadline=document.getElementById('pm-deadline').value;
     p.deadlineType=document.getElementById('pm-deadlineType').value;
     p.definitionOfDone=document.getElementById('pm-dod').value.trim();
     p.constraints=document.getElementById('pm-constraints').value.trim();
     p.nextReviewDate=document.getElementById('pm-reviewDate').value;
     p.planningHorizonDays=Math.max(1,Number(document.getElementById('pm-horizon').value)||7);
-    p.updatedAt=this.now(); this.saveState(); this.renderAll(); alert('Project 資料已儲存。');
+    p.updatedAt=this.now(); this.saveState(); this.renderAll(); if(showNotice) alert('專案資料已儲存。');
   },
   addMilestone(){ const p=this.activeProject(); if(!p)return; p.milestones.push({id:this.uid('ms'),date:'',name:'',fixed:false}); this.saveState(); this.renderMilestones(); },
   updateMilestone(id,field,value){ const p=this.activeProject(); const m=p?.milestones?.find(x=>x.id===id); if(!m)return; m[field]=field==='fixed'?!!value:value; p.updatedAt=this.now(); this.saveState(); },
@@ -992,7 +1187,7 @@ const lab = {
     const allActual=cards.reduce((s,c)=>s+(Number(c.actual?.totalMinutes)||0),0);
     return {
       project:{
-        id:p.id,name:p.name,purpose:p.purpose||'',goal:p.goal||'',currentApproach:p.currentApproach||'',deadline:p.deadline,deadlineType:p.deadlineType,
+        id:p.id,name:p.name,purpose:p.purpose||'',goal:p.goal||'',currentApproach:p.currentApproach||'',planningBasisStatus:p.basisStatus||'unknown',confirmedBasis:p.confirmedBasis||'',planningInterpretation:p.planningInterpretation||'',deadline:p.deadline,deadlineType:p.deadlineType,
         definitionOfDone:p.definitionOfDone,constraints:p.constraints,nextReviewDate:p.nextReviewDate,
         planningHorizonDays:p.planningHorizonDays,milestones:p.milestones||[],
         timeSummary:{
@@ -1043,7 +1238,7 @@ const lab = {
   saveReview(){
     const response=document.getElementById('ai-response').value.trim(); if(!response)return alert('請先貼上 AI 回覆。'); const ctx=this.selectedContext(); const t=REVIEW_TEMPLATES.find(x=>x.id===this.state.activeTemplate)||REVIEW_TEMPLATES[0];
     const review={id:this.uid('review'),reviewType:'discussion',projectId:this.state.activeProjectId,snapshotId:ctx.id==='current'?'':ctx.id,contextLabel:ctx.label,templateId:t.id,templateLabel:t.label,customQuestion:document.getElementById('ai-custom-question').value.trim(),response,userReflection:'',createdAt:this.now()};
-    this.state.reviews.push(review); this.saveState(); document.getElementById('ai-response').value=''; this.renderReviews(); this.showView('reviews'); alert('已存成檢討紀錄。');
+    this.state.reviews.push(review); this.saveState(); document.getElementById('ai-response').value=''; this.renderReviews(); this.showView('reviews'); alert('已存成思考紀錄。');
   },
   projectReviews(){ return this.state.reviews.filter(x=>x.projectId===this.state.activeProjectId).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt))); },
   updateReviewReflection(id,value){ const r=this.state.reviews.find(x=>x.id===id); if(!r)return; r.userReflection=value; this.saveState(); },
@@ -1052,7 +1247,7 @@ const lab = {
   addOutcomeReview(seed={}){ const r={id:this.uid('review'),reviewType:'outcome',projectId:this.state.activeProjectId,templateLabel:'結果回顧',problem:seed.problem||'',outcomeStatus:seed.outcomeStatus||'unknown',originalApproach:seed.originalApproach||'',actualApproach:seed.actualApproach||'',changeReason:seed.changeReason||'',lesson:seed.lesson||'',transferable:false,transferableRule:'',sourceManagementId:seed.sourceManagementId||'',createdAt:this.now(),updatedAt:this.now()}; this.state.reviews.push(r); this.saveState(); this.renderReviews(); this.showView('reviews'); },
   createOutcomeFromManagement(id){ const m=this.state.managementItems.find(x=>x.id===id); if(!m)return; this.addOutcomeReview({problem:m.desiredOutcome||m.title,outcomeStatus:m.outcomeStatus||'unknown',originalApproach:m.options||m.recommendation,actualApproach:m.result,changeReason:'',lesson:'',sourceManagementId:m.id}); },
   renderOutcomeReview(r){ return `<div class="review-item"><div class="row"><strong>結果回顧</strong><span class="tiny">${this.fmt(r.createdAt)}</span></div><label class="field">原本要解決的問題<textarea onchange="lab.updateReviewField('${r.id}','problem',this.value)">${this.esc(r.problem||'')}</textarea></label><label class="field">問題最後解決了嗎？<select onchange="lab.updateReviewField('${r.id}','outcomeStatus',this.value)">${OUTCOME_STATUSES.map(([v,l])=>`<option value="${v}" ${(r.outcomeStatus||'unknown')===v?'selected':''}>${l}</option>`).join('')}</select></label><div class="management-grid"><label class="field">原本打算怎麼解<textarea onchange="lab.updateReviewField('${r.id}','originalApproach',this.value)">${this.esc(r.originalApproach||'')}</textarea></label><label class="field">實際最後怎麼解<textarea onchange="lab.updateReviewField('${r.id}','actualApproach',this.value)">${this.esc(r.actualApproach||'')}</textarea></label></div><label class="field">為什麼不同／出現了什麼新資訊<textarea onchange="lab.updateReviewField('${r.id}','changeReason',this.value)">${this.esc(r.changeReason||'')}</textarea></label><label class="field">本次經驗<textarea onchange="lab.updateReviewField('${r.id}','lesson',this.value)">${this.esc(r.lesson||'')}</textarea></label><label class="tiny"><input type="checkbox" ${r.transferable?'checked':''} onchange="lab.updateReviewField('${r.id}','transferable',this.checked);lab.renderReviews()"> 值得帶到其他專案</label>${r.transferable?`<label class="field">可遷移原則<textarea onchange="lab.updateReviewField('${r.id}','transferableRule',this.value)">${this.esc(r.transferableRule||'')}</textarea></label>`:''}<div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉成重要發現</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`; },
-  renderReviews(){ const root=document.getElementById('view-reviews'); const list=this.projectReviews(); const add=`<button class="btn primary" onclick="lab.addOutcomeReview()">＋ 結果回顧</button>`; if(!list.length){root.innerHTML=`${add}<div style="height:10px"></div><div class="list-empty">尚無檢討紀錄。一般討論與事情結束後的結果回顧都放在這裡。</div>`;return;} root.innerHTML=add+'<div style="height:10px"></div>'+list.map(r=>r.reviewType==='outcome'?this.renderOutcomeReview(r):`<div class="review-item"><div class="row"><strong>${this.esc(r.templateLabel)}</strong><span class="pill free">${this.esc(r.contextLabel||'')}</span><span class="tiny">${this.fmt(r.createdAt)}</span></div>${r.customQuestion?`<div class="desc"><strong>我的問題：</strong>${this.esc(r.customQuestion)}</div>`:''}<details><summary>AI 回覆原文</summary><div class="desc">${this.esc(r.response||'').replace(/\n/g,'<br>')}</div></details><label class="field" style="margin-top:8px">我的後續想法<textarea onchange="lab.updateReviewReflection('${r.id}',this.value)">${this.esc(r.userReflection||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉成重要發現</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`).join(''); },
+  renderReviews(){ const root=document.getElementById('view-reviews'); const list=this.projectReviews(); const add=`<button class="btn primary" onclick="lab.addOutcomeReview()">＋ 結果回顧</button>`; if(!list.length){root.innerHTML=`${add}<div style="height:10px"></div><div class="list-empty">尚無思考／檢討紀錄。工作中途的釐清、一般討論與事情結束後的結果回顧都放在這裡。</div>`;return;} root.innerHTML=add+'<div style="height:10px"></div>'+list.map(r=>r.reviewType==='outcome'?this.renderOutcomeReview(r):`<div class="review-item"><div class="row"><strong>${this.esc(r.templateLabel)}</strong><span class="pill free">${this.esc(r.contextLabel||'')}</span><span class="tiny">${this.fmt(r.createdAt)}</span></div>${r.customQuestion?`<div class="desc"><strong>我的問題：</strong>${this.esc(r.customQuestion)}</div>`:''}<details><summary>AI 回覆原文</summary><div class="desc">${this.esc(r.response||'').replace(/\n/g,'<br>')}</div></details><label class="field" style="margin-top:8px">我的後續想法<textarea onchange="lab.updateReviewReflection('${r.id}',this.value)">${this.esc(r.userReflection||'')}</textarea></label><div class="row"><button class="btn small" onclick="lab.reviewToFinding('${r.id}')">轉成重要發現</button><button class="btn small danger" onclick="lab.deleteEntity('reviews','${r.id}')">刪除</button></div></div>`).join(''); },
 
   renderAiTargetSelect(){ const el=document.getElementById('ai-target-card-select'); if(!el)return; const cards=this.projectCards(); const prev=el.value; el.innerHTML=cards.map(({card})=>`<option value="${this.esc(card.id)}">${this.esc(card.title||'未命名')}</option>`).join('')||'<option value="">沒有卡片</option>'; if(cards.some(({card})=>card.id===prev))el.value=prev; },
   patchAllowedFields(){ return ['title','content','category','nextAction','decisionPoint','breakdownDraft','dependencyNote','deliverable','acceptance','acceptanceEvidence','reviewNote']; },
@@ -1122,7 +1317,7 @@ const lab = {
   toggleDiff(id){document.getElementById(`diff-${id}`)?.classList.toggle('hidden');},
 
   scenarioSchemaExample(){ return {schemaVersion:'1.1',type:'project_lab_scenario',projectId:this.state.activeProjectId,baseSnapshotId:'請填入提示詞提供的 Snapshot ID',scenario:{name:'方案名稱',notes:'此方案的核心取捨',cards:[{id:'既有卡片請保留原 card id；新增卡片用 temp_001',originId:'既有卡片填原 card id；新增卡片留空',isNew:false,isDeleted:false,title:'',content:'',category:'',isMemo:false,dateMode:'range',dateStart:'YYYY-MM-DD',dateEnd:'YYYY-MM-DD',plannedMinutes:120,planningMaturity:'planned',nextAction:'',decisionPoint:'',breakdownDraft:'',dependencyNote:'',deliverable:'',acceptance:'',acceptanceEvidence:''}]}}; },
-  buildScenarioPrompt(){ const ctx=this.selectedContext(); const findings=this.projectFindings().filter(x=>x.status!=='closed'&&x.status!=='ignored'); const decisions=this.projectDecisions().filter(x=>x.status==='accepted'||x.status==='proposed'); const reviews=this.projectReviews().slice(0,5).map(r=>({template:r.templateLabel,question:r.customQuestion,response:r.response,userReflection:r.userReflection})); const prompt=`請把目前已形成的討論共識整理成一份「完整可推演的重新規劃方案」。\n\n重要：這不是要求你重新分析，而是把已有討論轉成一個可實際試排的完整候選專案版本。若仍存在未解決且會影響結構的未知，請不要硬做重新規劃方案，改以文字列出還缺什麼。\n\n【規則】\n1. 回傳完整重新規劃方案，不只回傳變動差異。\n2. 既有卡片保留原 card id 與 originId。新增卡片使用 temp_001、temp_002...，originId 留空，isNew=true。\n3. 若某既有卡片要移除，保留卡片並設 isDeleted=true。\n4. 不要在回傳 JSON 中放入 workLogs、entries，既有卡片的目前狀態與進度也不要自行改寫；這些歷史事實會由 Project Lab 依 baseSnapshotId 自動補回。\n5. 規劃時必須參考目的、期限內目標、目前做法，以及實際工時／工作紀錄。手段可以改，但要說明為什麼更能解決原問題或達到目標。\n6. 只能使用以下 JSON 結構。請只輸出 JSON，不要 Markdown code fence。\n7. projectId 必須為 ${this.state.activeProjectId}。\n8. baseSnapshotId 必須為 ${ctx.id}。\n\n【JSON 格式範例】\n${JSON.stringify(this.scenarioSchemaExample(),null,2)}\n\n【目前專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}\n\n【目前重要發現】\n${JSON.stringify(findings,null,2)}\n\n【目前決策紀錄】\n${JSON.stringify(decisions,null,2)}\n\n【近期檢討紀錄】\n${JSON.stringify(reviews,null,2)}`; this.aiRuntime.lastScenarioPrompt=prompt; this.aiRuntime.lastPrompt=prompt; document.getElementById('prompt-preview').innerText=prompt; return prompt; },
+  buildScenarioPrompt(){ const ctx=this.selectedContext(); const findings=this.projectFindings().filter(x=>x.status!=='closed'&&x.status!=='ignored'); const decisions=this.projectDecisions().filter(x=>x.status==='accepted'||x.status==='proposed'); const reviews=this.projectReviews().slice(0,5).map(r=>({template:r.templateLabel,question:r.customQuestion,response:r.response,userReflection:r.userReflection})); const prompt=`請把目前已形成的討論共識整理成一份「完整可推演的重新規劃方案」。\n\n重要：這不是要求你重新分析，而是把已有討論轉成一個可實際試排的完整候選專案版本。若仍存在未解決且會影響結構的未知，請不要硬做重新規劃方案，改以文字列出還缺什麼。\n\n【規則】\n1. 回傳完整重新規劃方案，不只回傳變動差異。\n2. 既有卡片保留原 card id 與 originId。新增卡片使用 temp_001、temp_002...，originId 留空，isNew=true。\n3. 若某既有卡片要移除，保留卡片並設 isDeleted=true。\n4. 不要在回傳 JSON 中放入 workLogs、entries，既有卡片的目前狀態與進度也不要自行改寫；這些歷史事實會由 Project Lab 依 baseSnapshotId 自動補回。\n5. 規劃時必須參考：已確認的規劃依據、使用者自己的理解／推定、目的、期限內目標、目前做法，以及實際工時／工作紀錄。不得把使用者的推定直接當成已確認需求；手段可以改，但要說明為什麼更能解決原問題或達到目標。\n6. 只能使用以下 JSON 結構。請只輸出 JSON，不要 Markdown code fence。\n7. projectId 必須為 ${this.state.activeProjectId}。\n8. baseSnapshotId 必須為 ${ctx.id}。\n\n【JSON 格式範例】\n${JSON.stringify(this.scenarioSchemaExample(),null,2)}\n\n【這次重新規劃層級】\n${this.analysisState().replanScope||'approach'}\n\n【目前專案資料】\n${JSON.stringify(this.compactContext(ctx.payload),null,2)}\n\n【目前重要發現】\n${JSON.stringify(findings,null,2)}\n\n【目前決策紀錄】\n${JSON.stringify(decisions,null,2)}\n\n【近期思考／檢討紀錄】\n${JSON.stringify(reviews,null,2)}`; this.aiRuntime.lastScenarioPrompt=prompt; this.aiRuntime.lastPrompt=prompt; document.getElementById('prompt-preview').innerText=prompt; return prompt; },
   copyScenarioSchema(){ this.copyText(JSON.stringify(this.scenarioSchemaExample(),null,2),'已複製重新規劃方案 JSON 範例。'); },
 
   extractJson(text){ const t=String(text||'').trim(); if(!t)throw new Error('內容是空的'); const fenced=t.match(/```(?:json)?\s*([\s\S]*?)```/i); return JSON.parse(fenced?fenced[1].trim():t); },
@@ -1194,8 +1389,8 @@ const lab = {
 };
 
 
-// === v1.6：情境化資訊處理層。保留 v1.5 資料結構，新增欄位皆為 optional。 ===
-// === v1.6.2：練習導航／拆解練習。沿用 v1.6 狀態，新增 breakdownPractices 為 optional。 ===
+// === v1.7：情境化資訊處理＋經驗回用。既有資料結構維持相容，新增欄位皆為 optional。 ===
+// v1.7 核心：Project Lab 可以在工作任何時點進入；過去案例用來提醒與比較，不直接變成這次的答案。
 const v16base = {
   renderAll: lab.renderAll.bind(lab),
   showView: lab.showView.bind(lab),
@@ -1209,9 +1404,10 @@ const v16base = {
 };
 
 lab.aiRuntime={nextKeyIndex:0,lastResponse:'',lastPrompt:'',lastPatchPrompt:'',lastScenarioPrompt:'',lastContextLabel:'',lastModel:'',lastKeySlot:null,lastUsage:null,lastInquiry:''};
+lab.experienceRuntime={recent:[],results:[],selected:null,searchIntent:null,deepSelectedIds:new Set(),loading:false};
 
 Object.assign(lab,{
-  analysisDefaults(){ return {mainGroup:'start',question:'',contextNote:'',viewpoint:'',audience:'',inquiryMode:'specific',desiredHelp:'',deepGoal:'',breakdownCardId:'',practiceNavVersion:'',activeObject:{type:'project',id:'',label:'專案整體'}}; },
+  analysisDefaults(){ return {mainGroup:'start',question:'',contextNote:'',viewpoint:'',audience:'',inquiryMode:'specific',desiredHelp:'',deepGoal:'',breakdownCardId:'',replanScope:'approach',experienceQuery:'',experienceDraft:{title:'',summary:'',problemType:'other',status:'active',handledBy:'',handledAt:'',tagsText:'',resolution:'',outcome:'',lesson:'',tradeoff:'',applicableWhen:'',notApplicableWhen:''},experienceCompare:{experienceId:'',similar:'',different:'',reusable:'',avoid:'',fit:'partial'},practiceNavVersion:'',activeObject:{type:'project',id:'',label:'專案整體'}}; },
   analysisState(){
     if(!this.state.analysisByProject || typeof this.state.analysisByProject!=='object') this.state.analysisByProject={};
     const pid=this.state.activeProjectId||'_none';
@@ -1219,7 +1415,9 @@ Object.assign(lab,{
     const a=this.state.analysisByProject[pid];
     const d=this.analysisDefaults(); Object.keys(d).forEach(k=>{ if(a[k]===undefined)a[k]=structuredClone(d[k]); });
     if(!a.activeObject || typeof a.activeObject!=='object') a.activeObject=structuredClone(d.activeObject);
-    if(!a.practiceNavVersion){ a.practiceNavVersion='1.6.2'; a.mainGroup='start'; }
+    if(!a.experienceDraft || typeof a.experienceDraft!=='object') a.experienceDraft=structuredClone(d.experienceDraft); else Object.keys(d.experienceDraft).forEach(k=>{if(a.experienceDraft[k]===undefined)a.experienceDraft[k]=d.experienceDraft[k];});
+    if(!a.experienceCompare || typeof a.experienceCompare!=='object') a.experienceCompare=structuredClone(d.experienceCompare); else Object.keys(d.experienceCompare).forEach(k=>{if(a.experienceCompare[k]===undefined)a.experienceCompare[k]=d.experienceCompare[k];});
+    if(a.practiceNavVersion!=='1.7'){ a.practiceNavVersion='1.7'; if(!a.mainGroup)a.mainGroup='start'; }
     return a;
   },
   renderPracticeHome(){
@@ -1231,12 +1429,13 @@ Object.assign(lab,{
     if(kind==='breakdown'){ this.showView('breakdown'); return; }
     if(kind==='advance'){ this.showView('management'); return; }
     if(kind==='decision'){ this.showView('management'); return; }
+    if(kind==='experience'){ this.showGroup('experience'); this.renderExperienceGroup(); return; }
     if(kind==='review'){ this.showView('reviews'); return; }
     if(kind==='versions'){ this.showView('snapshots'); return; }
   },
   openNavigationHelp(){
     const a=this.analysisState(); a.activeObject={type:'navigation',id:'',label:'練習導航'};
-    if(!String(a.question||'').trim()) a.question='我現在卡住的情況適合先去哪一個練習區？請先判斷是釐清專案、拆解工作、推進／詢問、判斷、檢討，還是重新規劃。';
+    if(!String(a.question||'').trim()) a.question='我現在卡住的情況適合先去哪一個練習區？請先判斷是釐清專案、拆解工作、推進／詢問、判斷、經驗回用、回頭釐清／檢討，還是重新規劃。';
     this.saveState(); this.openAssist();
   },
   breakdownPractice(cardId){
@@ -1308,6 +1507,23 @@ ${p.boundary||'未填'}
 【拆完後先做什麼】
 ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
   },
+  openPlanningBasisCheck(){
+    const p=this.activeProject(); if(!p)return; const a=this.analysisState();
+    a.activeObject={type:'planning',id:'',label:'規劃基礎檢查'};
+    a.question='先不要替我展開方案。請檢查：哪些目的／目標／限制已有明確依據，哪些只是我的理解；目前做法是否被我不小心當成目標；現在最多哪 1～3 個確認問題會真正改變後續規劃。';
+    this.saveState(); this.openAssist();
+  },
+  updateReplanScope(value){ const a=this.analysisState(); a.replanScope=['approach','goal','problem'].includes(value)?value:'approach'; this.saveState(); },
+  renderReplanScope(){ const el=document.getElementById('replan-scope-select'); if(el) el.value=this.analysisState().replanScope||'approach'; },
+  openReplanCheck(){
+    const a=this.analysisState(), scope=a.replanScope||'approach';
+    const labels={approach:'只是手段／做法需要調整',goal:'目標可能需要重新確認',problem:'對問題／目的的理解可能改變'};
+    a.activeObject={type:'planning',id:'',label:'重新規劃前檢查'};
+    a.question=scope==='approach'
+      ? '我目前判斷只是手段需要調整。請先用已確認的目的、目標與限制檢查這個判斷是否站得住；若站得住，指出重新規劃時最需要守住的邊界，不要直接替我重排。'
+      : `我準備重新規劃，而且目前判斷是「${labels[scope]}」。先不要重排工作卡。請檢查哪些上層前提需要重新確認，以及下一個最有判別力的問題是什麼。`;
+    this.saveState(); this.openAssist();
+  },
   updateAnalysisField(field,value){ const a=this.analysisState(); a[field]=value; this.saveState(); this.renderContextUI(false); },
   groupForView(view){ return ['source','breakdown'].includes(view)?'work':view==='management'?'advance':['reviews','findings','decisions'].includes(view)?'review':['snapshots','patches','scenarios'].includes(view)?'versions':'project'; },
   showGroup(group,save=true){
@@ -1321,10 +1537,12 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
     const g=this.groupForView(name); const a=this.analysisState(); a.mainGroup=g; this.saveState(); this.showGroup(g,false); this.decorateFocusButtons(); this.localizeDynamicUI();
   },
   renderAll(){
-    this.analysisState(); v16base.renderAll();
-    this.renderPracticeHome(); this.renderBreakdownPractice();
-    const a=this.analysisState(); this.showGroup(a.mainGroup||this.groupForView(this.state.activeView),false);
-    this.decorateFocusButtons(); this.localizeDynamicUI(); this.renderContextUI(false);
+    const before=this.analysisState();
+    const intendedGroup=before.mainGroup||this.groupForView(this.state.activeView);
+    v16base.renderAll();
+    this.renderPracticeHome(); this.renderBreakdownPractice(); this.renderExperienceGroup();
+    const a=this.analysisState(); a.mainGroup=intendedGroup; this.saveState(); this.showGroup(intendedGroup,false);
+    this.decorateFocusButtons(); this.localizeDynamicUI(); this.renderReplanScope(); this.renderContextUI(false);
   },
   focusObject(type,id='',label=''){
     const a=this.analysisState(); a.activeObject={type,id,label:label||''}; this.saveState(); this.renderContextUI();
@@ -1332,6 +1550,11 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
   currentFocus(){
     const a=this.analysisState(); const f=a.activeObject||{type:'project',id:'',label:'專案整體'};
     if(f.type==='navigation') return {type:'navigation',id:'',label:'練習導航',data:{question:a.question,contextNote:a.contextNote,viewpoint:a.viewpoint}};
+    if(f.type==='planning') return {type:'planning',id:'',label:f.label||'規劃基礎檢查',data:{project:this.slimProject(),replanScope:a.replanScope}};
+    if(f.type==='experience'){
+      const x=[...(this.experienceRuntime.results||[]),...(this.experienceRuntime.recent||[])].find(e=>e.id===f.id) || this.experienceRuntime.selected;
+      if(x) return {type:'experience',id:x.id,label:x.title||'過去案例',data:x};
+    }
     if(f.type==='breakdown'){ const hit=this.projectCards().find(x=>x.card.id===f.id); if(hit)return {type:'breakdown',id:f.id,label:`拆解練習｜${hit.card.title||'未命名工作卡'}`,data:{card:hit.card,practice:this.breakdownPractice(f.id),tabName:hit.tabName}}; }
     if(f.type==='card'){
       const hit=this.projectCards().find(x=>x.card.id===f.id); if(hit)return {type:'card',id:f.id,label:hit.card.title||'未命名工作卡',data:hit};
@@ -1340,7 +1563,7 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
       const m=this.state.managementItems.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(m)return {type:'management',id:f.id,label:m.title||'未命名管理事項',data:m};
     }
     if(f.type==='review'){
-      const r=this.state.reviews.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(r)return {type:'review',id:f.id,label:r.problem||r.customQuestion||r.templateLabel||'檢討紀錄',data:r};
+      const r=this.state.reviews.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(r)return {type:'review',id:f.id,label:r.problem||r.customQuestion||r.templateLabel||'思考／檢討紀錄',data:r};
     }
     if(f.type==='finding'){
       const x=this.state.findings.find(x=>x.id===f.id&&x.projectId===this.state.activeProjectId); if(x)return {type:'finding',id:f.id,label:x.title||'重要發現',data:x};
@@ -1358,7 +1581,9 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
   },
   helpForFocus(){
     const f=this.currentFocus();
-    if(f.type==='navigation') return `<strong>練習導航</strong><br>你不必先知道正確框架。先描述目前卡住的情況，再判斷這比較像：釐清專案、拆解工作、推進／詢問、判斷、檢討，還是整體重新規劃。`;
+    if(f.type==='navigation') return `<strong>練習導航</strong><br>你不必先知道正確框架。先描述目前卡住的情況，再判斷這比較像：釐清專案、拆解工作、推進／詢問、判斷、經驗回用、回頭釐清／檢討，還是整體重新規劃。`;
+    if(f.type==='planning') return `<strong>規劃基礎檢查</strong><br>先分開需求方／文件已確認的內容、你的理解，以及目前做法。這裡的目的不是產生更完整方案，而是避免在尚未確認的前提上越規劃越深。`;
+    if(f.type==='experience') return `<strong>經驗回用</strong><br>先理解舊案例在什麼條件下成立，再比較這次哪裡相似、哪裡不同。舊經驗是提醒，不是答案；處理中案例也不能當成成熟原則。`;
     if(f.type==='breakdown') return `<strong>拆解練習</strong><br>先由你自己提出拆法，再檢查粒度與邊界。可獨立產出、驗收或依賴通常比較值得成卡；只是執行步驟或尚待探索的未知，不一定要切成正式卡片。`;
     if(f.type==='card'){
       const c=f.data.card;
@@ -1370,7 +1595,7 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
       const msg={capture:'先抓住這件事：我的角色、原始交辦，以及現在最小下一步。',clarify:'現在的重點是釐清真正結果、最重要的未知，以及誰最可能知道。',decide:'現在才需要比較做法與取捨。先保留你的暫時傾向，不必假裝已經有確定答案。',advance:'重點是球在誰手上、誰決定、誰承接，以及何時需要再追。',close:'回到結果：原本問題解了嗎？新資訊改變了什麼？正式計畫需不需要修。'};
       return `<strong>管理事項｜${this.thinkingStateLabel(s)}</strong><br>${msg[s]||msg.capture}`;
     }
-    if(f.type==='review') return `<strong>檢討紀錄</strong><br>保留「當時怎麼理解、後來怎麼變」。結果回顧不是寫漂亮心得，而是對照原本設想、實際結果與新資訊。`;
+    if(f.type==='review') return `<strong>思考／檢討紀錄</strong><br>可以在工作進行中留下釐清與分析，也可以在事後對照原本設想、實際結果與新資訊；不是只有結案才使用。`;
     if(f.type==='finding') return `<strong>重要發現</strong><br>只留下值得持續追蹤的假設、風險、已發生問題、依賴或待決策事項。重點是它會影響什麼，以及要用什麼資訊確認。`;
     if(f.type==='decision') return `<strong>決策紀錄</strong><br>保存真正形成選擇的時刻：問題、選項、決定、理由與代價。新資訊若推翻舊決策，建立新的決策並保留舊的脈絡。`;
     if(f.type==='snapshot') return `<strong>歷史狀態</strong><br>把某個時間點的正式資料固定下來，用來比較「當時怎麼想」與「後來怎麼變」。不需要每天保存，只在重要檢討、方向改變或階段結束前使用。`;
@@ -1379,7 +1604,8 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
   },
   suggestedQuestions(){
     const f=this.currentFocus();
-    if(f.type==='navigation') return ['根據我目前描述的問題，我應該先去哪個練習區？','我現在卡的是資訊不清、拆解、判斷、推進還是回顧？','如果現在只能練一件事，最值得練哪一個資訊處理動作？'];
+    if(f.type==='navigation') return ['根據我目前描述的問題，我應該先去哪個練習區？','我現在卡的是資訊不清、拆解、判斷、推進、需要找舊經驗，還是回頭檢討？','如果現在只能練一件事，最值得練哪一個資訊處理動作？'];
+    if(f.type==='experience') return ['這個舊案例和這次真正相似的條件是什麼？','有哪些差異讓我不能直接套用上次做法？','這段經驗最多能提醒我哪一個下一步或確認問題？'];
     if(f.type==='breakdown') return ['我的拆解粒度合理嗎？哪些其實只是步驟或探索？','我有沒有漏掉能獨立產出、驗收或有不同依賴的部分？','拆完之後，我的第一個可執行動作是否更清楚？'];
     if(f.type==='card') return f.data.card.isMemo?
       ['這些內容目前是背景、探索，還是已經形成一個值得追的問題？','有沒有哪一部分已經成熟到值得轉成正式工項或管理事項？','依目前資料，我現在最值得問的一個問題是什麼？']:
@@ -1392,6 +1618,7 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
     if(f.type==='finding') return ['這個發現目前是事實、假設還是推論？','它真的會影響期限、成果或下一步嗎？','要確認或關閉它，最少還需要什麼證據？'];
     if(f.type==='decision') return ['這個決策的依據裡，哪些是已知、哪些仍是推測？','有沒有被忽略的選項或取捨？','什麼新資訊出現時，我應該重新檢查這個決策？'];
     if(f.type==='snapshot') return ['和現在相比，真正改變的是什麼？','這些變化是因為新資訊，還是原本估計不準？','哪個變化最值得留下作為檢討？'];
+    if(f.type==='planning') return ['哪些內容已被明確確認，哪些只是我的理解？','目前做法有沒有偷偷變成目標？','現在最值得確認哪一件事，會真的改變後續規劃？'];
     if(f.type==='scenario') return ['這個方案真正改變了哪個核心假設或做法？','它解決了什麼問題，又犧牲了什麼？','目前還有哪個未知會讓這份重新規劃太早定案？'];
     return ['目的、期限內目標與目前做法有沒有混在一起？','目前最重要的未知或假設是什麼？','依現有資訊，我已經可以先開始做什麼？'];
   },
@@ -1409,8 +1636,10 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
     if(fillFields){ set('analysis-question',a.question); set('analysis-context',a.contextNote); set('analysis-viewpoint',a.viewpoint); set('inquiry-audience',a.audience); set('inquiry-mode',a.inquiryMode); set('inquiry-help',a.desiredHelp); set('deep-goal',a.deepGoal); }
     const ctx=this.buildAiContext(); const sum=document.getElementById('context-scope-summary'); if(sum)sum.innerHTML=`<span class="context-chip">${this.esc(f.label)}</span> ${this.esc(ctx.scopeText)}`;
     const pre=document.getElementById('context-preview'); if(pre)pre.textContent=JSON.stringify(ctx.payload,null,2);
+    this.renderDeepExperienceNote();
+    this.renderDeepExperienceNote();
   },
-  slimProject(){ const p=this.activeProject()||{}; return {name:p.name||'',purpose:p.purpose||'',goal:p.goal||'',currentApproach:p.currentApproach||'',deadline:p.deadline||'',deadlineType:p.deadlineType||'',definitionOfDone:p.definitionOfDone||'',constraints:p.constraints||'',milestones:p.milestones||[]}; },
+  slimProject(){ const p=this.activeProject()||{}; return {name:p.name||'',purpose:p.purpose||'',goal:p.goal||'',currentApproach:p.currentApproach||'',planningBasisStatus:p.basisStatus||'unknown',confirmedBasis:p.confirmedBasis||'',planningInterpretation:p.planningInterpretation||'',deadline:p.deadline||'',deadlineType:p.deadlineType||'',definitionOfDone:p.definitionOfDone||'',constraints:p.constraints||'',milestones:p.milestones||[]}; },
   slimCard(card,includeHistory=true){
     const logs=(Array.isArray(card.workLogs)?card.workLogs:[]).slice().sort((a,b)=>String(b.workDate||'').localeCompare(String(a.workDate||''))).slice(0,3).map(x=>({date:x.workDate||'',minutes:Math.round(this.logMinutes(x)),note:x.note||''}));
     const notes=(Array.isArray(card.entries)?card.entries:[]).slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,3).map(x=>({title:x.title||'',content:x.content||'',createdAt:x.createdAt||''}));
@@ -1423,14 +1652,16 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
     const includeOther=document.getElementById('scope-other')?.checked ?? false;
     const f=this.currentFocus(), payload={project:this.slimProject(),focus:{type:f.type,label:f.label}}; let scope=['專案摘要'];
     if(f.type==='navigation'){ payload.focus.navigation={question:this.analysisState().question||'',contextNote:this.analysisState().contextNote||'',viewpoint:this.analysisState().viewpoint||''}; scope.push('目前卡點描述'); }
+    else if(f.type==='planning'){ payload.focus.planning={project:this.slimProject(),replanScope:this.analysisState().replanScope||'approach'}; scope.push('規劃基礎／已確認依據／我的理解'); }
     else if(f.type==='breakdown'){ payload.focus.card=this.slimCard(f.data.card,includeHistory); payload.focus.breakdownPractice=structuredClone(f.data.practice||{}); scope.push('目前排程卡','我的拆解練習'); if(includeHistory)scope.push('最近 3 筆工作紀錄／工時'); }
     else if(f.type==='card'){ payload.focus.card=this.slimCard(f.data.card,includeHistory); scope.push(f.data.card.isMemo?'目前自由卡':'目前排程卡'); if(includeHistory)scope.push('最近 3 筆工作紀錄／工時'); }
     else if(f.type==='management'){ const m=f.data; payload.focus.management={title:m.title,status:this.managementStatusLabel(m.status),thinkingState:this.thinkingStateLabel(m.thinkingState||this.defaultThinkingState(m.status)),rawRequest:m.rawRequest,context:m.context,desiredOutcome:m.desiredOutcome,myRole:this.managementRoleLabel(m.myRole),knownFacts:m.knownFacts,unknowns:m.unknowns,options:m.options,tradeoffs:m.tradeoffs,recommendation:m.recommendation,nextAction:m.nextAction,askWho:m.askWho,askQuestion:m.askQuestion,followUpDate:m.followUpDate,result:m.result}; scope.push('目前管理事項'); const hit=this.projectCards().find(x=>x.card.id===m.linkedCardId); if(hit){payload.focus.linkedCard=this.slimCard(hit.card,includeHistory);scope.push('連結工作卡');} }
-    else if(f.type==='review'){ payload.focus.review=structuredClone(f.data); scope.push('目前檢討紀錄'); }
+    else if(f.type==='review'){ payload.focus.review=structuredClone(f.data); scope.push('目前思考／檢討紀錄'); }
     else if(f.type==='finding'){ payload.focus.finding=structuredClone(f.data); scope.push('目前重要發現'); }
     else if(f.type==='decision'){ payload.focus.decision=structuredClone(f.data); scope.push('目前決策紀錄'); }
     else if(f.type==='snapshot'){ const s=f.data; payload.focus.snapshot={id:s.id,label:s.label,createdAt:s.createdAt,project:s.payload?.project,cards:(s.payload?.cards||[]).map(x=>({title:x.card?.title,status:this.statusLabel(x.card?.status),nextAction:x.card?.nextAction||'',decisionPoint:x.card?.decisionPoint||''})),managementCount:(s.payload?.managementItems||[]).length}; scope.push('歷史狀態摘要'); }
     else if(f.type==='scenario'){ const s=f.data; payload.focus.scenario={name:s.name,status:s.status,notes:s.notes,baseSnapshotId:s.baseSnapshotId,diff:this.scenarioDiff(s),cards:(s.cards||[]).filter(x=>!x.isDeleted).map(c=>({title:c.title,type:c.isMemo?'自由卡':'排程卡',dateStart:c.dateStart,dateEnd:c.dateEnd,nextAction:c.nextAction,deliverable:c.deliverable}))}; scope.push('重新規劃方案'); }
+    else if(f.type==='experience'){ payload.focus.experience=this.experienceForAI(f.data); payload.focus.currentSituation=this.analysisState().experienceQuery||this.analysisState().question||''; payload.focus.myComparison=structuredClone(this.analysisState().experienceCompare||{}); scope.push('目前舊案例','這次情境與我的比較'); }
     else { payload.focus.project=this.slimProject(); scope.push('專案整體'); }
     if(includeRelated){
       const cardId=f.type==='card'?f.id:f.type==='management'?f.data.linkedCardId:'';
@@ -1440,7 +1671,15 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
     return {payload,scopeText:'本次包含：'+scope.join('＋')};
   },
   systemInstruction(kind='analysis'){
-    const common=`使用繁體中文。你的用途是協助使用者練習處理資訊，而不是替使用者接管專案或做所有決定。\n1. 優先區分：已知事實、使用者目前的推論、未知／需要確認的資訊。\n2. 尊重使用者已寫的「我目前怎麼看」，先檢查它的依據與缺口，不要直接用自己的答案覆蓋。\n3. 最多先處理 3 個真正重要的點，不要堆大量框架。\n4. 若資訊已足夠，明確指出可以先行動，不要為完整而繼續製造規劃工作。\n5. 對自由卡保留探索性，不強迫補期限／驗收；對排程卡才檢查下一步、判斷點、依賴、產出與驗收。\n6. 對拆解練習，先檢查使用者自己的拆法，不要直接代拆。優先判斷：可獨立產出／驗收／依賴的成果、只是執行步驟、以及仍需探索的未知。\n7. 對管理事項區分：自己做、找人問、交辦、等待、追蹤、待決策。\n8. 如果情境是練習導航，先判斷使用者此刻最適合去哪一個練習區，不要展開整份專案分析。\n9. 不把推測寫成事實。`;
+    const common=`使用繁體中文。你的用途是協助使用者練習處理資訊，而不是替使用者接管專案或做所有決定。\n1. 優先區分：已知事實、使用者目前的推論、未知／需要確認的資訊。\n2. 尊重使用者已寫的「我目前怎麼看」，先檢查它的依據與缺口，不要直接用自己的答案覆蓋。\n3. 最多先處理 3 個真正重要的點，不要堆大量框架。\n4. 若資訊已足夠，明確指出可以先行動，不要為完整而繼續製造規劃工作。\n5. 對自由卡保留探索性，不強迫補期限／驗收；對排程卡才檢查下一步、判斷點、依賴、產出與驗收。\n6. 對拆解練習，先檢查使用者自己的拆法，不要直接代拆。優先判斷：可獨立產出／驗收／依賴的成果、只是執行步驟、以及仍需探索的未知。\n7. 對管理事項區分：自己做、找人問、交辦、等待、追蹤、待決策。\n8. 如果情境是練習導航，先判斷使用者此刻最適合去哪一個練習區，不要展開整份專案分析。\n9. 不把推測寫成事實。
+10. 不因為使用者提出一個手法，就預設那個手法是目標；必要時回到已確認的目的／目標／限制重新定錨。
+11. 新增問題或分析分支前，先判斷它是否可能改變目的、下一個決策或下一步行動；若不會，就不要為了完整而展開。
+12. 當對話已沿某個方案越長越複雜時，優先問：若暫時拿掉目前做法，只看已確認的目的、目標與限制，最小需要解決的是什麼。`;
+    if(kind==='planning') return common+`\n你的任務是做規劃基礎檢查。先區分：已明確確認的目的／目標／限制、使用者自己的理解／推定、目前做法。不要直接展開完整方案。最多指出 1～3 個會真正改變後續規劃的確認問題；若前提已足夠，明確說可以進入拆解或執行。`;
+    if(kind==='experience_search') return common+`\n你的任務是把目前情況轉成「找過去案例」的搜尋意圖，不要解題。只輸出合法 JSON：{"problemType":"requirements|planning|breakdown|dependency|decision|communication|schedule|technical|automation|review|other","keywords":["3~6 個短關鍵概念"],"summary":"一句話描述目前問題"}。`;
+    if(kind==='experience_rank') return common+`\n你的任務是從少量候選案例摘要中挑出最值得先看的案例。不要說應該照舊案例做。只輸出合法 JSON：{"items":[{"id":"案例 id","reason":"為什麼值得看","differenceHint":"最需要先注意的可能差異"}]}，最多 5 筆。`;
+    if(kind==='experience_compare') return common+`\n你的任務是檢查使用者把舊案例類比到這次情境的方式。不要直接說照上次做。優先指出：真正相似的成立條件、重要差異、舊經驗可能造成的錨定，以及最多 1～3 個值得確認或採取的下一步。`;
+    if(kind==='experience_draft') return common+`\n你的任務是把目前情境整理成可供未來搜尋的案例草稿。不要把未知補成事實。只輸出合法 JSON，欄位：title,summary,problemType,tags,resolution,outcome,lesson,tradeoff,applicableWhen,notApplicableWhen。problemType 必須使用既定代碼，tags 是 2~6 個短字串。`;
     if(kind==='inquiry') return common+`\n你的任務是把目前卡點整理成「別人容易回答的最小必要詢問」。不要傾倒完整專案脈絡，不要把決策責任丟給對方。只保留對方回答這一題需要知道的背景。`;
     if(kind==='interface') return common+`\n你的任務是幫使用者理解目前這個 Project Lab 情境該怎麼用，以及此刻最值得處理什麼。不要重新規劃整個專案。`;
     return common+`\n回答最好呈現：目前怎麼看、資訊缺口／需要確認、下一個更好的問題或最小動作。`;
@@ -1487,7 +1726,7 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
   },
   async runQuickAnalysis(){
     const status=document.getElementById('quick-status'), out=document.getElementById('quick-response'); if(status)status.textContent='分析中…';
-    try{ const prompt=this.buildAnalysisPrompt('analysis'); const text=await this.geminiRequest(prompt,'analysis'); this.aiRuntime.lastResponse=text;this.aiRuntime.lastPrompt=prompt;this.aiRuntime.lastContextLabel=this.currentFocus().label; if(out)out.textContent=text; const u=this.aiRuntime.lastUsage||{}; const meta=document.getElementById('quick-meta'); if(meta)meta.textContent=`情境：${this.currentFocus().label}｜模型：${this.aiRuntime.lastModel}｜API：第 ${this.aiRuntime.lastKeySlot} 組${u.totalTokenCount?`｜總 token ${u.totalTokenCount}`:''}`; if(status)status.textContent='完成。回答不會自動保存。'; }
+    try{ const prompt=this.buildAnalysisPrompt('analysis'); const aiKind=this.currentFocus().type==='planning'?'planning':'analysis'; const text=await this.geminiRequest(prompt,aiKind); this.aiRuntime.lastResponse=text;this.aiRuntime.lastPrompt=prompt;this.aiRuntime.lastContextLabel=this.currentFocus().label; if(out)out.textContent=text; const u=this.aiRuntime.lastUsage||{}; const meta=document.getElementById('quick-meta'); if(meta)meta.textContent=`情境：${this.currentFocus().label}｜模型：${this.aiRuntime.lastModel}｜API：第 ${this.aiRuntime.lastKeySlot} 組${u.totalTokenCount?`｜總 token ${u.totalTokenCount}`:''}`; if(status)status.textContent='完成。回答不會自動保存。'; }
     catch(e){if(status)status.textContent='失敗：'+e.message;}
   },
   async runInterfaceInterpretation(){
@@ -1498,12 +1737,12 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
   saveQuickAsReview(){
     const response=this.aiRuntime.lastResponse.trim(); if(!response)return alert('目前沒有可保存的快速分析。'); const a=this.analysisState();
     const review={id:this.uid('review'),reviewType:'discussion',projectId:this.state.activeProjectId,snapshotId:'',contextLabel:this.aiRuntime.lastContextLabel||this.currentFocus().label,templateId:'quick_analysis',templateLabel:'快速分析｜資訊處理',customQuestion:a.question||'',response,userReflection:'',createdAt:this.now(),analysisMeta:{focusType:this.currentFocus().type,model:this.aiRuntime.lastModel}};
-    this.state.reviews.push(review);this.saveState();this.renderReviews();this.showView('reviews');alert('已存成檢討紀錄。');
+    this.state.reviews.push(review);this.saveState();this.renderReviews();this.showView('reviews');alert('已保存這次分析。');
   },
   copyQuickResponse(){ const t=this.aiRuntime.lastResponse||''; if(!t)return alert('目前沒有分析結果。'); this.copyText(t,'已複製分析結果。'); },
   buildDeepDiscussion(){
     const a=this.analysisState(), f=this.currentFocus(), ctx=this.buildAiContext();
-    const text=`我想針對以下情境做深入討論。請不要急著替我做決定，先檢查我的問題定義、資訊整理與推論是否合理；需要時再比較方案與取捨。\n\n【我現在的問題】\n${a.question||'尚未寫清楚，請先協助我把問題定義清楚。'}\n\n【我目前怎麼理解】\n${a.viewpoint||'尚未形成明確看法。'}\n\n【補充情境】\n${a.contextNote||'無'}\n\n【我希望這次討論幫我做什麼】\n${a.deepGoal||'先幫我找出最值得釐清的 1～3 個判斷，再和我逐步討論。'}\n\n【目前焦點】\n${f.type}｜${f.label}\n\n【專案與相關事實】\n${JSON.stringify(ctx.payload,null,2)}\n\n【前一輪快速分析】\n${this.aiRuntime.lastResponse||'尚無'}`;
+    const text=`我想針對以下情境做深入討論。請不要急著替我做決定，先檢查我的問題定義、資訊整理與推論是否合理；需要時再比較方案與取捨。\n\n【我現在的問題】\n${a.question||'尚未寫清楚，請先協助我把問題定義清楚。'}\n\n【我目前怎麼理解】\n${a.viewpoint||'尚未形成明確看法。'}\n\n【補充情境】\n${a.contextNote||'無'}\n\n【我希望這次討論幫我做什麼】\n${a.deepGoal||'先幫我找出最值得釐清的 1～3 個判斷，再和我逐步討論。'}\n\n【目前焦點】\n${f.type}｜${f.label}\n\n【專案與相關事實】\n${JSON.stringify(ctx.payload,null,2)}\n\n【前一輪快速分析】\n${this.aiRuntime.lastResponse||'尚無'}\n\n【我選擇帶入的過去案例】\n${this.deepExperienceContext()}`;
     const el=document.getElementById('deep-output'); if(el)el.textContent=text; return text;
   },
   copyDeepDiscussion(){ const el=document.getElementById('deep-output'); const t=el?.textContent?.trim(); if(!t||t==='尚未產生。')return alert('請先產生深入討論資料。'); this.copyText(t,'已複製深入討論資料。'); },
@@ -1516,11 +1755,71 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
     try{const text=await this.geminiRequest(prompt,'inquiry');this.aiRuntime.lastInquiry=text;if(out)out.textContent=text;}catch(e){if(out)out.textContent='失敗：'+e.message;}
   },
   copyInquiry(){ const t=(document.getElementById('inquiry-output')?.textContent||'').trim(); if(!t||t==='尚未整理。'||t==='整理中…')return alert('目前沒有可複製的詢問內容。'); this.copyText(t,'已複製詢問內容。'); },
+
+  experienceTypeLabel(v){ return (EXPERIENCE_TYPES.find(x=>x[0]===v)||['',v||'其他'])[1]; },
+  experienceCollection(){ return this.user ? this.cloudRef().collection('experiences') : null; },
+  experienceUseCollection(){ return this.user ? this.cloudRef().collection('experienceUses') : null; },
+  experienceDraft(){ const a=this.analysisState(); if(!a.experienceDraft||typeof a.experienceDraft!=='object')a.experienceDraft=structuredClone(this.analysisDefaults().experienceDraft); return a.experienceDraft; },
+  experienceCompare(){ const a=this.analysisState(); if(!a.experienceCompare||typeof a.experienceCompare!=='object')a.experienceCompare=structuredClone(this.analysisDefaults().experienceCompare); return a.experienceCompare; },
+  updateExperienceQuery(value){ const a=this.analysisState();a.experienceQuery=value;this.saveState(); },
+  useCurrentQuestionForExperience(){ const a=this.analysisState();a.experienceQuery=[a.question,a.contextNote].filter(Boolean).join('\n').trim()||a.viewpoint||'';this.saveState();this.renderExperienceGroup();document.getElementById('experience-query')?.focus(); },
+  updateExperienceDraft(field,value){ const d=this.experienceDraft();d[field]=value;this.saveState();const s=document.getElementById('experience-save-status');if(s)s.textContent='草稿已自動存在本機；按「保存案例」才寫入案例庫。'; },
+  updateExperienceCompare(field,value){ const c=this.experienceCompare();c[field]=value;this.saveState(); },
+  normalizeExperienceTerm(v){ return String(v||'').trim().toLocaleLowerCase('zh-TW').replace(/\s+/g,' ').slice(0,80); },
+  splitTags(v){ return [...new Set(String(v||'').split(/[，,、\n]/).map(x=>x.trim()).filter(Boolean))].slice(0,12); },
+  experienceSearchTerms(e){ const tags=Array.isArray(e.tags)?e.tags:this.splitTags(e.tagsText||'');return [...new Set([e.problemType,this.experienceTypeLabel(e.problemType),...tags].map(x=>this.normalizeExperienceTerm(x)).filter(Boolean))].slice(0,20); },
+  firestoreDateValue(v){ if(!v)return'';if(v?.toDate){try{return v.toDate().toISOString();}catch(e){return'';}}return typeof v==='string'?v:''; },
+  docToExperience(doc){ const d=doc.data?doc.data():doc;return {...structuredClone(d||{}),id:doc.id||d.id||'',createdAt:this.firestoreDateValue(d.createdAt)||d.createdAt||'',updatedAt:this.firestoreDateValue(d.updatedAt)||d.updatedAt||'',lastUsedAt:this.firestoreDateValue(d.lastUsedAt)||d.lastUsedAt||''}; },
+  experienceForAI(e){ if(!e)return{};return {id:e.id,title:e.title||'',summary:e.summary||'',problemType:e.problemType||'other',problemTypeLabel:this.experienceTypeLabel(e.problemType),tags:e.tags||[],status:e.status||'active',handledBy:e.handledBy||'',handledAt:e.handledAt||'',resolution:e.resolution||'',outcome:e.outcome||'',lesson:e.lesson||'',tradeoff:e.tradeoff||'',applicableWhen:e.applicableWhen||'',notApplicableWhen:e.notApplicableWhen||'',sourceProjectName:e.sourceProjectName||'',sourceEntityType:e.sourceEntityType||'',sourceEntityLabel:e.sourceEntityLabel||'',reuseCount:Number(e.reuseCount||0)}; },
+  async loadRecentExperiences(){
+    if(!this.user)return;
+    try{const snap=await this.experienceCollection().orderBy('updatedAt','desc').limit(12).get();this.experienceRuntime.recent=snap.docs.map(d=>this.docToExperience(d));this.renderExperienceGroup();}
+    catch(e){console.warn('load experiences failed',e);const root=document.getElementById('experience-library-list');if(root)root.innerHTML=`<div class="notice bad">案例索引讀取失敗：${this.esc(e.message)}<br>若是 permission-denied，請先發布 v1.7 附帶的 Firestore Rules。</div>`;}
+  },
+  renderExperienceTypeOptions(){ return EXPERIENCE_TYPES.map(([v,l])=>`<option value="${this.esc(v)}">${this.esc(l)}</option>`).join(''); },
+  experienceMatchText(e,intent){ const parts=[];if(intent?.problemType&&e.problemType===intent.problemType)parts.push(`同屬「${this.experienceTypeLabel(e.problemType)}」`);const wanted=(intent?.keywords||[]).map(x=>this.normalizeExperienceTerm(x));const terms=(e.searchTerms||this.experienceSearchTerms(e)).map(x=>this.normalizeExperienceTerm(x));const hit=wanted.filter(x=>terms.includes(x)).slice(0,3);if(hit.length)parts.push(`共同概念：${hit.join('、')}`);return parts.join('；')||'被目前搜尋條件選入候選，請再確認實際條件是否真的相似'; },
+  experienceCardHtml(e,search=false){
+    const state=e.status==='settled'?'<span class="experience-tag experience-state-settled">已收斂</span>':'<span class="experience-tag experience-state-active">處理中</span>';const tags=(e.tags||[]).slice(0,6).map(t=>`<span class="experience-tag">${this.esc(t)}</span>`).join('');const selected=this.experienceRuntime.selected?.id===e.id;const reason=e._aiReason||(search?this.experienceMatchText(e,this.experienceRuntime.searchIntent):'');
+    return `<div class="experience-card ${selected?'selected':''}"><div class="experience-card-head"><strong>${this.esc(e.title||'未命名案例')}</strong>${state}${tags}</div><div class="summary">${this.esc(e.summary||'尚無摘要')}</div>${reason?`<div class="tiny" style="margin-top:6px"><strong>為什麼可能相關：</strong>${this.esc(reason)}</div>`:''}${e._differenceHint?`<div class="tiny"><strong>先注意：</strong>${this.esc(e._differenceHint)}</div>`:''}<div class="experience-meta"><span>${this.esc(this.experienceTypeLabel(e.problemType))}</span><span>${this.esc(e.handledAt||'時間未填')}</span><span>${this.esc(e.handledBy?`處理者：${e.handledBy}`:'處理者未填')}</span>${e.reuseCount?`<span>已回用 ${Number(e.reuseCount)} 次</span>`:''}</div><div class="row" style="margin-top:8px"><button class="btn small" onclick="lab.selectExperience('${this.esc(e.id)}')">查看／拿來對照</button><label class="tiny" style="display:flex;align-items:center;gap:5px"><input type="checkbox" ${this.experienceRuntime.deepSelectedIds.has(e.id)?'checked':''} onchange="lab.toggleExperienceForDeep('${this.esc(e.id)}',this.checked)"> 加入深入討論</label></div></div>`;
+  },
+  renderExperienceGroup(){
+    const a=this.analysisState(),q=document.getElementById('experience-query');if(q&&document.activeElement!==q)q.value=a.experienceQuery||'';const pt=document.getElementById('exp-problem-type');if(pt&&!pt.options.length)pt.innerHTML=this.renderExperienceTypeOptions();const d=this.experienceDraft();const set=(id,v)=>{const el=document.getElementById(id);if(el&&document.activeElement!==el)el.value=v??'';};set('exp-title',d.title);set('exp-problem-type',d.problemType||'other');set('exp-status',d.status||'active');set('exp-handled-by',d.handledBy);set('exp-handled-at',d.handledAt);set('exp-tags',d.tagsText);set('exp-summary',d.summary);set('exp-resolution',d.resolution);set('exp-outcome',d.outcome);set('exp-lesson',d.lesson);set('exp-tradeoff',d.tradeoff);set('exp-applicable',d.applicableWhen);set('exp-not-applicable',d.notApplicableWhen);
+    const r=document.getElementById('experience-search-results');if(r){const list=this.experienceRuntime.results||[];r.innerHTML=list.length?list.map(e=>this.experienceCardHtml(e,true)).join(''):'<div class="experience-empty">還沒有搜尋結果。描述現在的情況後按「找相似經驗」。</div>';}
+    const lib=document.getElementById('experience-library-list');if(lib){const list=this.experienceRuntime.recent||[];lib.innerHTML=list.length?list.map(e=>this.experienceCardHtml(e,false)).join(''):'<div class="experience-empty">目前還沒有已保存的案例。</div>';}
+    this.renderExperienceDetail();this.renderDeepExperienceNote();
+  },
+  async buildExperienceSearchIntent(query){ const types=EXPERIENCE_TYPES.map(([v,l])=>`${v}=${l}`).join('、');const prompt=`請只整理搜尋意圖，不要解決問題。\n【目前情況】\n${query}\n\nproblemType 可用值：${types}\nkeywords 請用 3～6 個可跨專案重複使用的短概念，不要只用專案專有名詞。`;const raw=await this.geminiRequest(prompt,'experience_search');const obj=this.extractJson(raw);const type=EXPERIENCE_TYPES.some(x=>x[0]===obj.problemType)?obj.problemType:'other';return {problemType:type,keywords:(Array.isArray(obj.keywords)?obj.keywords:[]).map(x=>String(x).trim()).filter(Boolean).slice(0,6),summary:String(obj.summary||query).trim()}; },
+  async queryExperienceCandidates(intent){
+    const map=new Map(),col=this.experienceCollection(),add=s=>s.docs.forEach(d=>map.set(d.id,this.docToExperience(d))),tasks=[];if(intent.problemType&&intent.problemType!=='other')tasks.push(col.where('problemType','==',intent.problemType).limit(20).get());const terms=[intent.problemType,...(intent.keywords||[])].map(x=>this.normalizeExperienceTerm(x)).filter(Boolean).slice(0,10);if(terms.length)tasks.push(col.where('searchTerms','array-contains-any',terms).limit(20).get());(await Promise.allSettled(tasks)).forEach(x=>{if(x.status==='fulfilled')add(x.value);});if(map.size<5){try{add(await col.orderBy('updatedAt','desc').limit(20).get());}catch(e){console.warn(e);}}
+    const wanted=(intent.keywords||[]).map(x=>this.normalizeExperienceTerm(x));return [...map.values()].map(e=>{let score=e.problemType===intent.problemType?5:0;const terms2=(e.searchTerms||this.experienceSearchTerms(e)).map(x=>this.normalizeExperienceTerm(x));wanted.forEach(k=>{if(terms2.includes(k))score+=2;else if(`${e.title||''} ${e.summary||''}`.toLocaleLowerCase('zh-TW').includes(k))score+=1;});if(e.status==='settled')score+=.4;return {...e,_searchScore:score};}).sort((a,b)=>b._searchScore-a._searchScore||String(b.updatedAt||'').localeCompare(String(a.updatedAt||''))).slice(0,8);
+  },
+  async rerankExperienceCandidates(query,candidates){
+    if(!candidates.length)return[];const payload=candidates.map(e=>({id:e.id,title:e.title,summary:e.summary,problemType:this.experienceTypeLabel(e.problemType),tags:e.tags||[],status:e.status,handledAt:e.handledAt,outcome:e.outcome,lesson:e.lesson,applicableWhen:e.applicableWhen,notApplicableWhen:e.notApplicableWhen}));const prompt=`【現在情況】\n${query}\n\n【候選案例摘要】\n${JSON.stringify(payload,null,2)}\n\n只依這些摘要排序，不要假裝知道未提供的內容。`;try{const raw=await this.geminiRequest(prompt,'experience_rank'),obj=this.extractJson(raw),items=Array.isArray(obj.items)?obj.items:[],byId=new Map(candidates.map(x=>[x.id,x]));const ranked=[];items.slice(0,5).forEach(it=>{const e=byId.get(String(it.id||''));if(e){ranked.push({...e,_aiReason:String(it.reason||''),_differenceHint:String(it.differenceHint||'')});byId.delete(e.id);}});for(const e of byId.values()){if(ranked.length>=5)break;ranked.push(e);}return ranked.slice(0,5);}catch(err){console.warn('experience rerank fallback',err);return candidates.slice(0,5);}
+  },
+  async findSimilarExperiences(){
+    const a=this.analysisState(),query=String(a.experienceQuery||'').trim();if(!query)return alert('先用一兩句話寫下你現在遇到什麼。');const st=document.getElementById('experience-search-status'),root=document.getElementById('experience-search-results');if(st)st.textContent='快速 AI 正在理解目前問題…';if(root)root.innerHTML='<div class="experience-empty">搜尋中…</div>';
+    try{const intent=await this.buildExperienceSearchIntent(query);this.experienceRuntime.searchIntent=intent;if(st)st.textContent=`搜尋意圖：${this.experienceTypeLabel(intent.problemType)}｜${(intent.keywords||[]).join('、')||'無額外關鍵概念'}。正在讀取少量案例摘要…`;const c=await this.queryExperienceCandidates(intent);const ranked=await this.rerankExperienceCandidates(query,c);this.experienceRuntime.results=ranked;this.experienceRuntime.selected=null;if(st)st.textContent=ranked.length?`找到 ${ranked.length} 筆較值得先看的案例。先看條件，再決定能不能沿用。`:'沒有找到夠接近的案例。這本身也是資訊：可能需要先釐清問題，或之後沉澱成新案例。';this.renderExperienceGroup();}
+    catch(e){if(st)st.textContent='找案例失敗：'+e.message;if(root)root.innerHTML='<div class="experience-empty">沒有完成搜尋。請確認 API Key、模型與 Firestore 權限。</div>';}
+  },
+  selectExperience(id){ const all=[...(this.experienceRuntime.results||[]),...(this.experienceRuntime.recent||[])],e=all.find(x=>x.id===id);if(!e)return;this.experienceRuntime.selected=e;const c=this.experienceCompare();if(c.experienceId!==id)this.analysisState().experienceCompare={experienceId:id,similar:'',different:'',reusable:'',avoid:'',fit:'partial'};this.analysisState().activeObject={type:'experience',id,label:e.title||'過去案例'};this.saveState();this.renderExperienceGroup();this.renderContextUI(false);document.getElementById('experience-detail-panel')?.scrollIntoView({behavior:'smooth',block:'start'}); },
+  renderExperienceDetail(){
+    const root=document.getElementById('experience-detail-panel'),e=this.experienceRuntime.selected;if(!root)return;if(!e){root.innerHTML='';return;}const c=this.experienceCompare();root.innerHTML=`<div class="experience-detail"><div class="group-head"><div><strong>查看案例｜${this.esc(e.title||'未命名')}</strong><div class="tiny">${this.esc(e.status==='settled'?'已收斂案例':'處理中案例')}｜${this.esc(this.experienceTypeLabel(e.problemType))}</div></div><button class="btn small" onclick="lab.focusObject('experience','${this.esc(e.id)}','過去案例');lab.openAssist()">說明／分析</button></div><div class="experience-detail-grid"><div class="experience-fact wide"><strong>摘要</strong><br>${this.esc(e.summary||'—')}</div><div class="experience-fact"><strong>處理者／可詢問的人</strong><br>${this.esc(e.handledBy||'—')}</div><div class="experience-fact"><strong>時間</strong><br>${this.esc(e.handledAt||'—')}</div><div class="experience-fact"><strong>來源專案</strong><br>${this.esc(e.sourceProjectName||'—')}</div><div class="experience-fact"><strong>來源情境</strong><br>${this.esc(e.sourceEntityLabel||e.sourceEntityType||'—')}</div><div class="experience-fact wide"><strong>怎麼處理</strong><br>${this.esc(e.resolution||'—')}</div><div class="experience-fact wide"><strong>結果</strong><br>${this.esc(e.outcome||'—')}</div><div class="experience-fact wide"><strong>一句話經驗</strong><br>${this.esc(e.lesson||'—')}</div><div class="experience-fact"><strong>主要取捨</strong><br>${this.esc(e.tradeoff||'—')}</div><div class="experience-fact"><strong>適用條件</strong><br>${this.esc(e.applicableWhen||'—')}</div><div class="experience-fact wide"><strong>不能直接套用的條件</strong><br>${this.esc(e.notApplicableWhen||'—')}</div></div><div class="experience-compare"><strong>這次怎麼用這段經驗？</strong><div class="tiny">先自己比較，再讓快速 AI 檢查。目標不是找上次答案，而是判斷舊經驗在這次成立多少。</div><div class="experience-compare-grid"><label class="field">我覺得相似的地方<textarea oninput="lab.updateExperienceCompare('similar',this.value)">${this.esc(c.similar||'')}</textarea></label><label class="field">這次不同的條件<textarea oninput="lab.updateExperienceCompare('different',this.value)">${this.esc(c.different||'')}</textarea></label><label class="field">我目前覺得可以沿用的部分<textarea oninput="lab.updateExperienceCompare('reusable',this.value)">${this.esc(c.reusable||'')}</textarea></label><label class="field">不能直接套用／需要再確認<textarea oninput="lab.updateExperienceCompare('avoid',this.value)">${this.esc(c.avoid||'')}</textarea></label></div><label class="field" style="margin-top:8px">這次使用後，我目前判斷<select onchange="lab.updateExperienceCompare('fit',this.value)"><option value="still" ${c.fit==='still'?'selected':''}>仍適用</option><option value="partial" ${c.fit==='partial'?'selected':''}>部分適用</option><option value="not" ${c.fit==='not'?'selected':''}>不適用</option></select></label><div class="row"><button class="btn primary" onclick="lab.runExperienceComparisonAI()">快速 AI：檢查我的比較</button><button class="btn success" onclick="lab.saveExperienceReuse()">紀錄這次回用</button></div><div id="experience-compare-output" class="analysis-response" style="margin-top:8px">尚未分析。</div></div></div>`;
+  },
+  async runExperienceComparisonAI(){ const e=this.experienceRuntime.selected;if(!e)return alert('請先選一筆案例。');const a=this.analysisState(),c=this.experienceCompare(),prompt=`【我現在遇到的情況】\n${a.experienceQuery||a.question||'尚未寫清楚'}\n\n【過去案例】\n${JSON.stringify(this.experienceForAI(e),null,2)}\n\n【我的比較】\n${JSON.stringify({similar:c.similar,different:c.different,reusable:c.reusable,avoid:c.avoid},null,2)}\n\n請檢查我的類比是否合理。不要直接告訴我照上次怎麼做。`;const out=document.getElementById('experience-compare-output');if(out)out.textContent='分析中…';try{const r=await this.geminiRequest(prompt,'experience_compare');if(out)out.textContent=r;this.aiRuntime.lastResponse=r;this.aiRuntime.lastContextLabel=`經驗回用｜${e.title||'案例'}`;}catch(err){if(out)out.textContent='失敗：'+err.message;} },
+  async saveExperienceReuse(){ const e=this.experienceRuntime.selected;if(!e||!this.user)return alert('請先選一筆案例。');const a=this.analysisState(),c=this.experienceCompare();try{const ref=this.experienceUseCollection().doc();await ref.set({experienceId:e.id,experienceTitle:e.title||'',projectId:this.state.activeProjectId||'',projectName:this.activeProject()?.name||'',currentSituation:a.experienceQuery||a.question||'',similar:c.similar||'',different:c.different||'',reusable:c.reusable||'',avoid:c.avoid||'',fit:c.fit||'partial',createdAt:firebase.firestore.FieldValue.serverTimestamp()});await this.experienceCollection().doc(e.id).set({reuseCount:firebase.firestore.FieldValue.increment(1),lastUsedAt:firebase.firestore.FieldValue.serverTimestamp(),lastReuseFit:c.fit||'partial',updatedAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});alert('已紀錄這次回用。舊案例仍保留原內容，只更新使用次數與最近使用時間。');await this.loadRecentExperiences();}catch(err){alert('回用紀錄保存失敗：'+err.message);} },
+  prefillExperienceDraft(){ const a=this.analysisState(),f=this.currentFocus(),d=this.experienceDraft();d.title=d.title||String(a.question||a.experienceQuery||f.label||'新案例').replace(/\s+/g,' ').slice(0,60);d.summary=d.summary||[a.question||a.experienceQuery,a.contextNote].filter(Boolean).join('｜').slice(0,400);d.handledAt=d.handledAt||new Date().toISOString().slice(0,10);if(d.problemType==='other'&&f.type==='breakdown')d.problemType='breakdown';if(d.problemType==='other'&&f.type==='management')d.problemType='communication';if(d.problemType==='other'&&f.type==='planning')d.problemType='planning';this.saveState();this.renderExperienceGroup(); },
+  async draftExperienceWithAI(){ const a=this.analysisState(),f=this.currentFocus(),ctx=this.buildAiContext(),types=EXPERIENCE_TYPES.map(([v,l])=>`${v}=${l}`).join('、'),prompt=`請把下面情境整理成「未來找得到、幾秒能看懂」的案例草稿。不要把未知補成事實。\nproblemType 可用值：${types}\n\n【我的問題】${a.question||a.experienceQuery||'未寫'}\n【補充情境】${a.contextNote||'無'}\n【我目前怎麼看】${a.viewpoint||'無'}\n【焦點】${f.label}\n【目前資料】${JSON.stringify(ctx.payload,null,2)}`;const st=document.getElementById('experience-save-status');if(st)st.textContent='快速 AI 正在整理案例草稿…';try{const raw=await this.geminiRequest(prompt,'experience_draft'),obj=this.extractJson(raw),d=this.experienceDraft();['title','summary','resolution','outcome','lesson','tradeoff','applicableWhen','notApplicableWhen'].forEach(k=>{if(obj[k]!==undefined)d[k]=String(obj[k]??'');});if(EXPERIENCE_TYPES.some(x=>x[0]===obj.problemType))d.problemType=obj.problemType;if(Array.isArray(obj.tags))d.tagsText=obj.tags.map(x=>String(x).trim()).filter(Boolean).slice(0,6).join(', ');d.handledAt=d.handledAt||new Date().toISOString().slice(0,10);this.saveState();this.renderExperienceGroup();if(st)st.textContent='已整理成草稿，請先檢查再保存案例。';}catch(err){if(st)st.textContent='整理失敗：'+err.message;} },
+  async saveExperience(){ if(!this.user)return;const d=this.experienceDraft();if(!String(d.title||'').trim())return alert('案例至少需要一個標題。');const tags=this.splitTags(d.tagsText),f=this.currentFocus(),proj=this.activeProject()||{},exp={title:String(d.title||'').trim(),summary:String(d.summary||'').trim(),problemType:EXPERIENCE_TYPES.some(x=>x[0]===d.problemType)?d.problemType:'other',tags,status:d.status==='settled'?'settled':'active',handledBy:String(d.handledBy||'').trim(),handledAt:d.handledAt||'',resolution:String(d.resolution||'').trim(),outcome:String(d.outcome||'').trim(),lesson:String(d.lesson||'').trim(),tradeoff:String(d.tradeoff||'').trim(),applicableWhen:String(d.applicableWhen||'').trim(),notApplicableWhen:String(d.notApplicableWhen||'').trim(),sourceTool:'Project Lab',sourceProjectId:this.state.activeProjectId||'',sourceProjectName:proj.name||proj.sourceName||'',sourceEntityType:f.type||'project',sourceEntityId:f.id||'',sourceEntityLabel:f.label||'',reuseCount:0};exp.searchTerms=this.experienceSearchTerms(exp);const st=document.getElementById('experience-save-status');if(st)st.textContent='保存中…';try{const ref=this.experienceCollection().doc();await ref.set({...exp,createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()});this.analysisState().experienceDraft=structuredClone(this.analysisDefaults().experienceDraft);this.saveState();if(st)st.textContent='案例已保存到案例庫。';await this.loadRecentExperiences();}catch(err){if(st)st.textContent='保存失敗：'+err.message;alert('案例保存失敗：'+err.message);} },
+  toggleExperienceForDeep(id,checked){ if(checked)this.experienceRuntime.deepSelectedIds.add(id);else this.experienceRuntime.deepSelectedIds.delete(id);this.renderDeepExperienceNote(); },
+  selectedDeepExperiences(){ const all=[...(this.experienceRuntime.results||[]),...(this.experienceRuntime.recent||[])],seen=new Set();return [...this.experienceRuntime.deepSelectedIds].map(id=>all.find(x=>x.id===id)).filter(x=>x&&!seen.has(x.id)&&seen.add(x.id)).slice(0,8); },
+  renderDeepExperienceNote(){ const el=document.getElementById('deep-experience-note');if(!el)return;const list=this.selectedDeepExperiences();el.textContent=list.length?`已選 ${list.length} 筆過去案例：${list.map(x=>x.title||'未命名').join('、')}。深入討論只帶案例摘要與判斷欄位，不帶完整歷史工作紀錄。`:'尚未加入過去案例。你可以在「經驗回用」搜尋後勾選少量案例，再帶進深入討論。'; },
+  deepExperienceContext(){ const list=this.selectedDeepExperiences();return list.length?JSON.stringify(list.map(x=>this.experienceForAI(x)),null,2):'未加入。'; },
+
   decorateFocusButtons(){
     const add=(el,type,id,label)=>{ if(!el||el.querySelector('.focus-select-btn'))return; const host=el.querySelector('.row')||el; const b=document.createElement('button');b.className='btn small focus-select-btn';b.textContent='說明／分析';b.onclick=()=>{this.focusObject(type,id,label);this.openAssist();};host.appendChild(b); };
     const cards=this.projectCards(), srcEls=[...document.querySelectorAll('#view-source .source-card')]; cards.forEach((x,i)=>{ add(srcEls[i],'card',x.card.id,x.card.title||'未命名工作卡'); if(!x.card.isMemo && srcEls[i] && !srcEls[i].querySelector('.breakdown-open-btn')){ const host=srcEls[i].querySelector('.row')||srcEls[i]; const b=document.createElement('button'); b.className='btn small breakdown-open-btn'; b.textContent='拆解練習'; b.onclick=()=>{ const a=this.analysisState(); a.breakdownCardId=x.card.id; this.saveState(); this.showView('breakdown'); this.renderBreakdownPractice(); }; host.appendChild(b); } });
     const mg=this.projectManagementItems(), mgEls=[...document.querySelectorAll('#view-management .management-item')]; mg.forEach((x,i)=>{ const old=[...mgEls[i]?.querySelectorAll('button')||[]].find(b=>b.textContent.includes('拿這筆問 AI')); if(old){old.textContent='說明／分析';old.setAttribute('onclick',`lab.focusObject('management','${x.id}',${JSON.stringify(x.title||'管理事項')});lab.openAssist()`);} else add(mgEls[i],'management',x.id,x.title||'管理事項'); });
-    const pairs=[['snapshot',this.projectSnapshots(),'#view-snapshots .snapshot-item',x=>x.label||'歷史狀態'],['review',this.projectReviews(),'#view-reviews .review-item',x=>x.problem||x.customQuestion||x.templateLabel||'檢討紀錄'],['finding',this.projectFindings(),'#view-findings .finding-item',x=>x.title||'重要發現'],['decision',this.projectDecisions(),'#view-decisions .decision-item',x=>x.question||'決策紀錄'],['scenario',this.projectScenarios(),'#view-scenarios .scenario-item',x=>x.name||'重新規劃方案']];
+    const pairs=[['snapshot',this.projectSnapshots(),'#view-snapshots .snapshot-item',x=>x.label||'歷史狀態'],['review',this.projectReviews(),'#view-reviews .review-item',x=>x.problem||x.customQuestion||x.templateLabel||'思考／檢討紀錄'],['finding',this.projectFindings(),'#view-findings .finding-item',x=>x.title||'重要發現'],['decision',this.projectDecisions(),'#view-decisions .decision-item',x=>x.question||'決策紀錄'],['scenario',this.projectScenarios(),'#view-scenarios .scenario-item',x=>x.name||'重新規劃方案']];
     pairs.forEach(([type,list,sel,labelFn])=>{const els=[...document.querySelectorAll(sel)];list.forEach((x,i)=>add(els[i],type,x.id,labelFn(x)));});
   },
   localizeDynamicUI(){
@@ -1528,6 +1827,10 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
     document.querySelectorAll('button').forEach(b=>{const t=b.textContent.trim();if(reps.has(t))b.textContent=reps.get(t);});
     document.querySelectorAll('#view-decisions .pill').forEach(x=>{if(x.textContent.trim()==='Decision')x.textContent='決策';}); document.querySelectorAll('#view-decisions select option').forEach(o=>{const map={proposed:'待確認',accepted:'已採用',superseded:'已被新決策取代',rejected:'不採用'}; if(map[o.value])o.textContent=map[o.value];}); document.querySelectorAll('#view-reviews strong').forEach(x=>{if(x.textContent.trim()==='Outcome Review')x.textContent='結果回顧';});
   }
+});
+
+document.addEventListener('click',event=>{
+  if(!event.target.closest('.project-switcher')) lab.closeProjectSwitcher();
 });
 
 auth.onAuthStateChanged(user=>{
