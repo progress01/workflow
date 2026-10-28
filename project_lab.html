@@ -238,7 +238,7 @@
       </div>
     </div>
     <button class="btn small" onclick="lab.reloadSource()">↻ 重新讀取白板</button>
-    <button class="btn small" onclick="location.href='whiteboard.html'">↗ 正式白板</button>
+    <button class="btn small" onclick="location.href='../workboard/'">↗ 正式白板</button>
     <button class="btn small success" onclick="lab.createSnapshot()">📸 保存目前狀態</button>
     <button class="btn small" onclick="lab.saveCloud()">☁️ 備份練習資料</button>
     <button class="btn small" onclick="lab.loadCloud()">📥 載入練習資料</button>
@@ -756,7 +756,8 @@ const lab = {
       }
     });
     const availableIds=names.map(name=>this.state.projectNameMap[name]).filter(Boolean);
-    const urlPid=new URLSearchParams(location.search).get('project')||'';
+    const urlParams=new URLSearchParams(location.search);
+    const urlPid=urlParams.get('project')||this.state.projectNameMap[urlParams.get('projectName')||'']||'';
     if(urlPid && availableIds.includes(urlPid)) this.state.activeProjectId=urlPid;
     if(!this.state.activeProjectId || !availableIds.includes(this.state.activeProjectId)){
       this.state.activeProjectId=availableIds[0]||'';
@@ -1480,7 +1481,7 @@ C. …">${this.esc(p.draft||'')}</textarea></div>
 還需要探索：…">${this.esc(p.boundary||'')}</textarea></div>
           <div class="breakdown-step"><div class="step-title">4. 拆完之後，最先推進哪一塊？</div><div class="breakdown-hint">拆解的目的不是得到漂亮樹狀圖，而是讓下一步更可執行。</div><textarea oninput="lab.updateBreakdownPractice('firstAction',this.value)" placeholder="我會先……">${this.esc(p.firstAction||'')}</textarea></div>
           <div id="breakdown-save-status" class="autosave-note">已自動儲存在 Project Lab；不會寫回正式白板。</div>
-          <div class="breakdown-actions"><button class="btn primary" onclick="lab.openBreakdownAnalysis()">AI 檢查我的拆解</button><button class="btn" onclick="lab.copyBreakdownPractice()">複製拆解草稿</button><button class="btn" onclick="location.href='whiteboard.html'">打開正式白板</button></div>
+          <div class="breakdown-actions"><button class="btn primary" onclick="lab.openBreakdownAnalysis()">AI 檢查我的拆解</button><button class="btn" onclick="lab.copyBreakdownPractice()">複製拆解草稿</button><button class="btn" onclick="location.href='../workboard/'">打開正式白板</button></div>
         </div>
       </div>`;
     this.saveState();

@@ -58,8 +58,7 @@ v1.7 的主題是 **「經驗回用」與「任意時點進入」**。
 
 - `index.html`：Project Lab 主入口。
 - `project_lab.html`：Project Lab 備用入口，內容與 `index.html` 相同。
-- `whiteboard.html`：正式白板。
-- `app.js`：白板程式。
+- `whiteboard.html`：舊入口，現在只會轉址到 `/workboard/`（正式白板只保留一個，見下方說明）。
 - `firestore.rules.txt`：v1.7 建議 Firestore Rules。
 - `README.md`：本文件。
 
@@ -69,14 +68,19 @@ GitHub Pages 若部署於 `/workflow/`：
 https://<account>.github.io/workflow/
     → Project Lab
 
-https://<account>.github.io/workflow/whiteboard.html
-    → 正式白板
+https://<account>.github.io/workboard/
+    → 正式白板（另一個 repo：workboard）
 
 https://<account>.github.io/workflow/project_lab.html
     → Project Lab 備用入口
 ```
 
-白板與 Project Lab 建議放在同一個 GitHub Pages origin，Project Lab 才能直接讀取白板的 localStorage。
+白板與 Project Lab 放在同一個 GitHub Pages origin（`<account>.github.io`），Project Lab 才能直接讀取白板的 localStorage。
+
+> **2026/10 起：正式白板只保留 `/workboard/` 一份。**
+> 以前這個資料夾也放了一份白板（`whiteboard.html` + `app.js`），它和 `/workboard/` 是兩個不同版本，卻讀寫同一份資料，會互相覆蓋。
+> 現在 `whiteboard.html` 只負責轉址，`app.js` 已移除；Project Lab 的「↗ 正式白板」直接開 `/workboard/`。
+> 也可以用 `index.html?projectName=<專案名稱>` 直接打開某個專案（白板時間軸的專案標題旁有「🔬 復盤」按鈕會帶過來）。
 
 ---
 
