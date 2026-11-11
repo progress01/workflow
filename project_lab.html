@@ -1234,7 +1234,10 @@ const lab = {
     this.aiRuntime.lastPrompt=prompt; document.getElementById('prompt-preview').innerText=prompt; return prompt;
   },
   async copyText(text,msg='已複製'){ try{await navigator.clipboard.writeText(text); alert(msg);}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();alert(msg);} },
-  copyPrompt(){ const p=this.aiRuntime.lastPrompt||this.buildReviewPrompt(); this.copyText(p,'已複製完整 AI 提問。'); },
+  // 「關於我」寫在白板（今日 ⚙ 或 週報 → 給 AI 的設定），會跟雲端同步；這裡從同網域的白板資料讀。
+  aboutMe(){ try{ const raw=this.user&&localStorage.getItem(`whiteboard_state_${this.user.uid}`); if(!raw)return ''; const st=JSON.parse(raw); const set=JSON.parse(st?.sandbox?.settings||'{}'); return String(set.aiAbout||'').trim(); }catch(e){ return ''; } },
+  withAbout(text){ const a=this.aboutMe(); return a?`【關於我】\n${a}\n\n${text}`:text; },
+  copyPrompt(){ const p=this.withAbout(this.aiRuntime.lastPrompt||this.buildReviewPrompt()); this.copyText(p,'已複製完整 AI 提問。'); },
 
   saveReview(){
     const response=document.getElementById('ai-response').value.trim(); if(!response)return alert('請先貼上 AI 回覆。'); const ctx=this.selectedContext(); const t=REVIEW_TEMPLATES.find(x=>x.id===this.state.activeTemplate)||REVIEW_TEMPLATES[0];
@@ -1672,10 +1675,11 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
     return {payload,scopeText:'本次包含：'+scope.join('＋')};
   },
   systemInstruction(kind='analysis'){
-    const common=`使用繁體中文。你的用途是協助使用者練習處理資訊，而不是替使用者接管專案或做所有決定。\n1. 優先區分：已知事實、使用者目前的推論、未知／需要確認的資訊。\n2. 尊重使用者已寫的「我目前怎麼看」，先檢查它的依據與缺口，不要直接用自己的答案覆蓋。\n3. 最多先處理 3 個真正重要的點，不要堆大量框架。\n4. 若資訊已足夠，明確指出可以先行動，不要為完整而繼續製造規劃工作。\n5. 對自由卡保留探索性，不強迫補期限／驗收；對排程卡才檢查下一步、判斷點、依賴、產出與驗收。\n6. 對拆解練習，先檢查使用者自己的拆法，不要直接代拆。優先判斷：可獨立產出／驗收／依賴的成果、只是執行步驟、以及仍需探索的未知。\n7. 對管理事項區分：自己做、找人問、交辦、等待、追蹤、待決策。\n8. 如果情境是練習導航，先判斷使用者此刻最適合去哪一個練習區，不要展開整份專案分析。\n9. 不把推測寫成事實。
+    let common=`使用繁體中文。你的用途是協助使用者練習處理資訊，而不是替使用者接管專案或做所有決定。\n1. 優先區分：已知事實、使用者目前的推論、未知／需要確認的資訊。\n2. 尊重使用者已寫的「我目前怎麼看」，先檢查它的依據與缺口，不要直接用自己的答案覆蓋。\n3. 最多先處理 3 個真正重要的點，不要堆大量框架。\n4. 若資訊已足夠，明確指出可以先行動，不要為完整而繼續製造規劃工作。\n5. 對自由卡保留探索性，不強迫補期限／驗收；對排程卡才檢查下一步、判斷點、依賴、產出與驗收。\n6. 對拆解練習，先檢查使用者自己的拆法，不要直接代拆。優先判斷：可獨立產出／驗收／依賴的成果、只是執行步驟、以及仍需探索的未知。\n7. 對管理事項區分：自己做、找人問、交辦、等待、追蹤、待決策。\n8. 如果情境是練習導航，先判斷使用者此刻最適合去哪一個練習區，不要展開整份專案分析。\n9. 不把推測寫成事實。
 10. 不因為使用者提出一個手法，就預設那個手法是目標；必要時回到已確認的目的／目標／限制重新定錨。
 11. 新增問題或分析分支前，先判斷它是否可能改變目的、下一個決策或下一步行動；若不會，就不要為了完整而展開。
 12. 當對話已沿某個方案越長越複雜時，優先問：若暫時拿掉目前做法，只看已確認的目的、目標與限制，最小需要解決的是什麼。`;
+    const about=this.aboutMe(); if(about) common+=`\n\n【關於使用者】\n${about}`;
     if(kind==='planning') return common+`\n你的任務是做規劃基礎檢查。先區分：已明確確認的目的／目標／限制、使用者自己的理解／推定、目前做法。不要直接展開完整方案。最多指出 1～3 個會真正改變後續規劃的確認問題；若前提已足夠，明確說可以進入拆解或執行。`;
     if(kind==='experience_search') return common+`\n你的任務是把目前情況轉成「找過去案例」的搜尋意圖，不要解題。只輸出合法 JSON：{"problemType":"requirements|planning|breakdown|dependency|decision|communication|schedule|technical|automation|review|other","keywords":["3~6 個短關鍵概念"],"summary":"一句話描述目前問題"}。`;
     if(kind==='experience_rank') return common+`\n你的任務是從少量候選案例摘要中挑出最值得先看的案例。不要說應該照舊案例做。只輸出合法 JSON：{"items":[{"id":"案例 id","reason":"為什麼值得看","differenceHint":"最需要先注意的可能差異"}]}，最多 5 筆。`;
