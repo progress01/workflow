@@ -1473,6 +1473,8 @@ Object.assign(lab,{
           <div class="fact"><strong>下一步</strong><br>${this.esc(c.nextAction||'—')}</div>
           <div class="fact"><strong>下一判斷點</strong><br>${this.esc(c.decisionPoint||'—')}</div>
           <div class="fact"><strong>白板既有拆解草稿</strong><br>${this.esc(c.breakdownDraft||'—')}</div>
+          ${(()=>{const kids=this.boardChildren(c); const par=c.parentId?this.cardTitleById(c.parentId):''; const subs=this.source.cards.filter(x=>x.card.parentId===c.id);
+            return `<div class="fact"><strong>白板棋盤的子項目</strong>${par?`<br><span class="tiny">母卡：${this.esc(par)}</span>`:''}<br>${kids.length?kids.map(k=>`${k.done?'✅':'⬜'} ${k.at?`<b>${this.esc(k.at)}</b> `:''}${this.esc(k.text)}${k.warn?' ⚠':''}${k.promotedTo?' <span class="tiny">→ 已升格成卡片</span>':''}${k.details.length?`<div class="tiny" style="margin-left:1.4em">${k.details.slice(0,3).map(d=>this.esc(d)).join('<br>')}</div>`:''}`).join('<br>'):'—（還沒拆）'}${subs.length&&!kids.some(k=>k.promotedId)?`<br><span class="tiny">子卡：${subs.map(x=>this.esc(x.card.title||'')).join('、')}</span>`:''}<br><a href="${this.whiteboardBoardUrl(c.id)}" target="_blank" rel="noopener">♟ 到白板棋盤調整</a></div>`;})()}
         </aside>
         <div class="breakdown-practice"><h3>我的拆解練習</h3><div class="tiny">不要追求一次拆對。先練習判斷「什麼值得獨立管理」。</div>
           <div class="breakdown-step"><div class="step-title">1. 為什麼這張卡現在需要拆？</div><div class="breakdown-hint">例如：太大無法估時、產出其實有幾塊、不同部分有不同依賴；如果只是做法還不知道，可能應先探索而不是繼續切碎。</div><textarea oninput="lab.updateBreakdownPractice('why',this.value)" placeholder="我認為需要拆的原因……">${this.esc(p.why||'')}</textarea></div>
@@ -1644,10 +1646,34 @@ ${p.firstAction||'未填'}`; this.copyText(txt,'已複製拆解練習。');
     this.renderDeepExperienceNote();
   },
   slimProject(){ const p=this.activeProject()||{}; return {name:p.name||'',purpose:p.purpose||'',goal:p.goal||'',currentApproach:p.currentApproach||'',planningBasisStatus:p.basisStatus||'unknown',confirmedBasis:p.confirmedBasis||'',planningInterpretation:p.planningInterpretation||'',deadline:p.deadline||'',deadlineType:p.deadlineType||'',definitionOfDone:p.definitionOfDone||'',constraints:p.constraints||'',milestones:p.milestones||[]}; },
+  // 白板 v6.7：卡片是母、棋盤上的棋子是子項目（＝筆記裡最外層的「- [ ]」），座標記在 card.boardMeta；長大的子項目升格成子卡（parentId）。
+  boardChildren(card){
+    const lines=String(card?.content||'').split('\n'), re=/^(\s*)[-*]\s+\[([ xX])\]\s+(.*)$/;
+    const hits=lines.map((l,i)=>{const m=l.match(re); return m?{i,ind:m[1].replace(/\t/g,'    ').length,done:m[2].toLowerCase()==='x',text:m[3].trim()}:null;}).filter(Boolean);
+    if(!hits.length) return [];
+    const top=Math.min(...hits.map(h=>h.ind)), meta=card.boardMeta||{};
+    return hits.filter(h=>h.ind===top).map(h=>{
+      const details=[];
+      for(let j=h.i+1;j<lines.length;j++){ const l=lines[j]; if(!l.trim()){ if(details.length)break; else continue; } const ind=(l.match(/^\s*/)[0]||'').replace(/\t/g,'    ').length; if(ind<=top)break; details.push(l.trim()); }
+      const key=h.text.replace(/\s+/g,' ').trim(), m=meta[key]||{};
+      const child=m.cardId?this.source.cards.find(x=>x.card.id===m.cardId)?.card:null;
+      return {text:h.text,at:m.at||'',done:child?Number(child.status)===2:h.done,warn:!!m.black,promotedTo:child?(child.title||''):'',promotedId:child?child.id:'',details};
+    });
+  },
+  cardTitleById(id){ return this.source.cards.find(x=>x.card.id===id)?.card?.title||''; },
+  whiteboardBoardUrl(id){ return `../workboard/?board=${encodeURIComponent(id)}`; },
   slimCard(card,includeHistory=true){
     const logs=(Array.isArray(card.workLogs)?card.workLogs:[]).slice().sort((a,b)=>String(b.workDate||'').localeCompare(String(a.workDate||''))).slice(0,3).map(x=>({date:x.workDate||'',minutes:Math.round(this.logMinutes(x)),note:x.note||''}));
     const notes=(Array.isArray(card.entries)?card.entries:[]).slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||''))).slice(0,3).map(x=>({title:x.title||'',content:x.content||'',createdAt:x.createdAt||''}));
     const out={id:card.id,title:card.title||'',type:card.isMemo?'自由卡':'排程卡',content:card.content||'',category:card.category||'',status:this.statusLabel(card.status),planningMaturity:this.planningMaturityLabel(card.planningMaturity),nextAction:card.nextAction||'',decisionPoint:card.decisionPoint||'',dependency:card.dependencyNote||'',plannedMinutes:this.plannedMinutes(card),actualMinutes:Math.round(this.actualMinutes(card)),plannedStart:card.dateStart||card.dateSingle||'',plannedEnd:card.dateEnd||'',deliverable:card.deliverable||'',acceptance:card.acceptance||'',acceptanceEvidence:card.acceptanceEvidence||''};
+    const kids=this.boardChildren(card);
+    if(kids.length) out.subItems=kids.map(k=>({at:k.at,text:k.text,done:k.done,warn:k.warn,promotedToCard:k.promotedTo||undefined,details:k.details.slice(0,3)}));
+    if(card.parentId) out.parentCard=this.cardTitleById(card.parentId);
+    const childCards=this.source.cards.filter(x=>x.card.parentId===card.id).map(x=>({title:x.card.title||'',status:this.statusLabel(x.card.status)}));
+    if(childCards.length) out.childCards=childCards;
+    if(card.waitingWho||card.waitingWhat) out.waitingOn={who:card.waitingWho||'',what:card.waitingWhat||'',followUp:card.followUpDate||''};
+    if(card.docUrl) out.docUrl=card.docUrl;
+    if(card.taskType) out.taskType=card.taskType;
     if(includeHistory){out.recentWorkLogs=logs;out.recentWorkNotes=notes;} return out;
   },
   buildAiContext(){
